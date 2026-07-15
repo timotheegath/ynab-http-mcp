@@ -29,10 +29,11 @@ def find_latest_plan(plans: PlanSummaryResponse) -> UUID | None:
     )
     return most_recent_plan.id
 
+
 def set_default_plan(ynab_config: Configuration) -> UUID:
-    plan_id : UUID | None
+    plan_id: UUID | None
     plan_id_str = os.getenv("YNAB_PLAN_ID")
-    if plan_id_str is not None:        
+    if plan_id_str is not None:
         return UUID(plan_id_str)
     else:
         with ApiClient(ynab_config) as api_client:

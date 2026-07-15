@@ -8,7 +8,7 @@ from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
 import os
 
-  
+
 # Load .env
 load_dotenv()  # loads .env into environment
 
@@ -23,11 +23,9 @@ YNAB_CONFIG = ynab.Configuration(access_token=os.getenv("YNAB_API_KEY"))
 
 # Set plan
 PLAN_ID = set_default_plan(YNAB_CONFIG)
-            
- 
-            
+
+
 with ynab.ApiClient(YNAB_CONFIG) as api_client:
     plans_api = ynab.PlansApi(api_client)
     plans_response = plans_api.get_plans()
     debug_ynab_response("Plans: ", plans_response)
-
