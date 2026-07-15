@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ynab-http-mcp = "ynab_http_mcp:main"
+ynab-http-mcp = "ynab_http_mcp.server:main"
 
 [build-system]
 requires = ["uv_build>=0.11.11,<0.12.0"]

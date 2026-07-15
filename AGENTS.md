@@ -13,10 +13,7 @@
 
 ```bash
 # Run the main entry point
-uv run python -m ynab_http_mcp
-
-# Or via installed script
-ynab-http-mcp
+uv run ynab_http_mcp
 ```
 
 ### Testing
@@ -101,7 +98,7 @@ Debug mode is enabled via `DEBUG_MODE=True` or `MY_MCP_DEBUG=1` environment vari
 ## MCP Framework Notes
 
 - Uses `FastMCP` from `mcp.server.fastmcp`
-- Server initialized with `FastMCP("weather")` (note: "weather" appears to be a placeholder)
+- Server initialized with `FastMCP("")`
 - YNAB API client is configured with access token from environment
 
 ## Important Files
