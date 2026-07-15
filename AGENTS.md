@@ -1,6 +1,7 @@
 # OpenCode Agent Instructions for ynab-http-mcp
 
 ## Project Overview
+
 - **Type**: Python MCP (Micro Content Provider) server for YNAB (You Need A Budget) HTTP streaming
 - **Entry point**: `src/ynab_http_mcp/server.py`
 - **Main module**: `ynab_http_mcp`
@@ -9,6 +10,7 @@
 ## Key Commands
 
 ### Development
+
 ```bash
 # Run the main entry point
 uv run python -m ynab_http_mcp
@@ -18,6 +20,7 @@ ynab-http-mcp
 ```
 
 ### Testing
+
 ```bash
 # Run tests (no test files currently exist)
 uv run pytest
@@ -33,6 +36,7 @@ uv run ruff format src/
 ```
 
 ### Build
+
 ```bash
 # Build package
 uv build
@@ -41,13 +45,16 @@ uv build
 ## Environment Setup
 
 ### Required Environment Variables
+
 - `YNAB_API_KEY`: Your YNAB API key (loaded from `.env`)
 - `LOG_LEVEL`: Optional, defaults to "debug" in dev
 - `DEBUG_MODE`: Optional, enables debug logging
 
 ### .env File
+
 The project uses `python-dotenv` to load environment variables from `.env`. Example:
-```
+
+```text
 YNAB_API_KEY="your_api_key_here"
 LOG_LEVEL="debug"
 DEBUG_MODE=True
@@ -55,7 +62,7 @@ DEBUG_MODE=True
 
 ## Project Structure
 
-```
+```text
 src/
 └── ynab_http_mcp/
     ├── __init__.py      # Main entry point
@@ -65,13 +72,15 @@ src/
 
 ## Key Dependencies
 
-### Production
+### Production dependencies
+
 - `dotenv`: Environment variable loading
 - `httpx`: HTTP client
 - `mcp[cli]`: Micro Content Provider framework
 - `ynab`: YNAB API client
 
-### Development
+### Development dependencies
+
 - `mypy`: Type checking
 - `pytest`: Testing framework
 - `pytest-asyncio`: Async test support
@@ -81,6 +90,7 @@ src/
 ## Debugging Utilities
 
 The `debug.py` module provides:
+
 - `setup_logging()`: Configures structured logging
 - `debug_json()`: Pretty-print JSON in debug mode
 - `debug_response()`: Log HTTP responses
