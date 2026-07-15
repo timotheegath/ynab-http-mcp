@@ -2,12 +2,10 @@ from ynab_http_mcp.debug import is_debug_enabled, debug_ynab_response, debug_exc
 
 from typing import Any
 
-import httpx
 import ynab
 from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
 import os
-
 
 
 # Load .env
@@ -20,13 +18,9 @@ mcp = FastMCP("weather")
 
 
 # Credentials
-ynab_configuration = ynab.Configuration(
-    access_token = os.getenv("YNAB_API_KEY")
-)
+ynab_configuration = ynab.Configuration(access_token=os.getenv("YNAB_API_KEY"))
 
 with ynab.ApiClient(ynab_configuration) as api_client:
     plans_api = ynab.PlansApi(api_client)
     plans_response = plans_api.get_plans()
-    debug_ynab_response("Plans: ",plans_response)
-    
-    
+    debug_ynab_response("Plans: ", plans_response)

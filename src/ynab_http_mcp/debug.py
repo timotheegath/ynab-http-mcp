@@ -5,7 +5,6 @@ import json
 import logging
 import os
 import sys
-import ynab
 from typing import Any
 
 LOGGER_NAME = "ynab_http_mcp"
@@ -111,20 +110,21 @@ def debug_json(label: str, data: Any) -> None:
 
     logger.debug("%s\n%s", label, payload)
 
-def debug_ynab_response(label:str, resp: Any, body_limit: int = 4000) -> None:
+
+def debug_ynab_response(label: str, resp: Any, body_limit: int = 4000) -> None:
     """
     Pretty-print a YNAB object by using the native to_dict() method.
     Wraps around debug_response().
     """
-    if hasattr(resp, 'to_dict'):
+    if hasattr(resp, "to_dict"):
         debug_json(label, resp.to_dict())
         # Try YNAB's to_json() method
-    elif hasattr(resp, 'to_json'):
+    elif hasattr(resp, "to_json"):
         debug_json(label, resp.to_json())
         # Fall back to generic JSON serialization
     else:
         debug_json(label, resp)
-    
+
 
 def debug_response(resp: Any, body_limit: int = 4000) -> None:
     """
