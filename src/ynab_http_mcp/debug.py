@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import sys
+import ynab
 from typing import Any
 
 LOGGER_NAME = "ynab_http_mcp"
@@ -104,12 +105,26 @@ def debug_json(label: str, data: Any) -> None:
         return
 
     try:
-        payload = json.dumps(data, indent=2, sort_keys=True, default=str)
+        payload = json.dumps(data, indent=4, sort_keys=True, default=str)
     except TypeError:
         payload = repr(data)
 
     logger.debug("%s\n%s", label, payload)
 
+def debug_ynab_response(label:str, resp: Any, body_limit: int = 4000) -> None:
+    """
+    Pretty-print a YNAB object by using the native to_dict() method.
+    Wraps around debug_response().
+    """
+    if hasattr(resp, 'to_dict'):
+        debug_json(label, resp.to_dict())
+        # Try YNAB's to_json() method
+    elif hasattr(resp, 'to_json'):
+        debug_json(label, resp.to_json())
+        # Fall back to generic JSON serialization
+    else:
+        debug_json(label, resp)
+    
 
 def debug_response(resp: Any, body_limit: int = 4000) -> None:
     """
@@ -129,7 +144,7 @@ def debug_response(resp: Any, body_limit: int = 4000) -> None:
 
     try:
         body_data = resp.json()
-        body = json.dumps(body_data, indent=2, sort_keys=True, default=str)
+        body = json.dumps(body_data, indent=4, sort_keys=True, default=str)
     except Exception:
         body = getattr(resp, "text", "")
         if body_limit and len(body) > body_limit:
