@@ -3,21 +3,23 @@ import ynab
 from uuid import UUID
 from datetime import datetime
 
+
 class YnabService:
     def __init__(self):
         self.config = ynab.Configuration(access_token=os.getenv("YNAB_API_KEY"))
         self.plan_id = YnabService._set_default_plan(self.config)
 
-
     def list_plans(self):
         with ynab.ApiClient(self.config) as api_client:
             plans_api = ynab.PlansApi(api_client)
             return plans_api.get_plans()
+
     def get_categories(self):
         with ynab.ApiClient(self.config) as api_client:
-                categories_api = ynab.CategoriesApi(api_client)
-                categories_response = categories_api.get_categories(str(self.plan_id))
-                return categories_response.data.to_dict()
+            categories_api = ynab.CategoriesApi(api_client)
+            categories_response = categories_api.get_categories(str(self.plan_id))
+            return categories_response.data.to_dict()
+
     @staticmethod
     def _set_default_plan(config: ynab.Configuration):
         plan_id: UUID | None
@@ -34,7 +36,7 @@ class YnabService:
                 else:
                     return plan_id
             return
-    
+
     @staticmethod
     def _find_latest_plan(plans: ynab.PlanSummaryResponse) -> UUID | None:
         """
@@ -60,5 +62,3 @@ class YnabService:
             key=lambda plan: plan.last_modified_on or datetime.min,
         )
         return most_recent_plan.id
-        
-        
