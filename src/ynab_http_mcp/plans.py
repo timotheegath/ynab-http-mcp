@@ -1,6 +1,7 @@
 from datetime import datetime
-from ynab import PlanSummaryResponse
+from ynab import PlanSummaryResponse, Configuration, ApiClient, PlansApi
 from uuid import UUID
+import os
 
 
 def find_latest_plan(plans: PlanSummaryResponse) -> UUID | None:
@@ -27,3 +28,18 @@ def find_latest_plan(plans: PlanSummaryResponse) -> UUID | None:
         key=lambda plan: plan.last_modified_on or datetime.min,
     )
     return most_recent_plan.id
+
+def set_default_plan(ynab_config: Configuration) -> UUID:
+    plan_id : UUID | None
+    plan_id_str = os.getenv("YNAB_PLAN_ID")
+    if plan_id_str is not None:        
+        return UUID(plan_id_str)
+    else:
+        with ApiClient(ynab_config) as api_client:
+            plans_api = PlansApi(api_client)
+            plans_response = plans_api.get_plans()
+            plan_id = find_latest_plan(plans_response)
+            if plan_id is None:
+                raise ValueError("There are no budgets for this YNAB user.")
+            else:
+                return plan_id
