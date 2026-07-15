@@ -11,7 +11,7 @@ from ynab.models.plan_summary_response_data import PlanSummaryResponseData
 from ynab.models.plan_summary import PlanSummary
 
 # Import the function to test
-from ynab_http_mcp.plans import find_latest_plan
+from ynab_http_mcp.ynab_service import YnabService
 
 
 def test_find_latest_plan_empty():
@@ -19,7 +19,7 @@ def test_find_latest_plan_empty():
     # Create an empty PlanSummaryResponse
     empty_response = PlanSummaryResponse(data=PlanSummaryResponseData(plans=[]))
 
-    result = find_latest_plan(empty_response)
+    result = YnabService._find_latest_plan(empty_response)
     assert result is None
 
 
@@ -33,7 +33,7 @@ def test_find_latest_plan_single():
 
     response = PlanSummaryResponse(data=PlanSummaryResponseData(plans=[plan]))
 
-    result = find_latest_plan(response)
+    result = YnabService._find_latest_plan(response)
     assert result == plan_id
 
 
@@ -69,7 +69,7 @@ def test_find_latest_plan_multiple():
         data=PlanSummaryResponseData(plans=[plan1, plan2, plan3])
     )
 
-    result = find_latest_plan(response)
+    result = YnabService._find_latest_plan(response)
     assert result == plan3_id  # Should return the newest plan
 
 
@@ -92,7 +92,7 @@ def test_find_latest_plan_with_none_timestamps():
 
     response = PlanSummaryResponse(data=PlanSummaryResponseData(plans=[plan1, plan2]))
 
-    result = find_latest_plan(response)
+    result = YnabService._find_latest_plan(response)
     assert result == plan1_id  # Should return the plan with timestamp
 
 
@@ -110,7 +110,7 @@ def test_find_latest_plan_all_none_timestamps():
 
     # This should still work and return one of the plans
     # The behavior with all None timestamps is undefined, but shouldn't crash
-    result = find_latest_plan(response)
+    result = YnabService._find_latest_plan(response)
     assert result in [plan1_id, plan2_id]
 
 
