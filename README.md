@@ -2,6 +2,23 @@
 
 HTTP Streaming MCP for YNAB capabilities
 
+## Install
+
+## Key capabilities
+
+### Adding a new transaction
+
+### Getting planning advice based on previous spending trends
+
+### Automatically triage transactions
+```plain
+Triage all transactions from the last few days. If any doubt on categories, ask me.
+```
+### Help optimisé money assignment
+```plain
+I am reaching the end of my Eating Out money. Which money could I reassign confidently ?
+```
+
 ## Environment Variables
 
 - `YNAB_API_KEY`: Your YNAB API key (loaded from `.env`)
