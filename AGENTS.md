@@ -9,6 +9,12 @@
 
 ## Key Commands
 
+Always activate the venv:
+
+```bash
+source .venv/bin/activate
+```
+
 ### Development
 
 ```bash
