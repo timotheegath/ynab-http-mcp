@@ -2,9 +2,16 @@
 
 HTTP Streaming MCP for YNAB capabilities
 
-## Install
+## Overview
 
-## Key capabilities
+This project provides an HTTP-based Micro Content Provider (MCP) server that enables agents to interact with a user's YNAB (You Need A Budget) budget. The goal is to help users gain insights into their spending habits, optimize their budget planning, and perform bulk operations like cleaning up payee names or categorizing transactions.
+
+## Key Dependencies
+
+- **[ynab-sdk-python](https://github.com/ynab/ynab-sdk-python)**: The official YNAB Python SDK used to interact with the YNAB API.
+- **FastMCP**: A lightweight framework for building MCP servers.
+
+## Key Capabilities
 
 ### Adding a new transaction
 
@@ -16,11 +23,17 @@ HTTP Streaming MCP for YNAB capabilities
 Triage all transactions from the last few days. If any doubt on categories, ask me.
 ```
 
-### Help optimise money assignment
+### Help optimize money assignment
 
 ```plain
-I am reaching the end of my Eating Out money. Which money could I reassign confidently ?
+I am reaching the end of my Eating Out money. Which money could I reassign confidently?
 ```
+
+### Bulk cleanup operations
+
+- Clean up payee names
+- Categorize transactions in bulk
+- Identify and merge duplicate payees
 
 ## Environment Variables
 

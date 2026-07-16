@@ -1,6 +1,5 @@
 # All transaction actions.
 from ynab_http_mcp.ynab_service import YnabService
-import ynab
 from typing import Any, Annotated
 from datetime import datetime
 from ynab_http_mcp.debug import debug_exception, debug_string
