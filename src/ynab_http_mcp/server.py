@@ -22,9 +22,11 @@ planning_tools.register(mcp, ynab_service)
 transaction_tools.register(mcp, ynab_service)
 
 
+
 def main():
     # Initialize and run the server
     mcp.run(transport="streamable-http")
+    
 
 
 if __name__ == "__main__":

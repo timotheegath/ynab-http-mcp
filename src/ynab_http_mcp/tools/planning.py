@@ -5,7 +5,7 @@ from datetime import datetime
 from ynab_http_mcp.debug import debug_exception, debug_string
 from ynab_http_mcp.schemas.planning import PlanMonthResponse, AllPlanMonthsResponse
 from ynab_http_mcp.schemas.base import validate_and_clean_data
-from ynab_http_mcp.utils.schema_utils import transform_schema
+
 import os
 
 
@@ -16,7 +16,6 @@ def register(mcp, ynab_service: YnabService):
             "destructiveHint": False,
             "readOnlyHint": True,
             "idempotentHint": True,
-            "returnSchema": transform_schema(PlanMonthResponse.model_json_schema()),
         }
     )
     async def get_plan_month(
@@ -24,7 +23,7 @@ def register(mcp, ynab_service: YnabService):
             str | None,
             "ISO-format date within the month of choice. For instance, '2023-12-11' targets December 2023. Leave blank to select current month",
         ] = None,
-    ) -> dict[str, Any]:
+    ) -> PlanMonthResponse:
         """Get the details of a particular plan month, the money assigned to each category in that month."""
         if month_date:
             try:
@@ -48,7 +47,7 @@ def register(mcp, ynab_service: YnabService):
             debug_mode=os.getenv('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
         )
         
-        return validated_response.model_dump()
+        return validated_response
 
     @mcp.tool(
         annotations={
@@ -56,10 +55,10 @@ def register(mcp, ynab_service: YnabService):
             "destructiveHint": False,
             "readOnlyHint": True,
             "idempotentHint": True,
-            "returnSchema": transform_schema(AllPlanMonthsResponse.model_json_schema()),
+    
         }
     )
-    async def get_all_plan_months() -> dict[str, Any]:
+    async def get_all_plan_months() -> AllPlanMonthsResponse:
         """Get a summarised list of all months in the plan."""
         # Get raw response and validate with schema
         raw_response = ynab_service.get_all_plan_months()
@@ -72,4 +71,4 @@ def register(mcp, ynab_service: YnabService):
             debug_mode=os.getenv('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
         )
         
-        return validated_response.model_dump()
+        return validated_response

@@ -5,11 +5,12 @@ from datetime import datetime
 from ynab_http_mcp.debug import debug_exception, debug_string
 from ynab_http_mcp.schemas.transactions import CleanTransaction, TransactionsResponse
 from ynab_http_mcp.schemas.base import validate_and_clean_data, filter_import_fields
-from ynab_http_mcp.utils.schema_utils import transform_schema
+
 import os
 
 
 def register(mcp, ynab_service: YnabService):
+    
 
     @mcp.tool(
         annotations={
@@ -17,7 +18,6 @@ def register(mcp, ynab_service: YnabService):
             "destructiveHint": False,
             "readOnlyHint": True,
             "idempotentHint": True,
-            "returnSchema": transform_schema(TransactionsResponse.model_json_schema()),
         }
     )
     async def get_transactions(
@@ -37,19 +37,23 @@ def register(mcp, ynab_service: YnabService):
             str | None,
             "Account ID to filter transactions by specific account. Takes precedence over month, payee, and category filters.",
         ] = None,
-        month: Annotated[
-            str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions by month. Only used if account_id is not provided.",
-        ] = None,
         payee_id: Annotated[
             str | None,
-            "Payee ID to filter transactions by specific payee. Only used if account_id and month are not provided.",
+            "Payee ID to filter transactions by specific payee.",
         ] = None,
         category_id: Annotated[
             str | None,
-            "Category ID to filter transactions by specific category. Only used if account_id, month, and payee_id are not provided.",
+            "Category ID to filter transactions by specific category.",
         ] = None,
-    ) -> dict[str, Any]:
+        limit: Annotated[
+            int | None,
+            "Maximum number of transactions to return. Leave blank for no limit.",
+        ] = None,
+        month: Annotated[
+            str | None,
+            "Filter by month (YYYY-MM). Takes precedence over other filters when specified.",
+        ] = None,
+    ) -> TransactionsResponse:
         """
         Get transactions with flexible filtering options.
 
@@ -71,6 +75,7 @@ def register(mcp, ynab_service: YnabService):
             datetime.fromisoformat(until_date) if until_date else None
         )
         converted_month = datetime.fromisoformat(month) if month else None
+
 
         # Get raw YNAB response
         raw_response = ynab_service.get_transactions(
@@ -118,4 +123,4 @@ def register(mcp, ynab_service: YnabService):
             debug_mode=os.getenv('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
         )
         
-        return validated_response.model_dump()
+        return validated_response

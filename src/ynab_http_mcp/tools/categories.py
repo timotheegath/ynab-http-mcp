@@ -2,7 +2,7 @@ from ynab_http_mcp.ynab_service import YnabService
 from typing import Any
 from ynab_http_mcp.schemas.categories import CategoriesResponse, CategoryGroup, CleanCategory
 from ynab_http_mcp.schemas.base import validate_and_clean_data
-from ynab_http_mcp.utils.schema_utils import transform_schema
+
 import os
 
 
@@ -12,11 +12,9 @@ def register(mcp, ynab_service: YnabService):
             "title": "Get all categories and their groups.",
             "destructiveHint": False,
             "readOnlyHint": True,
-            "idempotentHint": True,
-            "returnSchema": transform_schema(CategoriesResponse.model_json_schema()),
-        }
+            "idempotentHint": True,        }
     )
-    async def get_categories() -> dict[str, Any]:
+    async def get_categories() -> CategoriesResponse:
         """Get a list of category groups and their categories."""
         # Get raw YNAB response
         raw_response = ynab_service.get_categories()
@@ -73,4 +71,5 @@ def register(mcp, ynab_service: YnabService):
             debug_mode=os.getenv('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
         )
         
-        return validated_response.model_dump()
+        return validated_response
+    
