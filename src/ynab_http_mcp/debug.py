@@ -110,6 +110,7 @@ def debug_json(label: str, data: Any) -> None:
 
     logger.debug("%s\n%s", label, payload)
 
+
 def debug_string(label: str, text: Any) -> None:
     """
     Log pretty string only when DEBUG is enabled.
