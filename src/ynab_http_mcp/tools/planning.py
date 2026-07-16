@@ -13,7 +13,7 @@ def register(mcp, ynab_service: YnabService):
             "ISO-format date within the month of choice. For instance, '2023-12-11' targets December 2023. Leave blank to select current month",
         ] = None,
     ) -> dict[str, Any]:
-        """Get a list of category groups and their categories."""
+        """Get the details of a particular plan month, the money assigned to each category in that month."""
         if month_date:
             try:
                 converted_month_date = datetime.fromisoformat(month_date)
@@ -26,3 +26,8 @@ def register(mcp, ynab_service: YnabService):
             converted_month_date = None
 
         return ynab_service.get_plan_month(date=converted_month_date).to_dict()
+
+    @mcp.tool()
+    async def get_all_plan_months() -> dict[str, Any]:
+        """Get a summarised list of all months in the plan."""
+        return ynab_service.get_all_plan_months().to_dict()

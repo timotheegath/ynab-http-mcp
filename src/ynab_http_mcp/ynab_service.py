@@ -109,6 +109,14 @@ class YnabService:
             ynab.MonthsApi,
             lambda api: api.get_plan_month(str(self.plan_id), reformatted_date),
         )
+    
+    def get_all_plan_months(self) -> ynab.MonthSummariesResponse:
+        
+        return self._call_api(
+            ynab.MonthsApi,
+            lambda api: api.get_plan_months(str(self.plan_id)),
+        )
+
 
     @staticmethod
     def _create_empty_response(response_type) -> Any:
