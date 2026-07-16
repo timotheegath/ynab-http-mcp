@@ -3,6 +3,9 @@ from ynab_http_mcp.ynab_service import YnabService
 from typing import Any, Annotated
 from datetime import datetime
 from ynab_http_mcp.debug import debug_exception, debug_string
+from ynab_http_mcp.schemas.transactions import CleanTransaction, TransactionsResponse
+from ynab_http_mcp.schemas.base import validate_and_clean_data, filter_import_fields
+import os
 
 
 def register(mcp, ynab_service: YnabService):
@@ -13,6 +16,7 @@ def register(mcp, ynab_service: YnabService):
             "destructiveHint": False,
             "readOnlyHint": True,
             "idempotentHint": True,
+            "returnSchema": TransactionsResponse.model_json_schema(),
         }
     )
     async def get_transactions(
@@ -67,7 +71,8 @@ def register(mcp, ynab_service: YnabService):
         )
         converted_month = datetime.fromisoformat(month) if month else None
 
-        return ynab_service.get_transactions(
+        # Get raw YNAB response
+        raw_response = ynab_service.get_transactions(
             since_date=converted_since_date,
             until_date=converted_until_date,
             type=type,
@@ -75,4 +80,41 @@ def register(mcp, ynab_service: YnabService):
             month=converted_month,
             payee_id=payee_id,
             category_id=category_id,
-        ).to_dict()
+        )
+        
+        # Convert to dict and filter import fields
+        raw_data = raw_response.to_dict()
+        
+        # Clean each transaction by filtering import fields
+        cleaned_transactions = []
+        for transaction_data in raw_data.get('data', {}).get('transactions', []):
+            # Filter out import-related fields
+            filtered_data = filter_import_fields(transaction_data)
+            
+            # Validate and clean using schema
+            try:
+                cleaned_transaction = validate_and_clean_data(
+                    CleanTransaction,
+                    filtered_data,
+                    debug_mode=os.getenv('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
+                )
+                cleaned_transactions.append(cleaned_transaction.model_dump())
+            except Exception as e:
+                debug_exception(f"Failed to validate transaction {transaction_data.get('id', 'unknown')}")
+                # Skip invalid transactions but continue processing others
+                continue
+        
+        # Create final response with schema validation
+        final_response = {
+            'transactions': cleaned_transactions,
+            'server_knowledge': raw_data.get('data', {}).get('server_knowledge', 0)
+        }
+        
+        # Validate the complete response structure
+        validated_response = validate_and_clean_data(
+            TransactionsResponse,
+            final_response,
+            debug_mode=os.getenv('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
+        )
+        
+        return validated_response.model_dump()
