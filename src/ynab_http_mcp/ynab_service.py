@@ -100,14 +100,16 @@ class YnabService:
         If no date is passed, returns the current month's plan.
         """
         if date:
-            reformatted_date = date.replace(day=1).strftime('%Y-%m-%d')# Hardcode the day to be the first of the month
+            reformatted_date = date.replace(day=1).strftime(
+                "%Y-%m-%d"
+            )  # Hardcode the day to be the first of the month
         else:
             reformatted_date = "current"
         return self._call_api(
             ynab.MonthsApi,
             lambda api: api.get_plan_month(str(self.plan_id), reformatted_date),
         )
-    
+
     def get_all_plan_months(self) -> ynab.MonthSummariesResponse:
 
         return self._call_api(
@@ -116,38 +118,41 @@ class YnabService:
         )
 
     def get_transactions(
-            self,
-            since_date: Optional[datetime],
-            until_date: Optional[datetime], 
-            type: str,
-            account_id: Optional[str],
-            month: Optional[datetime],
-            payee_id: Optional[str],
-            category_id: Optional[str]) -> ynab.TransactionsResponse:
+        self,
+        since_date: Optional[datetime],
+        until_date: Optional[datetime],
+        type: str,
+        account_id: Optional[str],
+        month: Optional[datetime],
+        payee_id: Optional[str],
+        category_id: Optional[str],
+    ) -> ynab.TransactionsResponse:
         """
         Will always consider since, until, type as parameters.
         Will only consider one of account_id, month, payee_id, category_id. Whoever is defined first.
         """
         # Build parameters dictionary
         params = {}
-        
+
         # 1. Take all of since, until, and type parameters if they are not none
         if since_date is not None:
-            params["since_date"] = since_date.strftime('%Y-%m-%d')
+            params["since_date"] = since_date.strftime("%Y-%m-%d")
         if until_date is not None:
-            params["until_date"] = until_date.strftime('%Y-%m-%d')
+            params["until_date"] = until_date.strftime("%Y-%m-%d")
         if type is not None:
             params["type"] = type
-        
+
         # 2. Take the first of account_id, month, payee_id or category_id that is not none
         if account_id is not None:
             params["account_id"] = account_id
             return self._call_api(
                 ynab.TransactionsApi,
-                lambda api: api.get_transactions_by_account(str(self.plan_id), **params),
+                lambda api: api.get_transactions_by_account(
+                    str(self.plan_id), **params
+                ),
             )
         elif month is not None:
-            params["month"] = month.replace(day=1).strftime('%Y-%m-%d')
+            params["month"] = month.replace(day=1).strftime("%Y-%m-%d")
             return self._call_api(
                 ynab.TransactionsApi,
                 lambda api: api.get_transactions_by_month(str(self.plan_id), **params),
@@ -158,21 +163,20 @@ class YnabService:
                 ynab.TransactionsApi,
                 lambda api: api.get_transactions_by_payee(str(self.plan_id), **params),
             )
-            
+
         elif category_id is not None:
             params["category_id"] = category_id
             return self._call_api(
                 ynab.TransactionsApi,
-                lambda api: api.get_transactions_by_category(str(self.plan_id), **params),
+                lambda api: api.get_transactions_by_category(
+                    str(self.plan_id), **params
+                ),
             )
         else:
-
             return self._call_api(
                 ynab.TransactionsApi,
                 lambda api: api.get_transactions(str(self.plan_id), **params),
             )
-
-
 
     @staticmethod
     def _create_empty_response(response_type) -> Any:

@@ -18,3 +18,16 @@ schema: spec-driven
 #       - Always include a "Non-goals" section
 #     tasks:
 #       - Break tasks into chunks of max 2 hours
+
+# Example:
+context: |
+    This is for personal use, to later deploy on an low-cost server.
+    Everything is centered around the usage of the YNAB Python SDK.
+    YNAB is a budgeting application where users plan ahead by assigning money to categories in the future months.
+    The aim of this MCP is to give LLMs tools to extract inights on spending and give guidance to the user's future planning.
+    Use mypy and ruff for typing checking and formatting.
+
+rules:
+    proposal:
+        - Keep proposals under 500 words
+        - Provision for unit tests to be added

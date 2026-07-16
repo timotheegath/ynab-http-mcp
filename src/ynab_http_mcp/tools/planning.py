@@ -7,12 +7,12 @@ from ynab_http_mcp.debug import debug_exception, debug_string
 
 def register(mcp, ynab_service: YnabService):
     @mcp.tool(
-            annotations={
-                "title":"Get the plan for a specific month.",
-                "destructiveHint":False,
-                "readOnlyHint": True,
-                "idempotentHint":True
-            }
+        annotations={
+            "title": "Get the plan for a specific month.",
+            "destructiveHint": False,
+            "readOnlyHint": True,
+            "idempotentHint": True,
+        }
     )
     async def get_plan_month(
         month_date: Annotated[
@@ -35,12 +35,12 @@ def register(mcp, ynab_service: YnabService):
         return ynab_service.get_plan_month(date=converted_month_date).to_dict()
 
     @mcp.tool(
-            annotations={
-                "title":"Get a summary of the plan across all months.",
-                "destructiveHint":False,
-                "readOnlyHint": True,
-                "idempotentHint":True
-            }
+        annotations={
+            "title": "Get a summary of the plan across all months.",
+            "destructiveHint": False,
+            "readOnlyHint": True,
+            "idempotentHint": True,
+        }
     )
     async def get_all_plan_months() -> dict[str, Any]:
         """Get a summarised list of all months in the plan."""

@@ -6,14 +6,14 @@ from ynab_http_mcp.debug import debug_exception, debug_string
 
 
 def register(mcp, ynab_service: YnabService):
-    
+
     @mcp.tool(
-            annotations={
-                "title":"Get transactions with flexible filtering.",
-                "destructiveHint":False,
-                "readOnlyHint": True,
-                "idempotentHint":True
-            }
+        annotations={
+            "title": "Get transactions with flexible filtering.",
+            "destructiveHint": False,
+            "readOnlyHint": True,
+            "idempotentHint": True,
+        }
     )
     async def get_transactions(
         since_date: Annotated[
@@ -47,20 +47,24 @@ def register(mcp, ynab_service: YnabService):
     ) -> dict[str, Any]:
         """
         Get transactions with flexible filtering options.
-        
+
         Filtering Rules:
         - since_date, until_date, and type are always applied when provided
         - Only ONE of account_id, month, payee_id, or category_id is used (in that priority order)
         - If none of the scope filters (account_id, month, payee_id, category_id) are provided, returns all transactions matching the date/type filters
-        
+
         Examples:
         - All transactions in January 2024: month="2024-01-15"
         - Cleared transactions from account XYZ: account_id="XYZ", type="cleared"
         - Transactions from Jan 1 to Jan 31, 2024: since_date="2024-01-01", until_date="2024-01-31"
         """
         # Convert string parameters to appropriate types
-        converted_since_date = datetime.fromisoformat(since_date) if since_date else None
-        converted_until_date = datetime.fromisoformat(until_date) if until_date else None
+        converted_since_date = (
+            datetime.fromisoformat(since_date) if since_date else None
+        )
+        converted_until_date = (
+            datetime.fromisoformat(until_date) if until_date else None
+        )
         converted_month = datetime.fromisoformat(month) if month else None
 
         return ynab_service.get_transactions(
@@ -70,7 +74,5 @@ def register(mcp, ynab_service: YnabService):
             account_id=account_id,
             month=converted_month,
             payee_id=payee_id,
-            category_id=category_id
+            category_id=category_id,
         ).to_dict()
-
-
