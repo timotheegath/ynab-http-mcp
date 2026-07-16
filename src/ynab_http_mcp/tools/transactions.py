@@ -5,6 +5,7 @@ from datetime import datetime
 from ynab_http_mcp.debug import debug_exception, debug_string
 from ynab_http_mcp.schemas.transactions import CleanTransaction, TransactionsResponse
 from ynab_http_mcp.schemas.base import validate_and_clean_data, filter_import_fields
+from ynab_http_mcp.utils.schema_utils import transform_schema
 import os
 
 
@@ -16,7 +17,7 @@ def register(mcp, ynab_service: YnabService):
             "destructiveHint": False,
             "readOnlyHint": True,
             "idempotentHint": True,
-            "returnSchema": TransactionsResponse.model_json_schema(),
+            "returnSchema": transform_schema(TransactionsResponse.model_json_schema()),
         }
     )
     async def get_transactions(

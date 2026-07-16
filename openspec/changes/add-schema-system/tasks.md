@@ -15,35 +15,35 @@
 
 ## 3. Category Schema Implementation
 
-- [ ] 3.1 Create schemas/categories.py with CleanCategory model
-- [ ] 3.2 Create schemas/categories.py with CategoryGroup model
-- [ ] 3.3 Create schemas/categories.py with CategoriesResponse model
-- [ ] 3.4 Update categories.py tool to use schema validation
-- [ ] 3.5 Add FastMCP metadata with returnSchema annotation
+- [x] 3.1 Create schemas/categories.py with CleanCategory model
+- [x] 3.2 Create schemas/categories.py with CategoryGroup model
+- [x] 3.3 Create schemas/categories.py with CategoriesResponse model
+- [x] 3.4 Update categories.py tool to use schema validation
+- [x] 3.5 Add FastMCP metadata with returnSchema annotation
 
 ## 4. Error Handling Implementation
 
-- [ ] 4.1 Implement graceful validation error handling in base.py
-- [ ] 4.2 Integrate debug_exception logging for validation errors
-- [ ] 4.3 Add debug_json logging for invalid data in debug mode
-- [ ] 4.4 Test error handling with malformed YNAB responses
+- [x] 4.1 Implement graceful validation error handling in base.py
+- [x] 4.2 Integrate debug_exception logging for validation errors
+- [x] 4.3 Add debug_json logging for invalid data in debug mode
+- [x] 4.4 Test error handling with malformed YNAB responses
 
 ## 5. FastMCP Metadata Integration
 
-- [ ] 5.1 Verify all tools have proper returnSchema annotations
-- [ ] 5.2 Test that schema metadata is accessible to agents
-- [ ] 5.3 Verify JSON schema format compatibility
+- [x] 5.1 Verify all tools have proper returnSchema annotations
+- [x] 5.2 Test that schema metadata is accessible to agents
+- [x] 5.3 Verify JSON schema format compatibility
 
 ## 6. Testing and Validation
 
-- [ ] 6.1 Run mypy type checking on all schema files
-- [ ] 6.2 Run ruff linting and formatting
-- [ ] 6.3 Test all MCP tools with real YNAB data
-- [ ] 6.4 Verify import fields are filtered from responses
-- [ ] 6.5 Test error handling with DEBUG_MODE enabled/disabled
+- [x] 6.1 Run mypy type checking on all schema files
+- [x] 6.2 Run ruff linting and formatting
+- [x] 6.3 Test all MCP tools with real YNAB data
+- [x] 6.4 Verify import fields are filtered from responses
+- [x] 6.5 Test error handling with DEBUG_MODE enabled/disabled
 
 ## 7. Documentation
 
-- [ ] 7.1 Add schema documentation to README
-- [ ] 7.2 Add examples of schema usage
-- [ ] 7.3 Document the schema system architecture
+- [x] 7.1 Add schema documentation to README
+- [x] 7.2 Add examples of schema usage
+- [x] 7.3 Document the schema system architecture

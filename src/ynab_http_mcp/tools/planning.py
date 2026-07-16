@@ -3,6 +3,10 @@ from ynab_http_mcp.ynab_service import YnabService
 from typing import Any, Annotated
 from datetime import datetime
 from ynab_http_mcp.debug import debug_exception, debug_string
+from ynab_http_mcp.schemas.planning import PlanMonthResponse, AllPlanMonthsResponse
+from ynab_http_mcp.schemas.base import validate_and_clean_data
+from ynab_http_mcp.utils.schema_utils import transform_schema
+import os
 
 
 def register(mcp, ynab_service: YnabService):
@@ -12,6 +16,7 @@ def register(mcp, ynab_service: YnabService):
             "destructiveHint": False,
             "readOnlyHint": True,
             "idempotentHint": True,
+            "returnSchema": transform_schema(PlanMonthResponse.model_json_schema()),
         }
     )
     async def get_plan_month(
@@ -32,7 +37,18 @@ def register(mcp, ynab_service: YnabService):
         else:
             converted_month_date = None
 
-        return ynab_service.get_plan_month(date=converted_month_date).to_dict()
+        # Get raw response and validate with schema
+        raw_response = ynab_service.get_plan_month(date=converted_month_date)
+        raw_data = raw_response.to_dict()
+        
+        # Validate and clean with schema
+        validated_response = validate_and_clean_data(
+            PlanMonthResponse,
+            raw_data,
+            debug_mode=os.getenv('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
+        )
+        
+        return validated_response.model_dump()
 
     @mcp.tool(
         annotations={
@@ -40,8 +56,20 @@ def register(mcp, ynab_service: YnabService):
             "destructiveHint": False,
             "readOnlyHint": True,
             "idempotentHint": True,
+            "returnSchema": transform_schema(AllPlanMonthsResponse.model_json_schema()),
         }
     )
     async def get_all_plan_months() -> dict[str, Any]:
         """Get a summarised list of all months in the plan."""
-        return ynab_service.get_all_plan_months().to_dict()
+        # Get raw response and validate with schema
+        raw_response = ynab_service.get_all_plan_months()
+        raw_data = raw_response.to_dict()
+        
+        # Validate and clean with schema
+        validated_response = validate_and_clean_data(
+            AllPlanMonthsResponse,
+            raw_data,
+            debug_mode=os.getenv('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
+        )
+        
+        return validated_response.model_dump()

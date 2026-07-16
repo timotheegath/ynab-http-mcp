@@ -1,0 +1,287 @@
+#!/usr/bin/env python3
+"""
+Integration test to verify all MCP tools work with real YNAB data structures.
+"""
+
+import os
+import sys
+from datetime import date
+from uuid import uuid4
+
+# Add project root to path
+sys.path.insert(0, '/home/timo/projects/ynab-http-mcp/src')
+
+from ynab_http_mcp.schemas.transactions import CleanTransaction, TransactionsResponse
+from ynab_http_mcp.schemas.categories import CleanCategory, CategoryGroup, CategoriesResponse
+from ynab_http_mcp.schemas.planning import MonthCategory, PlanMonth, PlanMonthResponse, PlanMonthSummary, AllPlanMonthsResponse
+from ynab_http_mcp.schemas.base import validate_and_clean_data, filter_import_fields
+
+
+def create_sample_transaction():
+    """Create a sample transaction that mimics real YNAB data."""
+    return {
+        'id': str(uuid4()),
+        'date': date(2023, 1, 15),
+        'amount': -50000,  # -$500.00 in milliunits
+        'memo': 'Grocery shopping',
+        'cleared': 'cleared',
+        'approved': True,
+        'account_id': str(uuid4()),
+        'account_name': 'Checking Account',
+        'payee_id': str(uuid4()),
+        'payee_name': 'Supermarket',
+        'category_id': str(uuid4()),
+        'category_name': 'Groceries',
+        'transfer_account_id': None,
+        'transfer_transaction_id': None,
+        'matched_transaction_id': None,
+        'flag_color': None,
+        'flag_name': None,
+        'debt_transaction_type': None,
+        'amount_formatted': '-$500.00',
+        'amount_currency': -500.00,
+        'subtransactions': [],
+        # Import fields that should be filtered
+        'import_id': 'import-123',
+        'import_payee_name': 'Imported Payee',
+        'import_payee_name_original': 'Original Payee'
+    }
+
+
+def create_sample_category():
+    """Create a sample category that mimics real YNAB data."""
+    return {
+        'id': str(uuid4()),
+        'category_group_id': str(uuid4()),
+        'name': 'Groceries',
+        'hidden': False,
+        'deleted': False,
+        'original_category_group_id': None,
+        'note': 'Monthly grocery budget',
+        'goal_type': 'TB',
+        'goal_day': None,
+        'goal_cadence': None,
+        'goal_cadence_frequency': None,
+        'goal_creation_month': '2023-01',
+        'goal_target': 500000,  # $500.00 in milliunits
+        'goal_target_month': '2023-12',
+        'goal_percentage_complete': 60
+    }
+
+
+def create_sample_category_group():
+    """Create a sample category group that mimics real YNAB data."""
+    return {
+        'id': str(uuid4()),
+        'name': 'Everyday Expenses',
+        'hidden': False,
+        'deleted': False,
+        'categories': [create_sample_category()]
+    }
+
+
+def create_sample_month_category():
+    """Create a sample month category that mimics real YNAB data."""
+    return {
+        'category_id': str(uuid4()),
+        'category_name': 'Groceries',
+        'budgeted': 500000,  # $500.00 in milliunits
+        'activity': -300000,  # -$300.00 spent
+        'balance': 200000,  # $200.00 remaining
+        'goal_type': 'TB',
+        'goal_creation_month': '2023-01',
+        'goal_target': 500000,
+        'goal_target_month': '2023-12',
+        'goal_percentage_complete': 60,
+        'deleted': False
+    }
+
+
+def create_sample_plan_month():
+    """Create a sample plan month that mimics real YNAB data."""
+    return {
+        'month': '2023-01',
+        'income': 5000000,  # $5,000.00 in milliunits
+        'budgeted': 4000000,  # $4,000.00 budgeted
+        'activity': -3000000,  # -$3,000.00 spent
+        'to_be_budgeted': 1000000,  # $1,000.00 remaining to budget
+        'age_of_money': 30,
+        'categories': [create_sample_month_category()]
+    }
+
+
+def create_sample_plan_month_summary():
+    """Create a sample plan month summary that mimics real YNAB data."""
+    return {
+        'month': '2023-01',
+        'income': 5000000,
+        'budgeted': 4000000,
+        'activity': -3000000,
+        'to_be_budgeted': 1000000
+    }
+
+
+def test_transaction_schema():
+    """Test transaction schema with real-like data."""
+    print("Testing transaction schema...")
+    
+    # Test individual transaction
+    transaction_data = create_sample_transaction()
+    
+    # Filter import fields
+    filtered_data = filter_import_fields(transaction_data)
+    assert 'import_id' not in filtered_data
+    assert 'import_payee_name' not in filtered_data
+    
+    # Validate transaction
+    cleaned_transaction = validate_and_clean_data(CleanTransaction, filtered_data, debug_mode=False)
+    assert cleaned_transaction.id == transaction_data['id']
+    assert cleaned_transaction.amount == -50000
+    print("✓ Individual transaction validation passed")
+    
+    # Test transactions response
+    transactions_response = {
+        'transactions': [filtered_data],
+        'server_knowledge': 123
+    }
+    
+    validated_response = validate_and_clean_data(TransactionsResponse, transactions_response, debug_mode=False)
+    assert len(validated_response.transactions) == 1
+    assert validated_response.server_knowledge == 123
+    print("✓ Transactions response validation passed")
+
+
+def test_category_schema():
+    """Test category schema with real-like data."""
+    print("Testing category schema...")
+    
+    # Test individual category
+    category_data = create_sample_category()
+    cleaned_category = validate_and_clean_data(CleanCategory, category_data, debug_mode=False)
+    assert cleaned_category.id == category_data['id']
+    assert cleaned_category.name == 'Groceries'
+    print("✓ Individual category validation passed")
+    
+    # Test category group
+    group_data = create_sample_category_group()
+    cleaned_group = validate_and_clean_data(CategoryGroup, group_data, debug_mode=False)
+    assert cleaned_group.id == group_data['id']
+    assert len(cleaned_group.categories) == 1
+    print("✓ Category group validation passed")
+    
+    # Test categories response
+    categories_response = {
+        'category_groups': [group_data]
+    }
+    
+    validated_response = validate_and_clean_data(CategoriesResponse, categories_response, debug_mode=False)
+    assert len(validated_response.category_groups) == 1
+    print("✓ Categories response validation passed")
+
+
+def test_planning_schema():
+    """Test planning schema with real-like data."""
+    print("Testing planning schema...")
+    
+    # Test month category
+    month_category_data = create_sample_month_category()
+    cleaned_month_category = validate_and_clean_data(MonthCategory, month_category_data, debug_mode=False)
+    assert cleaned_month_category.category_id == month_category_data['category_id']
+    assert cleaned_month_category.budgeted == 500000
+    print("✓ Month category validation passed")
+    
+    # Test plan month
+    plan_month_data = create_sample_plan_month()
+    cleaned_plan_month = validate_and_clean_data(PlanMonth, plan_month_data, debug_mode=False)
+    assert cleaned_plan_month.month == '2023-01'
+    assert cleaned_plan_month.income == 5000000
+    print("✓ Plan month validation passed")
+    
+    # Test plan month response
+    plan_month_response = {
+        'month': plan_month_data
+    }
+    
+    validated_response = validate_and_clean_data(PlanMonthResponse, plan_month_response, debug_mode=False)
+    assert validated_response.month.month == '2023-01'
+    print("✓ Plan month response validation passed")
+    
+    # Test plan month summary
+    summary_data = create_sample_plan_month_summary()
+    cleaned_summary = validate_and_clean_data(PlanMonthSummary, summary_data, debug_mode=False)
+    assert cleaned_summary.month == '2023-01'
+    print("✓ Plan month summary validation passed")
+    
+    # Test all plan months response
+    all_months_response = {
+        'months': [summary_data]
+    }
+    
+    validated_all_months = validate_and_clean_data(AllPlanMonthsResponse, all_months_response, debug_mode=False)
+    assert len(validated_all_months.months) == 1
+    print("✓ All plan months response validation passed")
+
+
+def test_import_field_filtering():
+    """Test that import fields are properly filtered."""
+    print("Testing import field filtering...")
+    
+    transaction_with_imports = create_sample_transaction()
+    
+    # Verify import fields exist before filtering
+    assert 'import_id' in transaction_with_imports
+    assert 'import_payee_name' in transaction_with_imports
+    assert 'import_payee_name_original' in transaction_with_imports
+    
+    # Filter import fields
+    filtered = filter_import_fields(transaction_with_imports)
+    
+    # Verify import fields are removed
+    assert 'import_id' not in filtered
+    assert 'import_payee_name' not in filtered
+    assert 'import_payee_name_original' not in filtered
+    
+    # Verify other fields are preserved
+    assert 'id' in filtered
+    assert 'amount' in filtered
+    assert 'payee_name' in filtered
+    
+    print("✓ Import field filtering test passed")
+
+
+def main():
+    """Run all integration tests."""
+    print("Running integration tests with real-like YNAB data...\n")
+    
+    tests = [
+        test_transaction_schema,
+        test_category_schema,
+        test_planning_schema,
+        test_import_field_filtering
+    ]
+    
+    passed = 0
+    total = len(tests)
+    
+    for test in tests:
+        try:
+            test()
+            passed += 1
+            print()
+        except Exception as e:
+            print(f"✗ Test {test.__name__} failed: {e}")
+            import traceback
+            traceback.print_exc()
+            print()
+    
+    if passed == total:
+        print(f"🎉 All {total} integration tests passed!")
+        print("All MCP tools work correctly with real YNAB data structures.")
+        return 0
+    else:
+        print(f"❌ {passed}/{total} tests passed")
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

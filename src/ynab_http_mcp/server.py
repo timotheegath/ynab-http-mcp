@@ -5,6 +5,10 @@ import ynab_http_mcp.tools.categories as category_tools
 import ynab_http_mcp.tools.planning as planning_tools
 import ynab_http_mcp.tools.transactions as transaction_tools
 
+
+# Initialize FastMCP server
+mcp = FastMCP("ynab")
+
 # Load .env
 load_dotenv()  # loads .env into environment
 
