@@ -5,6 +5,7 @@ from typing import Any
 def register(mcp, ynab_service: YnabService):
     @mcp.tool(
             annotations={
+                "title":"Get all categories and their groups.",
                 "destructiveHint":False,
                 "readOnlyHint": True,
                 "idempotentHint":True

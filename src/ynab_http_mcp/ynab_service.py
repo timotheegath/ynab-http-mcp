@@ -100,9 +100,7 @@ class YnabService:
         If no date is passed, returns the current month's plan.
         """
         if date:
-            reformatted_date = str(
-                date.date().replace(day=1)
-            )  # Hardcode the day to be the first of the month
+            reformatted_date = date.replace(day=1).strftime('%Y-%m-%d')# Hardcode the day to be the first of the month
         else:
             reformatted_date = "current"
         return self._call_api(
@@ -111,11 +109,69 @@ class YnabService:
         )
     
     def get_all_plan_months(self) -> ynab.MonthSummariesResponse:
-        
+
         return self._call_api(
             ynab.MonthsApi,
             lambda api: api.get_plan_months(str(self.plan_id)),
         )
+
+    def get_transactions(
+            self,
+            since_date: Optional[datetime],
+            until_date : Optional[datetime], 
+            type: str,
+            account: Optional[ynab.Account],
+            month: Optional[datetime],
+            payee: Optional[ynab.Payee],
+            category: Optional[ynab.Category]) -> ynab.TransactionsResponse:
+        """
+        Will always consider since, until, type as parameters.
+        Will only consider one of account, month, payee, category. Whoever is defined first.
+        """
+        # Build parameters dictionary
+        params = {}
+        
+        # 1. Take all of since, until, and type parameters if they are not none
+        if since_date is not None:
+            params["since_date"] = since_date.strftime('%Y-%m-%d')
+        if until_date is not None:
+            params["until_date"] = until_date.strftime('%Y-%m-%d')
+        if type is not None:
+            params["type"] = type
+        
+        # 2. Take the first of account, month, payee or category that is not none
+        if account is not None:
+            params["account_id"] = str(account.id) 
+            return self._call_api(
+                ynab.TransactionsApi,
+                lambda api: api.get_transactions_by_account(str(self.plan_id), **params),
+            )
+        elif month is not None:
+            params["month"] = month.replace(day=1).strftime('%Y-%m-%d')
+            return self._call_api(
+                ynab.TransactionsApi,
+                lambda api: api.get_transactions_by_month(str(self.plan_id), **params),
+            )
+        elif payee is not None:
+            params["payee_id"] = str(payee.id)
+            return self._call_api(
+                ynab.TransactionsApi,
+                lambda api: api.get_transactions_by_payee(str(self.plan_id), **params),
+            )
+            
+        elif category is not None:
+            params["category_id"] = str(category.id)
+            return self._call_api(
+                ynab.TransactionsApi,
+                lambda api: api.get_transactions_by_category(str(self.plan_id), **params),
+            )
+        else:
+        
+            return self._call_api(
+                ynab.TransactionsApi,
+                lambda api: api.get_transactions(str(self.plan_id), **params),
+            )
+
 
 
     @staticmethod

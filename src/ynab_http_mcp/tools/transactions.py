@@ -1,4 +1,4 @@
-# All planning actions.
+# All transaction actions.
 from ynab_http_mcp.ynab_service import YnabService
 from typing import Any, Annotated
 from datetime import datetime
@@ -34,14 +34,4 @@ def register(mcp, ynab_service: YnabService):
 
         return ynab_service.get_plan_month(date=converted_month_date).to_dict()
 
-    @mcp.tool(
-            annotations={
-                "title":"Get a summary of the plan across all months.",
-                "destructiveHint":False,
-                "readOnlyHint": True,
-                "idempotentHint":True
-            }
-    )
-    async def get_all_plan_months() -> dict[str, Any]:
-        """Get a summarised list of all months in the plan."""
-        return ynab_service.get_all_plan_months().to_dict()
+
