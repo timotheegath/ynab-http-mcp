@@ -6,7 +6,13 @@ from ynab_http_mcp.debug import debug_exception, debug_string
 
 
 def register(mcp, ynab_service: YnabService):
-    @mcp.tool()
+    @mcp.tool(
+            annotations={
+                "destructiveHint":False,
+                "readOnlyHint": True,
+                "idempotentHint":True
+            }
+    )
     async def get_plan_month(
         month_date: Annotated[
             str | None,
@@ -27,7 +33,13 @@ def register(mcp, ynab_service: YnabService):
 
         return ynab_service.get_plan_month(date=converted_month_date).to_dict()
 
-    @mcp.tool()
+    @mcp.tool(
+            annotations={
+                "destructiveHint":False,
+                "readOnlyHint": True,
+                "idempotentHint":True
+            }
+    )
     async def get_all_plan_months() -> dict[str, Any]:
         """Get a summarised list of all months in the plan."""
         return ynab_service.get_all_plan_months().to_dict()
