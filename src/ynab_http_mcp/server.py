@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from ynab_http_mcp.ynab_service import YnabService
 import ynab_http_mcp.tools.categories as category_tools
 import ynab_http_mcp.tools.planning as planning_tools
+import ynab_http_mcp.tools.transactions as transaction_tools
 
 # Load .env
 load_dotenv()  # loads .env into environment
@@ -14,6 +15,7 @@ ynab_service = YnabService()
 # Register MCP tools:
 category_tools.register(mcp, ynab_service)
 planning_tools.register(mcp, ynab_service)
+transaction_tools.register(mcp, ynab_service)
 
 
 def main():
