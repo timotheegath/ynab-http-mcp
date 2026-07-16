@@ -110,6 +110,17 @@ def debug_json(label: str, data: Any) -> None:
 
     logger.debug("%s\n%s", label, payload)
 
+def debug_string(label: str, text: Any) -> None:
+    """
+    Log pretty string only when DEBUG is enabled.
+    """
+    logger = get_logger("debug_string")
+
+    if not logger.isEnabledFor(logging.DEBUG):
+        return
+
+    logger.debug("%s\n%s", label, text)
+
 
 def debug_ynab_response(label: str, resp: Any, body_limit: int = 4000) -> None:
     """
