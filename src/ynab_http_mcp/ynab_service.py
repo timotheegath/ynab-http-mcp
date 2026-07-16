@@ -2,24 +2,48 @@ import os
 import ynab
 from uuid import UUID
 from datetime import datetime
-
+from ynab_http_mcp.debug import debug_exception, debug_string
+from typing import Any
 
 class YnabService:
     def __init__(self):
         self.config = ynab.Configuration(access_token=os.getenv("YNAB_API_KEY"))
         self.plan_id = YnabService._set_default_plan(self.config)
 
-    def list_plans(self):
+    def _call_api(self, api_cls, fn):
         with ynab.ApiClient(self.config) as api_client:
-            plans_api = ynab.PlansApi(api_client)
-            return plans_api.get_plans()
+            api = api_cls(api_client)
+            return fn(api)
+        
+    def list_plans(self) -> ynab.PlanSummaryResponse:
 
-    def get_categories(self):
-        with ynab.ApiClient(self.config) as api_client:
-            categories_api = ynab.CategoriesApi(api_client)
-            categories_response = categories_api.get_categories(str(self.plan_id))
-            return categories_response.data.to_dict()
+        return self._call_api(ynab.PlansApi, lambda api: api.get_plans())
 
+
+    def get_categories(self) -> ynab.CategoriesResponse:
+        return self._call_api(
+            ynab.CategoriesApi,
+            lambda api: api.get_categories(str(self.plan_id)),
+        )
+        
+    def get_plan_month(self, date : datetime | None = None) -> ynab.MonthDetail:
+        """
+        Returns the plan for a specific month. 
+        If no date is passed, returns the current month's plan.
+        """
+        
+        if date:
+            reformatted_date = str(date.date())
+            debug_string("reformatted_date", reformatted_date)
+            return self._call_api(
+                ynab.MonthsApi,
+                lambda api: api.get_plan_month(str(self.plan_id), reformatted_date)
+            )
+        else:
+            return self._call_api(
+                ynab.MonthsApi,
+                lambda api: api.get_plan_month(str(self.plan_id), "current")
+            )
     @staticmethod
     def _set_default_plan(config: ynab.Configuration):
         plan_id: UUID | None
@@ -62,3 +86,14 @@ class YnabService:
             key=lambda plan: plan.last_modified_on or datetime.min,
         )
         return most_recent_plan.id
+    
+    @staticmethod
+    def _handle_api_output(resp) -> dict[str, Any]:
+
+        if not hasattr(resp, "to_dict"):
+            debug_exception("YnabService API returned a response with no to_dict() method")
+            raise AttributeError("Cannot convert YNAB API response to dict")
+         
+        return resp.to_dict()
+        
+
