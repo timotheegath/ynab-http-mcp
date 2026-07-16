@@ -118,15 +118,15 @@ class YnabService:
     def get_transactions(
             self,
             since_date: Optional[datetime],
-            until_date : Optional[datetime], 
+            until_date: Optional[datetime], 
             type: str,
-            account: Optional[ynab.Account],
+            account_id: Optional[str],
             month: Optional[datetime],
-            payee: Optional[ynab.Payee],
-            category: Optional[ynab.Category]) -> ynab.TransactionsResponse:
+            payee_id: Optional[str],
+            category_id: Optional[str]) -> ynab.TransactionsResponse:
         """
         Will always consider since, until, type as parameters.
-        Will only consider one of account, month, payee, category. Whoever is defined first.
+        Will only consider one of account_id, month, payee_id, category_id. Whoever is defined first.
         """
         # Build parameters dictionary
         params = {}
@@ -139,9 +139,9 @@ class YnabService:
         if type is not None:
             params["type"] = type
         
-        # 2. Take the first of account, month, payee or category that is not none
-        if account is not None:
-            params["account_id"] = str(account.id) 
+        # 2. Take the first of account_id, month, payee_id or category_id that is not none
+        if account_id is not None:
+            params["account_id"] = account_id
             return self._call_api(
                 ynab.TransactionsApi,
                 lambda api: api.get_transactions_by_account(str(self.plan_id), **params),
@@ -152,21 +152,21 @@ class YnabService:
                 ynab.TransactionsApi,
                 lambda api: api.get_transactions_by_month(str(self.plan_id), **params),
             )
-        elif payee is not None:
-            params["payee_id"] = str(payee.id)
+        elif payee_id is not None:
+            params["payee_id"] = payee_id
             return self._call_api(
                 ynab.TransactionsApi,
                 lambda api: api.get_transactions_by_payee(str(self.plan_id), **params),
             )
             
-        elif category is not None:
-            params["category_id"] = str(category.id)
+        elif category_id is not None:
+            params["category_id"] = category_id
             return self._call_api(
                 ynab.TransactionsApi,
                 lambda api: api.get_transactions_by_category(str(self.plan_id), **params),
             )
         else:
-        
+
             return self._call_api(
                 ynab.TransactionsApi,
                 lambda api: api.get_transactions(str(self.plan_id), **params),
