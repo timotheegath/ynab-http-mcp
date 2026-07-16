@@ -2,48 +2,129 @@ import os
 import ynab
 from uuid import UUID
 from datetime import datetime
-from ynab_http_mcp.debug import debug_exception, debug_string
-from typing import Any
+from ynab_http_mcp.debug import debug_exception, debug_ynab_response, debug_string
+from typing import Any, Optional, Callable, TypeVar, cast
+from functools import wraps
+
+T = TypeVar('T')
+
+def handle_ynab_errors(expected_404=False, return_none_on_404=False):
+    """
+    Decorator to handle YNAB API errors with flexible 404 handling.
+    
+    This decorator provides a scalable way to handle different types of 404 responses
+    from the YNAB Python SDK across multiple service methods.
+    
+    Args:
+        expected_404 (bool): If True, treats 404 as expected behavior and handles gracefully.
+                            If False, re-raises 404 exceptions as errors.
+        return_none_on_404 (bool): If True, returns None on 404 (when expected_404=True).
+                                 If False, returns empty response object of the expected type.
+    
+    Usage Examples:
+        # Case 1: 404 is an error - re-raise exception
+        @handle_ynab_errors(expected_404=False)
+        def get_required_resource(self) -> ResourceResponse:
+            return self._call_api(...)
+        
+        # Case 2: 404 is expected - return None
+        @handle_ynab_errors(expected_404=True, return_none_on_404=True)
+        def get_optional_resource(self) -> Optional[ResourceResponse]:
+            return self._call_api(...)
+        
+        # Case 3: 404 is expected - return empty object
+        @handle_ynab_errors(expected_404=True)
+        def get_resource_with_fallback(self) -> ResourceResponse:
+            return self._call_api(...)
+    
+    Behavior:
+        - Catches ynab.ApiException instances
+        - For 404 errors: follows expected_404 and return_none_on_404 configuration
+        - For other HTTP errors: always re-raises the exception
+        - Provides debug logging for all handled exceptions
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> T:
+            try:
+                return func(*args, **kwargs)
+            except ynab.ApiException as e:
+                if e.status == 404:
+                    if expected_404:
+                        debug_string(f"Expected 404 for {func.__name__}", str(e))
+                        if return_none_on_404:
+                            return cast(T, None)
+                        else:
+                            # Return empty object of the expected type
+                            return YnabService._create_empty_response(func.__annotations__.get('return', None))
+                    else:
+                        debug_exception(f"Unexpected 404 error in {func.__name__}")
+                        raise
+                else:
+                    debug_exception(f"YNAB API error in {func.__name__}")
+                    raise
+        return wrapper
+    return decorator
 
 class YnabService:
     def __init__(self):
         self.config = ynab.Configuration(access_token=os.getenv("YNAB_API_KEY"))
         self.plan_id = YnabService._set_default_plan(self.config)
 
-    def _call_api(self, api_cls, fn):
+    def _call_api(self, api_cls, fn: Callable):
         with ynab.ApiClient(self.config) as api_client:
             api = api_cls(api_client)
-            return fn(api)
-        
+            resp = fn(api)
+            debug_ynab_response(f"Response from {fn.__name__}", resp)
+            return resp
+    
     def list_plans(self) -> ynab.PlanSummaryResponse:
-
         return self._call_api(ynab.PlansApi, lambda api: api.get_plans())
-
 
     def get_categories(self) -> ynab.CategoriesResponse:
         return self._call_api(
             ynab.CategoriesApi,
             lambda api: api.get_categories(str(self.plan_id)),
         )
-        
-    def get_plan_month(self, date : datetime | None = None) -> ynab.MonthDetail:
+
+    def get_plan_month(self, date: datetime | None = None) -> ynab.MonthDetail:
         """
-        Returns the plan for a specific month. 
+        Returns the plan for a specific month.
         If no date is passed, returns the current month's plan.
         """
-        
         if date:
-            reformatted_date = str(date.date())
-            debug_string("reformatted_date", reformatted_date)
-            return self._call_api(
-                ynab.MonthsApi,
-                lambda api: api.get_plan_month(str(self.plan_id), reformatted_date)
-            )
-        else:
-            return self._call_api(
-                ynab.MonthsApi,
-                lambda api: api.get_plan_month(str(self.plan_id), "current")
-            )
+            reformatted_date = str(date.date().replace(day=1)) # Hardcode the day to be the first of the month
+            
+        return self._call_api(
+            ynab.MonthsApi,
+            lambda api: api.get_plan_month(str(self.plan_id), reformatted_date)
+        )
+
+        return self._call_api(
+            ynab.MonthsApi,
+            lambda api: api.get_plan_month(str(self.plan_id), "\"current\"")
+        )
+
+    @staticmethod
+    def _create_empty_response(response_type) -> Any:
+        """
+        Creates an empty response object of the given type.
+        For YNAB SDK types, this typically means creating an instance with empty data.
+        """
+        if response_type is None or not hasattr(response_type, '__new__'):
+            return None
+        
+        try:
+            # Try to create an empty instance
+            empty_instance = response_type.__new__(response_type)
+            # For YNAB response types, set data to None or empty
+            if hasattr(empty_instance, 'data'):
+                empty_instance.data = None
+            return empty_instance
+        except Exception:
+            # Fallback to None if we can't create empty instance
+            return None
+
     @staticmethod
     def _set_default_plan(config: ynab.Configuration):
         plan_id: UUID | None
@@ -86,14 +167,12 @@ class YnabService:
             key=lambda plan: plan.last_modified_on or datetime.min,
         )
         return most_recent_plan.id
-    
+
     @staticmethod
     def _handle_api_output(resp) -> dict[str, Any]:
 
         if not hasattr(resp, "to_dict"):
             debug_exception("YnabService API returned a response with no to_dict() method")
             raise AttributeError("Cannot convert YNAB API response to dict")
-         
-        return resp.to_dict()
         
-
+        return resp.to_dict()
