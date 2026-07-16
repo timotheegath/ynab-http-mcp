@@ -103,15 +103,11 @@ class YnabService:
             reformatted_date = str(
                 date.date().replace(day=1)
             )  # Hardcode the day to be the first of the month
-
+        else:
+            reformatted_date = "current"
         return self._call_api(
             ynab.MonthsApi,
             lambda api: api.get_plan_month(str(self.plan_id), reformatted_date),
-        )
-
-        return self._call_api(
-            ynab.MonthsApi,
-            lambda api: api.get_plan_month(str(self.plan_id), '"current"'),
         )
 
     @staticmethod
