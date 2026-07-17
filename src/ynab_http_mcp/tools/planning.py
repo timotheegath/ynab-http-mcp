@@ -3,7 +3,7 @@ from ynab_http_mcp.ynab_service import YnabService
 from typing import Annotated
 from datetime import datetime
 from ynab_http_mcp.debug import debug_exception
-from ynab_http_mcp.schemas.planning import PlanMonthResponse, AllPlanMonthsResponse
+from ynab_http_mcp.schemas.planning import PlanMonthResponse, AllPlanMonthsResponse, PlanMonthSummary
 from ynab_http_mcp.utils.simple_validation import simple_validate
 
 import os
@@ -71,7 +71,13 @@ def register(mcp, ynab_service: YnabService):
         # YNAB API returns {'data': {'months': [...]}} but our schema expects {'months': [...]}
         months_data = raw_data.get('data', {}).get('months', [])
         
-        # Validate using simplified approach
-        validated_response = simple_validate({'months': months_data}, AllPlanMonthsResponse)
+        # Transform YNAB data to match our schema
+        transformed_months = []
+        for month_data in months_data:
+            transformed_month = PlanMonthSummary.from_ynab_data(month_data)
+            transformed_months.append(transformed_month.model_dump())
         
+        # Validate using simplified approach
+        validated_response = simple_validate({'months': transformed_months}, AllPlanMonthsResponse)
+
         return validated_response

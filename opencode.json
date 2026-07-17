@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "ynab-http-mcp": {
+      "type": "remote",
+      "url": "http://localhost:3000/mcp",
+      "timeout": 30000,
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    }
+  }
+}

@@ -11,6 +11,17 @@ from datetime import date
 from . import registry
 
 
+def _convert_date_to_string(date_value):
+    """Convert date object to YYYY-MM-DD string format."""
+    if date_value is None:
+        return None
+    if isinstance(date_value, date):
+        return date_value.strftime('%Y-%m-%d')
+    if isinstance(date_value, str):
+        return date_value
+    return str(date_value)
+
+
 class MonthCategory(BaseModel):
     """
     Simplified month category model using basic data types.
@@ -53,25 +64,25 @@ class PlanMonth(BaseModel):
         if 'month' in data and isinstance(data['month'], date):
             data['month'] = data['month'].strftime('%Y-%m')
         
-        # Transform categories to match our schema
-        if 'categories' in data:
-            transformed_categories = []
-            for category in data['categories']:
-                transformed_category = {
-                    'category_id': str(category.get('id', '')),
-                    'category_name': category.get('name', ''),
-                    'budgeted': category.get('budgeted', 0),
-                    'activity': category.get('activity', 0),
-                    'balance': category.get('balance', 0),
-                    'goal_type': category.get('goal_type'),
-                    'goal_creation_month': category.get('goal_creation_month'),
-                    'goal_target': category.get('goal_target'),
-                    'goal_target_month': category.get('goal_target_month'),
-                    'goal_percentage_complete': category.get('goal_percentage_complete'),
-                    'deleted': category.get('deleted', False)
-                }
-                transformed_categories.append(transformed_category)
-            data['categories'] = transformed_categories
+            # Transform categories to match our schema
+            if 'categories' in data:
+                transformed_categories = []
+                for category in data['categories']:
+                    transformed_category = {
+                        'category_id': str(category.get('id', '')),
+                        'category_name': category.get('name', ''),
+                        'budgeted': category.get('budgeted', 0),
+                        'activity': category.get('activity', 0),
+                        'balance': category.get('balance', 0),
+                        'goal_type': category.get('goal_type'),
+                        'goal_creation_month': _convert_date_to_string(category.get('goal_creation_month')),
+                        'goal_target': category.get('goal_target'),
+                        'goal_target_month': _convert_date_to_string(category.get('goal_target_month')),
+                        'goal_percentage_complete': category.get('goal_percentage_complete'),
+                        'deleted': category.get('deleted', False)
+                    }
+                    transformed_categories.append(transformed_category)
+                data['categories'] = transformed_categories
         
         return cls(**data)
 
@@ -95,12 +106,20 @@ class PlanMonthSummary(BaseModel):
     """
     Simplified summary model for plan months using basic data types.
     """
-    
+
     month: str = Field(..., description="Month identifier (YYYY-MM)")
     income: int = Field(..., description="Total income for the month")
     budgeted: int = Field(..., description="Total budgeted for the month")
     activity: int = Field(..., description="Total activity for the month")
     to_be_budgeted: int = Field(..., description="Amount to be budgeted")
+
+    @classmethod
+    def from_ynab_data(cls, data: dict) -> 'PlanMonthSummary':
+        """Transform YNAB API data to match our simplified schema."""
+        # Convert date object to YYYY-MM string format if needed
+        if 'month' in data and isinstance(data['month'], date):
+            data['month'] = data['month'].strftime('%Y-%m')
+        return cls(**data)
 
 
 class AllPlanMonthsResponse(BaseModel):
