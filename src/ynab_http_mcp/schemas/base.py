@@ -66,9 +66,19 @@ def validate_and_clean_data(
         return cleaned_data
 
     except ValidationError as e:
-        # Log detailed validation error
+        # Log detailed validation error, but limit the output for large lists
         if debug_mode:
-            debug_exception(f"Validation error for {model.__name__}: {str(e)}")
+            # Count the number of errors
+            error_count = len(e.errors())
+            # Only log first few errors to avoid flooding the console
+            if error_count > 5:
+                sample_errors = e.errors()[:3]
+                logger.warning(
+                    f"Validation error for {model.__name__}: {error_count} validation errors "
+                    f"(showing first 3): {sample_errors}"
+                )
+            else:
+                debug_exception(f"Validation error for {model.__name__}: {str(e)}")
 
         # Raise custom error with context
         raise MCPValidationError(model.__name__, raw_data, e) from e
