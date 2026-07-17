@@ -1,4 +1,5 @@
 from mcp.server.fastmcp import FastMCP
+import os
 from dotenv import load_dotenv
 from ynab_http_mcp.ynab_service import YnabService
 import ynab_http_mcp.tools.categories as category_tools
@@ -10,9 +11,8 @@ import ynab_http_mcp.tools.transactions as transaction_tools
 
 # Load .env
 load_dotenv()  # loads .env into environment
-
 # Initialize FastMCP server
-mcp = FastMCP("ynab", host="0.0.0.0")
+mcp = FastMCP("ynab", host="0.0.0.0", port=int(os.getenv("HTTP_PORT", 8000)))
 # Create service:
 ynab_service = YnabService()
 # Register MCP tools:
