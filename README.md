@@ -54,7 +54,7 @@ uv run ynab-http-mcp
 #### Build the image
 
 ```bash
-docker build -t ynab-mcp .
+docker build -t ynab-http-mcp .
 ```
 
 #### Run with proper configuration
@@ -65,11 +65,25 @@ docker run -d \
   -e YNAB_API_KEY="your_api_key" \
   -e YNAB_PLAN_ID="your_plan_id" \
   -p 8000:8000 \
-  ynab-mcp
+  ynab-http-mcp
 ```
 
+Or using an env file:
+
 ```bash
-docker run -e YNAB_API_KEY="$YNAB_API_KEY" image-name
+docker run --env-file .env -d --name ynab-server -p 8000:8000 ynab-http-mcp
+```
+
+#### View logs
+
+```bash
+docker logs ynab-server
+```
+
+#### Stop when done
+
+```bash
+docker stop ynab-server
 ```
 
 ## Testing

@@ -40,10 +40,14 @@ def register(mcp, ynab_service: YnabService):
         raw_response = ynab_service.get_plan_month(date=converted_month_date)
         raw_data = raw_response.to_dict()
         
+        # Extract the month data from the YNAB response structure
+        # YNAB API returns {'data': {'month': {...}}} but our schema expects {'month': {...}}
+        month_data = raw_data.get('data', {}).get('month', {})
+        
         # Validate and clean with schema
         validated_response = validate_and_clean_data(
             PlanMonthResponse,
-            raw_data,
+            {'month': month_data},
             debug_mode=os.getenv('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
         )
         
@@ -64,10 +68,14 @@ def register(mcp, ynab_service: YnabService):
         raw_response = ynab_service.get_all_plan_months()
         raw_data = raw_response.to_dict()
         
+        # Extract the months data from the YNAB response structure
+        # YNAB API returns {'data': {'months': [...]}} but our schema expects {'months': [...]}
+        months_data = raw_data.get('data', {}).get('months', [])
+        
         # Validate and clean with schema
         validated_response = validate_and_clean_data(
             AllPlanMonthsResponse,
-            raw_data,
+            {'months': months_data},
             debug_mode=os.getenv('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
         )
         
