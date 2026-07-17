@@ -1,0 +1,43 @@
+# Development and build artifacts
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+
+# IDE and editor files
+**/.vscode/
+**/.idea/
+
+# Git files
+**/.git/
+**/.gitignore
+
+# Environment files (should be provided at runtime)
+**/.env
+
+# Test files (not needed in production)
+**/tests/
+**/test_*.py
+
+# OpenSpec development files (not needed in production)
+**/openspec/
+
+# Documentation files (not needed in runtime image)
+LICENSE
+
+# Python version file
+**/.python-version
+
+# Build and dependency files handled by uv
+**/requirements.txt
+
+# Docker and compose files (not needed in final image)
+Dockerfile*
+docker-compose*
+compose*
+
+# System files
+.DS_Store
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

@@ -1,4 +1,3 @@
-from .server import FastMCP
+from .server import FastMCP, main
 
-def main() -> None:
-    print("Hello from ynab-http-mcp!")
+__all__ = ["FastMCP", "main"]

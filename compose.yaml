@@ -1,0 +1,6 @@
+services:
+  ynabhttpmcp:
+    image: ynabhttpmcp
+    build:
+      context: .
+      dockerfile: ./Dockerfile

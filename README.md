@@ -37,7 +37,7 @@ I am reaching the end of my Eating Out money. Which money could I reassign confi
 
 ## Environment Variables
 
-- `YNAB_API_KEY`: Your YNAB API key (loaded from `.env`)
+- `YNAB_API_KEY`: Your YNAB API key (loaded from `.env`, and for docker, specified at runtime.)
 - `YNAB_PLAN_ID`: Optional. The YNAB plan ID to use. If not set, the server will use the plan that was modified the latest.
 - `LOG_LEVEL`: Optional, defaults to "debug" in dev
 - `DEBUG_MODE`: Optional, enables debug logging
@@ -47,6 +47,29 @@ I am reaching the end of my Eating Out money. Which money could I reassign confi
 ```bash
 # Run the server
 uv run ynab-http-mcp
+```
+
+### Running in Docker
+
+#### Build the image
+
+```bash
+docker build -t ynab-mcp .
+```
+
+#### Run with proper configuration
+
+```bash
+docker run -d \
+  --name ynab-server \
+  -e YNAB_API_KEY="your_api_key" \
+  -e YNAB_PLAN_ID="your_plan_id" \
+  -p 8000:8000 \
+  ynab-mcp
+```
+
+```bash
+docker run -e YNAB_API_KEY="$YNAB_API_KEY" image-name
 ```
 
 ## Testing

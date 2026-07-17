@@ -9,6 +9,21 @@
             "type": "debugpy",
             "request": "launch",
             "module": "ynab_http_mcp"
+        },
+        {
+            "name": "Containers: Python - General",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}",
+                        "remoteRoot": "/app"
+                    }
+                ],
+                "projectType": "general"
+            }
         }
     ]
 }
