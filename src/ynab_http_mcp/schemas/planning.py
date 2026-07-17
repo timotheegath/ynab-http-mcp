@@ -1,21 +1,21 @@
 """
-Planning schemas for YNAB HTTP MCP.
+Simplified planning schemas for YNAB HTTP MCP.
 
-This module defines Pydantic models for validating and cleaning
-YNAB planning/month data.
+This module defines simplified Pydantic models for validating
+YNAB planning/month data using basic data types suitable for agents.
 """
 
 from typing import Optional, List
-from pydantic import Field
-from .base import CleanBaseModel
+from pydantic import BaseModel, Field
+from datetime import date
 from . import registry
 
 
-class MonthCategory(CleanBaseModel):
+class MonthCategory(BaseModel):
     """
-    Cleaned month category model.
+    Simplified month category model using basic data types.
     """
-
+    
     category_id: str = Field(..., description="Category ID")
     category_name: str = Field(..., description="Category name")
     budgeted: int = Field(..., description="Budgeted amount in milliunits")
@@ -31,11 +31,11 @@ class MonthCategory(CleanBaseModel):
     deleted: bool = Field(..., description="Whether category is deleted")
 
 
-class PlanMonth(CleanBaseModel):
+class PlanMonth(BaseModel):
     """
-    Cleaned plan month model.
+    Simplified plan month model using basic data types.
     """
-
+    
     month: str = Field(..., description="Month identifier (YYYY-MM)")
     income: int = Field(..., description="Total income for the month")
     budgeted: int = Field(..., description="Total budgeted for the month")
@@ -46,20 +46,56 @@ class PlanMonth(CleanBaseModel):
         default_factory=list, description="List of month categories"
     )
 
+    @classmethod
+    def from_ynab_data(cls, data: dict) -> 'PlanMonth':
+        """Transform YNAB API data to match our simplified schema."""
+        # Convert date object to YYYY-MM string format if needed
+        if 'month' in data and isinstance(data['month'], date):
+            data['month'] = data['month'].strftime('%Y-%m')
+        
+        # Transform categories to match our schema
+        if 'categories' in data:
+            transformed_categories = []
+            for category in data['categories']:
+                transformed_category = {
+                    'category_id': str(category.get('id', '')),
+                    'category_name': category.get('name', ''),
+                    'budgeted': category.get('budgeted', 0),
+                    'activity': category.get('activity', 0),
+                    'balance': category.get('balance', 0),
+                    'goal_type': category.get('goal_type'),
+                    'goal_creation_month': category.get('goal_creation_month'),
+                    'goal_target': category.get('goal_target'),
+                    'goal_target_month': category.get('goal_target_month'),
+                    'goal_percentage_complete': category.get('goal_percentage_complete'),
+                    'deleted': category.get('deleted', False)
+                }
+                transformed_categories.append(transformed_category)
+            data['categories'] = transformed_categories
+        
+        return cls(**data)
 
-class PlanMonthResponse(CleanBaseModel):
-    """
-    Response structure for get_plan_month tool.
-    """
 
+class PlanMonthResponse(BaseModel):
+    """
+    Simplified response structure for get_plan_month tool.
+    """
+    
     month: PlanMonth = Field(..., description="Plan month details")
 
+    @classmethod
+    def from_ynab_data(cls, data: dict) -> 'PlanMonthResponse':
+        """Transform YNAB API data to match our simplified schema."""
+        if 'month' in data:
+            data['month'] = PlanMonth.from_ynab_data(data['month'])
+        return cls(**data)
 
-class PlanMonthSummary(CleanBaseModel):
-    """
-    Summary model for plan months.
-    """
 
+class PlanMonthSummary(BaseModel):
+    """
+    Simplified summary model for plan months using basic data types.
+    """
+    
     month: str = Field(..., description="Month identifier (YYYY-MM)")
     income: int = Field(..., description="Total income for the month")
     budgeted: int = Field(..., description="Total budgeted for the month")
@@ -67,11 +103,11 @@ class PlanMonthSummary(CleanBaseModel):
     to_be_budgeted: int = Field(..., description="Amount to be budgeted")
 
 
-class AllPlanMonthsResponse(CleanBaseModel):
+class AllPlanMonthsResponse(BaseModel):
     """
-    Response structure for get_all_plan_months tool.
+    Simplified response structure for get_all_plan_months tool.
     """
-
+    
     months: List[PlanMonthSummary] = Field(
         ..., description="List of plan month summaries"
     )

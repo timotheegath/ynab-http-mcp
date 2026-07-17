@@ -1,23 +1,23 @@
 """
-Category schemas for YNAB HTTP MCP.
+Simplified category schemas for YNAB HTTP MCP.
 
-This module defines Pydantic models for validating and cleaning
-YNAB category data.
+This module defines simplified Pydantic models for validating
+YNAB category data using basic data types suitable for agents.
 """
 
 from typing import Optional, List
-from pydantic import Field
-from .base import CleanBaseModel
+from pydantic import BaseModel, Field
 from . import registry
 
 
-class CleanCategory(CleanBaseModel):
+class CleanCategory(BaseModel):
     """
-    Cleaned category model for YNAB categories.
-
-    Represents a YNAB category with all essential fields.
+    Simplified category model using basic data types.
+    
+    Represents a YNAB category with all essential fields
+    using simple types that are easily consumable by AI agents.
     """
-
+    
     # Required fields
     id: str = Field(..., description="Unique category identifier")
     category_group_id: str = Field(..., description="ID of the parent category group")
@@ -45,34 +45,14 @@ class CleanCategory(CleanBaseModel):
         None, description="Percentage of goal completed"
     )
 
-    class Config(CleanBaseModel.Config):
-        json_schema_extra = {
-            "examples": [
-                {
-                    "description": "Example cleaned category",
-                    "value": {
-                        "id": "123e4567-e89b-12d3-a456-426614174000",
-                        "category_group_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-                        "name": "Groceries",
-                        "hidden": False,
-                        "deleted": False,
-                        "note": "Monthly grocery budget",
-                        "goal_type": "TB",
-                        "goal_target": 500000,  # $500.00 in milliunits
-                        "goal_percentage_complete": 60,
-                    },
-                }
-            ]
-        }
 
-
-class CategoryGroup(CleanBaseModel):
+class CategoryGroup(BaseModel):
     """
-    Category group model for YNAB category groups.
-
+    Simplified category group model using basic data types.
+    
     Represents a group of related categories.
     """
-
+    
     id: str = Field(..., description="Unique category group identifier")
     name: str = Field(..., description="Category group name")
     hidden: bool = Field(..., description="Whether category group is hidden")
@@ -81,43 +61,17 @@ class CategoryGroup(CleanBaseModel):
         default_factory=list, description="List of categories in this group"
     )
 
-    class Config(CleanBaseModel.Config):
-        json_schema_extra = {
-            "examples": [
-                {
-                    "description": "Example category group",
-                    "value": {
-                        "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-                        "name": "Everyday Expenses",
-                        "hidden": False,
-                        "deleted": False,
-                        "categories": [],
-                    },
-                }
-            ]
-        }
 
-
-class CategoriesResponse(CleanBaseModel):
+class CategoriesResponse(BaseModel):
     """
-    Complete response structure for categories endpoint.
-
+    Simplified response structure for categories endpoint.
+    
     Wraps the list of category groups.
     """
-
+    
     category_groups: List[CategoryGroup] = Field(
         ..., description="List of category groups"
     )
-
-    class Config(CleanBaseModel.Config):
-        json_schema_extra = {
-            "examples": [
-                {
-                    "description": "Example categories response",
-                    "value": {"category_groups": []},
-                }
-            ]
-        }
 
 
 # Register schemas with the global registry

@@ -1,10 +1,10 @@
 # All planning actions.
 from ynab_http_mcp.ynab_service import YnabService
-from typing import Any, Annotated
+from typing import Annotated
 from datetime import datetime
-from ynab_http_mcp.debug import debug_exception, debug_string
+from ynab_http_mcp.debug import debug_exception
 from ynab_http_mcp.schemas.planning import PlanMonthResponse, AllPlanMonthsResponse
-from ynab_http_mcp.schemas.base import validate_and_clean_data
+from ynab_http_mcp.utils.simple_validation import simple_validate
 
 import os
 
@@ -44,12 +44,11 @@ def register(mcp, ynab_service: YnabService):
         # YNAB API returns {'data': {'month': {...}}} but our schema expects {'month': {...}}
         month_data = raw_data.get('data', {}).get('month', {})
         
-        # Validate and clean with schema
-        validated_response = validate_and_clean_data(
-            PlanMonthResponse,
-            {'month': month_data},
-            debug_mode=os.getenv('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
-        )
+        # Transform YNAB data to match our schema
+        transformed_data = PlanMonthResponse.from_ynab_data({'month': month_data})
+        
+        # Validate using simplified approach
+        validated_response = simple_validate(transformed_data.model_dump(), PlanMonthResponse)
         
         return validated_response
 
@@ -72,11 +71,7 @@ def register(mcp, ynab_service: YnabService):
         # YNAB API returns {'data': {'months': [...]}} but our schema expects {'months': [...]}
         months_data = raw_data.get('data', {}).get('months', [])
         
-        # Validate and clean with schema
-        validated_response = validate_and_clean_data(
-            AllPlanMonthsResponse,
-            {'months': months_data},
-            debug_mode=os.getenv('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
-        )
+        # Validate using simplified approach
+        validated_response = simple_validate({'months': months_data}, AllPlanMonthsResponse)
         
         return validated_response

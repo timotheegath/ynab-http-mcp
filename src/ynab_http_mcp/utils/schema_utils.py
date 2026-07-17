@@ -1,0 +1,89 @@
+"""
+Data cleaning utilities for YNAB HTTP MCP.
+
+This module provides unified data cleaning functions to simplify
+YNAB API response processing and make data agent-friendly.
+"""
+
+from typing import Any, Dict, List, Union
+from datetime import date as datetime_date
+from uuid import UUID
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def clean_ynab_data(data: Any) -> Any:
+    """
+    Unified data cleaning function for YNAB API responses.
+    
+    Performs all necessary data transformations in a single pass:
+    - Converts UUID objects to strings
+    - Filters out import-related fields
+    - Converts date objects to ISO string format
+    - Handles nested data structures recursively
+    
+    Args:
+        data: Raw YNAB API response data (dict, list, or primitive)
+        
+    Returns:
+        Cleaned data with consistent types suitable for agent consumption
+    """
+    if isinstance(data, dict):
+        return _clean_dict(data)
+    elif isinstance(data, list):
+        return [_clean_value(item) for item in data]
+    else:
+        return _clean_value(data)
+
+
+def _clean_dict(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Clean dictionary data by filtering import fields and converting types."""
+    cleaned_data = {}
+    
+    for key, value in data.items():
+        # Filter out import-related fields
+        if key in {"import_id", "import_payee_name", "import_payee_name_original"}:
+            continue
+            
+        # Clean the value recursively
+        cleaned_value = _clean_value(value)
+        cleaned_data[key] = cleaned_value
+        
+    return cleaned_data
+
+
+def _clean_value(value: Any) -> Any:
+    """Clean individual values by converting complex types to simple types."""
+    if isinstance(value, UUID):
+        # Convert UUID objects to strings
+        return str(value)
+    elif isinstance(value, datetime_date):
+        # Convert date objects to ISO string format (YYYY-MM-DD)
+        return value.isoformat()
+    elif isinstance(value, dict):
+        # Recursively clean nested dictionaries
+        return _clean_dict(value)
+    elif isinstance(value, list):
+        # Recursively clean lists
+        return [_clean_value(item) for item in value]
+    else:
+        # Return primitive types as-is
+        return value
+
+
+def filter_import_fields(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Filter out import-related fields from YNAB data.
+    
+    These fields are typically only relevant during import operations
+    and should not be exposed through MCP tools.
+    
+    Args:
+        data: Dictionary containing YNAB data
+        
+    Returns:
+        Dictionary with import fields removed
+    """
+    import_fields = {"import_id", "import_payee_name", "import_payee_name_original"}
+    return {key: value for key, value in data.items() if key not in import_fields}
