@@ -25,6 +25,8 @@ The system SHALL provide MCP tools for category management operations.
 - **THEN** the following tool is available:
   - `get_categories`: Get all categories and their groups
 
+**Note**: The categories functionality has been moved to a resource-based approach. See the Resources spec for current implementation.
+
 ### Requirement: Transaction Tools Registration
 The system SHALL provide MCP tools for transaction querying operations.
 

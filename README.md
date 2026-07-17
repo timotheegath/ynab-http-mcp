@@ -98,5 +98,5 @@ uv run ynab-http-mcp & npx @modelcontextprotocol/inspector --remote http://127.0
 
 ## To do
 
-- Move accounts, categories to resources
+- Move accounts to resources
 - Update Docker health check to work with proxy deployments, don't test localhost:8000
