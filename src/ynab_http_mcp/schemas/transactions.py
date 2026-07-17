@@ -6,7 +6,6 @@ YNAB transaction data using basic data types suitable for agents.
 """
 
 from typing import Optional, List, Dict, Any
-from datetime import date as datetime_date
 from pydantic import BaseModel, Field
 from . import registry
 
@@ -14,11 +13,11 @@ from . import registry
 class CleanTransaction(BaseModel):
     """
     Simplified transaction model using basic data types.
-    
+
     This represents a YNAB transaction with all essential fields
     using simple types that are easily consumable by AI agents.
     """
-    
+
     # Required fields
     id: str = Field(..., description="Unique transaction identifier")
     date: str = Field(..., description="Transaction date in ISO format (YYYY-MM-DD)")
@@ -34,7 +33,9 @@ class CleanTransaction(BaseModel):
     # Optional fields
     payee_id: Optional[str] = Field(None, description="Payee identifier if applicable")
     payee_name: Optional[str] = Field(None, description="Payee name")
-    category_id: Optional[str] = Field(None, description="Category identifier if applicable")
+    category_id: Optional[str] = Field(
+        None, description="Category identifier if applicable"
+    )
     category_name: Optional[str] = Field(None, description="Category name")
     transfer_account_id: Optional[str] = Field(
         None, description="Transfer account identifier if applicable"
@@ -62,10 +63,10 @@ class CleanTransaction(BaseModel):
 class TransactionsResponse(BaseModel):
     """
     Simplified response structure for transactions endpoint.
-    
+
     Wraps the list of simplified transactions with metadata.
     """
-    
+
     transactions: List[CleanTransaction] = Field(
         ..., description="List of simplified transactions"
     )

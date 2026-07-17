@@ -117,6 +117,11 @@ class YnabService:
             lambda api: api.get_plan_months(str(self.plan_id)),
         )
 
+    def get_accounts(self) -> ynab.AccountsResponse:
+        return self._call_api(
+            ynab.AccountsApi, lambda api: api.get_accounts(str(self.plan_id))
+        )
+
     def get_transactions(
         self,
         since_date: Optional[datetime],

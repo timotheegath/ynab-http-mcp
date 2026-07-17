@@ -13,11 +13,11 @@ from . import registry
 class CleanCategory(BaseModel):
     """
     Simplified category model using basic data types.
-    
+
     Represents a YNAB category with all essential fields
     using simple types that are easily consumable by AI agents.
     """
-    
+
     # Required fields
     id: str = Field(..., description="Unique category identifier")
     category_group_id: str = Field(..., description="ID of the parent category group")
@@ -49,10 +49,10 @@ class CleanCategory(BaseModel):
 class CategoryGroup(BaseModel):
     """
     Simplified category group model using basic data types.
-    
+
     Represents a group of related categories.
     """
-    
+
     id: str = Field(..., description="Unique category group identifier")
     name: str = Field(..., description="Category group name")
     hidden: bool = Field(..., description="Whether category group is hidden")
@@ -65,10 +65,10 @@ class CategoryGroup(BaseModel):
 class CategoriesResponse(BaseModel):
     """
     Simplified response structure for categories endpoint.
-    
+
     Wraps the list of category groups.
     """
-    
+
     category_groups: List[CategoryGroup] = Field(
         ..., description="List of category groups"
     )
