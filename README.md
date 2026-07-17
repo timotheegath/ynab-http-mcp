@@ -39,6 +39,7 @@ I am reaching the end of my Eating Out money. Which money could I reassign confi
 
 - `YNAB_API_KEY`: Your YNAB API key (loaded from `.env`, and for docker, specified at runtime.)
 - `YNAB_PLAN_ID`: Optional. The YNAB plan ID to use. If not set, the server will use the plan that was modified the latest.
+- `HTTP_PORT`: Optional. The port where the MCP server will listen. If not set, defaults to 8000.
 - `LOG_LEVEL`: Optional, defaults to "debug" in dev
 - `DEBUG_MODE`: Optional, enables debug logging
 
