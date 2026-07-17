@@ -60,3 +60,4 @@ uv run ynab-http-mcp & npx @modelcontextprotocol/inspector --remote http://127.0
 
 ## To do
 
+- Move accounts, categories to resources
