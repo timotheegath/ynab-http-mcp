@@ -7,43 +7,7 @@
 - **Main module**: `ynab_http_mcp`
 - **Language**: Python 3.12+
 
-## Key Commands
 
-Always activate the venv:
-
-```bash
-source .venv/bin/activate
-```
-
-### Development
-
-```bash
-# Run the main entry point
-uv run ynab_http_mcp
-```
-
-### Testing
-
-```bash
-# Run tests (no test files currently exist)
-uv run pytest
-
-# Type checking
-uv run mypy src/
-
-# Linting
-uv run ruff check src/
-
-# Formatting
-uv run ruff format src/
-```
-
-### Build
-
-```bash
-# Build package
-uv build
-```
 
 ## Environment Setup
 
@@ -78,8 +42,7 @@ src/
 ### Production dependencies
 
 - `dotenv`: Environment variable loading
-- `httpx`: HTTP client
-- `mcp[cli]`: Micro Content Provider framework
+- `FastMCP`: Micro Content Provider framework
 - `ynab`: YNAB API client
 
 ### Development dependencies
@@ -103,7 +66,7 @@ Debug mode is enabled via `DEBUG_MODE=True` or `MY_MCP_DEBUG=1` environment vari
 
 ## MCP Framework Notes
 
-- Uses `FastMCP` from `mcp.server.fastmcp`
+- Uses `FastMCP` from `fastmcp`
 - Server initialized with `FastMCP("")`
 - YNAB API client is configured with access token from environment
 

@@ -1,3 +1,3 @@
-from .server import FastMCP, main, run_server
+from .server import FastMCP, main
 
 __all__ = ["FastMCP", "main"]
