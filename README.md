@@ -98,5 +98,7 @@ uv run ynab-http-mcp & npx @modelcontextprotocol/inspector --remote http://127.0
 
 ## To do
 
-- Move accounts to resources
+- Milliunits conversion into normal currency for the LLM
+- Add target-specific tools, and translate complex fields into LLM readable knowledge
+- Add transactions as resources with filtering.
 - Update Docker health check to work with proxy deployments, don't test localhost:8000

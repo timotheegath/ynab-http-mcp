@@ -21,10 +21,10 @@ class CleanTransaction(BaseModel):
     # Required fields
     id: str = Field(..., description="Unique transaction identifier")
     date: str = Field(..., description="Transaction date in ISO format (YYYY-MM-DD)")
-    amount: int = Field(..., description="Transaction amount in milliunits")
+    amount: int = Field(..., description="Transaction amount in milliunits (1/1000 of currency unit)")
     memo: Optional[str] = Field(None, description="Transaction memo/note")
     cleared: str = Field(
-        ..., description="Cleared status (cleared/uncleared/reconciled)"
+        ..., description="Cleared status (cleared/uncleared/reconciled). Values: 'cleared', 'uncleared', 'reconciled'"
     )
     approved: bool = Field(..., description="Whether transaction is approved")
     account_id: str = Field(..., description="Account identifier")
@@ -38,18 +38,18 @@ class CleanTransaction(BaseModel):
     )
     category_name: Optional[str] = Field(None, description="Category name")
     transfer_account_id: Optional[str] = Field(
-        None, description="Transfer account identifier if applicable"
+        None, description="Transfer account identifier if applicable. Used in subtransactions to specify target account for transfers"
     )
     transfer_transaction_id: Optional[str] = Field(
-        None, description="Transfer transaction ID if applicable"
+        None, description="Transfer transaction ID if applicable. Used in subtransactions to link to reverse transfer transaction"
     )
     matched_transaction_id: Optional[str] = Field(
-        None, description="Matched transaction ID if applicable"
+        None, description="Matched transaction ID if applicable. Used for imported transactions to link to existing records"
     )
-    flag_color: Optional[str] = Field(None, description="Flag color if flagged")
+    flag_color: Optional[str] = Field(None, description="Flag color if flagged. Possible values: red, orange, yellow, green, blue, purple")
     flag_name: Optional[str] = Field(None, description="Flag name if flagged")
     debt_transaction_type: Optional[str] = Field(
-        None, description="Debt transaction type if applicable"
+        None, description="Debt transaction type if applicable. Possible values: loan_payment, loan_principal, loan_interest, credit_card_payment, credit_card_principal, credit_card_fee"
     )
     amount_formatted: Optional[str] = Field(None, description="Formatted amount string")
     amount_currency: Optional[float] = Field(
