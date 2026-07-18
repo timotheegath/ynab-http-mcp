@@ -10,7 +10,7 @@ from ynab_http_mcp.tools.transactions import register as register_transactions
 from ynab_http_mcp.tools.categories import register as register_categories
 from ynab_http_mcp.tools.planning import register as register_planning
 from ynab_http_mcp.ynab_service import YnabService
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 
 def test_tools_can_be_registered():

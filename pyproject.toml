@@ -10,9 +10,9 @@ requires-python = ">=3.12"
 dependencies = [
     "dotenv>=0.9.9",
     "httpx>=0.28.1",
-    "mcp[cli]>=1.28.1",
     "pydantic>=2.13.4",
     "ynab>=4.2.0",
+    "fastmcp>=2.13.0",
 ]
 
 [project.scripts]

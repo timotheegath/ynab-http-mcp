@@ -12,11 +12,42 @@ import json
 def register(mcp, ynab_service: YnabService):
 
     @mcp.resource(
-        uri="data://transactions/{filter_params}",
+        uri="data://transactions{?since_date,until_date,type,account_id,payee_id,category_id,limit,month}",
         mime_type="application/json"
     )
     async def get_transactions_resource(
-        filter_params: str = ""
+         since_date: Annotated[
+            str | None,
+            "ISO-format date (YYYY-MM-DD) to filter transactions starting from this date. Leave blank for no start date filter.",
+        ] = None,
+        until_date: Annotated[
+            str | None,
+            "ISO-format date (YYYY-MM-DD) to filter transactions up to this date. Leave blank for no end date filter.",
+        ] = None,
+        type: Annotated[
+            str | None,
+            "Transaction type filter. Common values: 'uncleared', 'cleared', 'reconciled'.",
+        ] = "all",
+        account_id: Annotated[
+            str | None,
+            "Account ID to filter transactions by specific account. Takes precedence over month, payee, and category filters.",
+        ] = None,
+        payee_id: Annotated[
+            str | None,
+            "Payee ID to filter transactions by specific payee.",
+        ] = None,
+        category_id: Annotated[
+            str | None,
+            "Category ID to filter transactions by specific category.",
+        ] = None,
+        limit: Annotated[
+            int | None,
+            "Maximum number of transactions to return. Leave blank for no limit.",
+        ] = None,
+        month: Annotated[
+            str | None,
+            "Filter by month (YYYY-MM). Takes precedence over other filters when specified.",
+        ] = None,
     ) -> str:
         """
         Get transactions with flexible filtering options as a resource.
@@ -29,30 +60,14 @@ def register(mcp, ynab_service: YnabService):
         - data://transactions/type=cleared&account_id=XYZ
         """
         # Parse filter parameters from the path
-        params = {}
-        if filter_params:
-            # Split by & and parse key=value pairs
-            for pair in filter_params.split('&'):
-                if '=' in pair:
-                    key, value = pair.split('=', 1)
-                    params[key] = value
-
-        # Extract individual parameters
-        since_date = params.get('since_date')
-        until_date = params.get('until_date')
-        type_param = params.get('type', 'all')
-        account_id = params.get('account_id')
-        payee_id = params.get('payee_id')
-        category_id = params.get('category_id')
-        limit = params.get('limit')
-        month = params.get('month')
+        
 
         # Implement mandatory filter validation
-        if not any([since_date, until_date, type_param and type_param != "all"]):
+        if not any([since_date, until_date, type and type != "all"]):
             error_response = {
                 "error": "At least one of 'since_date', 'until_date', or 'type' (non-'all') filters must be provided"
             }
-            return json.dumps(error_response)
+        
 
         # Convert string parameters to appropriate types with error handling
         try:
@@ -75,7 +90,7 @@ def register(mcp, ynab_service: YnabService):
         raw_response = ynab_service.get_transactions(
             since_date=converted_since_date,
             until_date=converted_until_date,
-            type=type_param,
+            type=type if type else "all",
             account_id=account_id,
             month=converted_month,
             payee_id=payee_id,

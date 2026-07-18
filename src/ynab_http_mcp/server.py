@@ -1,4 +1,5 @@
-from mcp.server.fastmcp import FastMCP
+import asyncio
+from fastmcp import FastMCP
 import os
 from dotenv import load_dotenv
 from ynab_http_mcp.ynab_service import YnabService
@@ -11,7 +12,10 @@ import ynab_http_mcp.tools.accounts as account_tools
 # Load .env
 load_dotenv()  # loads .env into environment
 # Initialize FastMCP server
-mcp = FastMCP("ynab", host="0.0.0.0", port=int(os.getenv("HTTP_PORT", 8000)))
+
+HOST="0.0.0.0"
+PORT=int(os.getenv("HTTP_PORT", 8000))
+mcp = FastMCP("ynab")
 # Create service:
 ynab_service = YnabService()
 # Register MCP tools:
@@ -21,10 +25,10 @@ transaction_tools.register(mcp, ynab_service)
 account_tools.register(mcp, ynab_service)
 
 
-def main():
+async def main():
     # Initialize and run the server
-    mcp.run(transport="streamable-http")
+    await mcp.run_http_async(host=HOST, port=PORT)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
