@@ -46,6 +46,45 @@ The system SHALL provide an MCP resource for accessing category data.
   }
   ```
 
+### Requirement: Transactions Resource
+The system SHALL provide an MCP resource for accessing transaction data with filtering capabilities.
+
+#### Scenario: Transactions resource endpoint exists
+- **WHEN** MCP client requests `data://transactions`
+- **THEN** the system SHALL return a valid resource response
+
+#### Scenario: Transactions resource supports query parameters
+- **WHEN** MCP client requests `data://transactions?since_date=2024-01-01&type=cleared`
+- **THEN** the system SHALL process the query parameters and return filtered transactions
+
+#### Scenario: Transactions resource requires mandatory filters
+- **WHEN** MCP client requests `data://transactions` with no filters
+- **THEN** the system SHALL return an error response with message indicating missing mandatory filters
+
+#### Scenario: Transactions resource accepts date parameters
+- **WHEN** MCP client provides `since_date=2024-01-15`
+- **THEN** the system SHALL convert it to a datetime object and use it for filtering
+
+#### Scenario: Transactions resource handles invalid dates
+- **WHEN** MCP client provides `since_date=invalid-date`
+- **THEN** the system SHALL return an error response with message indicating invalid date format
+
+#### Scenario: Transactions resource returns JSON with hints
+- **WHEN** MCP client requests valid transaction data
+- **THEN** the system SHALL return a JSON string containing `transactions` array, `server_knowledge` field, and `_hints` metadata
+
+#### Scenario: Transactions resource provides field explanations
+- **WHEN** MCP client requests transaction data
+- **THEN** the system SHALL include a `_hints` object explaining complex fields like `transfer_account_id`, `matched_transaction_id`, etc.
+
+#### Scenario: Transactions resource maintains filter priority
+- **WHEN** MCP client provides both `account_id` and `month` parameters
+- **THEN** the system SHALL use only the `account_id` filter (as per existing logic)
+
+#### Scenario: Transactions resource handles data validation
+- **WHEN** YNAB API returns transaction data that fails validation
+- **THEN** the system SHALL skip invalid transactions but continue processing valid ones
+
 ### Requirement: Resource Error Handling
 All MCP resources SHALL handle errors gracefully and return appropriate responses.
 
