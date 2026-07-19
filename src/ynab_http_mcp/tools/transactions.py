@@ -12,7 +12,7 @@ import json
 def register(mcp, ynab_service: YnabService):
 
     @mcp.resource(
-        uri="data://transactions{?since_date,until_date,type,account_id,payee_id,category_id,limit,month}",
+        uri="data://transactions{?since_date,until_date,type,payee_id,limit,month}",
         mime_type="application/json"
     )
     async def get_transactions_resource(
@@ -28,17 +28,9 @@ def register(mcp, ynab_service: YnabService):
              Literal["all", "uncleared", "cleared", "reconciled"] | None,
              "Transaction type filter. Must be one of: 'all', 'uncleared', 'cleared', 'reconciled'.",
          ] = "all",
-        account_id: Annotated[
-            str | None,
-            "Account ID to filter transactions by specific account. Takes precedence over month, payee, and category filters.",
-        ] = None,
         payee_id: Annotated[
             str | None,
             "Payee ID to filter transactions by specific payee.",
-        ] = None,
-        category_id: Annotated[
-            str | None,
-            "Category ID to filter transactions by specific category.",
         ] = None,
         limit: Annotated[
             int | None,
@@ -91,10 +83,8 @@ def register(mcp, ynab_service: YnabService):
             since_date=converted_since_date,
             until_date=converted_until_date,
             type=type if type else "all",
-            account_id=account_id,
             month=converted_month,
-            payee_id=payee_id,
-            category_id=category_id,
+            payee_id=payee_id
         )
 
         
