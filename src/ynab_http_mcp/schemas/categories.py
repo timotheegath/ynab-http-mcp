@@ -7,7 +7,6 @@ YNAB category data using basic data types suitable for agents.
 
 from typing import Optional, List
 from pydantic import BaseModel, Field
-from . import registry
 
 
 class CleanCategory(BaseModel):
@@ -74,7 +73,4 @@ class CategoriesResponse(BaseModel):
     )
 
 
-# Register schemas with the global registry
-registry.register("CleanCategory", CleanCategory)
-registry.register("CategoryGroup", CategoryGroup)
-registry.register("CategoriesResponse", CategoriesResponse)
+

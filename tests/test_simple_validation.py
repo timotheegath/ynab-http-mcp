@@ -98,9 +98,9 @@ def test_simple_validate_with_valid_data():
     
     # This should not raise an exception
     validated = simple_validate(data, CleanTransaction)
-    
+
     assert validated.id == '123e4567-e89b-12d3-a456-426614174000'
-    assert validated.date == '2023-01-15'
+    assert validated.date == date(2023, 1, 15)
     assert validated.amount == -50000
 
 
@@ -152,5 +152,5 @@ def test_integration_clean_then_validate():
     
     # Verify the validation worked
     assert validated.id == '123e4567-e89b-12d3-a456-426614174000'
-    assert validated.date == '2023-01-15'
+    assert validated.date == date(2023, 1, 15)
     assert validated.account_id == 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'

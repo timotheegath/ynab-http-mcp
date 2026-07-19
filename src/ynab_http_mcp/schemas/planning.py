@@ -8,7 +8,6 @@ YNAB planning/month data using basic data types suitable for agents.
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from datetime import date
-from . import registry
 
 
 def _convert_date_to_string(date_value):
@@ -64,31 +63,31 @@ class PlanMonth(BaseModel):
         if "month" in data and isinstance(data["month"], date):
             data["month"] = data["month"].strftime("%Y-%m")
 
-            # Transform categories to match our schema
-            if "categories" in data:
-                transformed_categories = []
-                for category in data["categories"]:
-                    transformed_category = {
-                        "category_id": str(category.get("id", "")),
-                        "category_name": category.get("name", ""),
-                        "budgeted": category.get("budgeted", 0),
-                        "activity": category.get("activity", 0),
-                        "balance": category.get("balance", 0),
-                        "goal_type": category.get("goal_type"),
-                        "goal_creation_month": _convert_date_to_string(
-                            category.get("goal_creation_month")
-                        ),
-                        "goal_target": category.get("goal_target"),
-                        "goal_target_month": _convert_date_to_string(
-                            category.get("goal_target_month")
-                        ),
-                        "goal_percentage_complete": category.get(
-                            "goal_percentage_complete"
-                        ),
-                        "deleted": category.get("deleted", False),
-                    }
-                    transformed_categories.append(transformed_category)
-                data["categories"] = transformed_categories
+        # Transform categories to match our schema
+        if "categories" in data:
+            transformed_categories = []
+            for category in data["categories"]:
+                transformed_category = {
+                    "category_id": str(category.get("id", "")),
+                    "category_name": category.get("name", ""),
+                    "budgeted": category.get("budgeted", 0),
+                    "activity": category.get("activity", 0),
+                    "balance": category.get("balance", 0),
+                    "goal_type": category.get("goal_type"),
+                    "goal_creation_month": _convert_date_to_string(
+                        category.get("goal_creation_month")
+                    ),
+                    "goal_target": category.get("goal_target"),
+                    "goal_target_month": _convert_date_to_string(
+                        category.get("goal_target_month")
+                    ),
+                    "goal_percentage_complete": category.get(
+                        "goal_percentage_complete"
+                    ),
+                    "deleted": category.get("deleted", False),
+                }
+                transformed_categories.append(transformed_category)
+            data["categories"] = transformed_categories
 
         return cls(**data)
 
@@ -138,9 +137,4 @@ class AllPlanMonthsResponse(BaseModel):
     )
 
 
-# Register schemas with the global registry
-registry.register("MonthCategory", MonthCategory)
-registry.register("PlanMonth", PlanMonth)
-registry.register("PlanMonthResponse", PlanMonthResponse)
-registry.register("PlanMonthSummary", PlanMonthSummary)
-registry.register("AllPlanMonthsResponse", AllPlanMonthsResponse)
+

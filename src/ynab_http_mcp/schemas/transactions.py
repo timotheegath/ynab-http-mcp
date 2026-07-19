@@ -6,8 +6,8 @@ YNAB transaction data using basic data types suitable for agents.
 """
 
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
-from . import registry
+from datetime import date as date_type
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class CleanTransaction(BaseModel):
@@ -17,10 +17,11 @@ class CleanTransaction(BaseModel):
     This represents a YNAB transaction with all essential fields
     using simple types that are easily consumable by AI agents.
     """
+    model_config = ConfigDict(json_encoders={date_type: str})
 
     # Required fields
     id: str = Field(..., description="Unique transaction identifier")
-    date: str = Field(..., description="Transaction date in ISO format (YYYY-MM-DD)")
+    date: date_type = Field(..., description="Transaction date")
     amount: int = Field(..., description="Transaction amount in milliunits (1/1000 of currency unit)")
     memo: Optional[str] = Field(None, description="Transaction memo/note")
     cleared: str = Field(
@@ -75,6 +76,4 @@ class TransactionsResponse(BaseModel):
     )
 
 
-# Register schemas with the global registry
-registry.register("CleanTransaction", CleanTransaction)
-registry.register("TransactionsResponse", TransactionsResponse)
+

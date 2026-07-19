@@ -7,7 +7,6 @@ YNAB account data using basic data types suitable for agents.
 
 from typing import Optional, List
 from pydantic import BaseModel, Field
-from . import registry
 
 
 class CleanAccount(BaseModel):
@@ -85,6 +84,4 @@ class AccountsResponse(BaseModel):
     accounts: List[CleanAccount] = Field(..., description="List of accounts")
 
 
-# Register schemas with the global registry
-registry.register("CleanAccount", CleanAccount)
-registry.register("AccountsResponse", AccountsResponse)
+

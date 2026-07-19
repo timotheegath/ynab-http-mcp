@@ -10,37 +10,38 @@ import json
 # Add project root to path
 sys.path.insert(0, '/home/timo/projects/ynab-http-mcp/src')
 
-from ynab_http_mcp.schemas import registry
 from ynab_http_mcp.schemas.transactions import TransactionsResponse
 from ynab_http_mcp.schemas.categories import CategoriesResponse
 from ynab_http_mcp.schemas.planning import PlanMonthResponse, AllPlanMonthsResponse
+from ynab_http_mcp.schemas import (
+    CleanTransaction, CleanCategory, CategoryGroup, MonthCategory,
+    PlanMonth, PlanMonthSummary, AllPlanMonthsResponse
+)
 
 
 def test_schema_registry():
-    """Test that schemas are properly registered."""
-    print("Testing schema registry...")
+    """Test that schemas are properly accessible via the public API."""
+    print("Testing schema accessibility...")
     
-    # Check that all schemas are registered
-    registered_schemas = registry.all_schemas()
-    
+    # Check that all schemas are accessible
     expected_schemas = [
-        'CleanTransaction',
-        'TransactionsResponse', 
-        'CleanCategory',
-        'CategoryGroup',
-        'CategoriesResponse',
-        'MonthCategory',
-        'PlanMonth',
-        'PlanMonthResponse',
-        'PlanMonthSummary',
-        'AllPlanMonthsResponse'
+        CleanTransaction,
+        TransactionsResponse, 
+        CleanCategory,
+        CategoryGroup,
+        CategoriesResponse,
+        MonthCategory,
+        PlanMonth,
+        PlanMonthResponse,
+        PlanMonthSummary,
+        AllPlanMonthsResponse
     ]
     
-    for schema_name in expected_schemas:
-        assert schema_name in registered_schemas, f"{schema_name} should be registered"
-        print(f"✓ {schema_name} is registered")
+    for schema_class in expected_schemas:
+        assert schema_class is not None, f"{schema_class} should be accessible"
+        print(f"✓ {schema_class.__name__} is accessible")
     
-    print("✓ Schema registry test passed")
+    print("✓ Schema accessibility test passed")
 
 
 def test_json_schema_generation():
@@ -89,20 +90,33 @@ def test_fastmcp_metadata_compatibility():
 
 
 def test_registry_json_schemas():
-    """Test that registry can provide JSON schemas for all registered models."""
-    print("Testing registry JSON schema generation...")
+    """Test that JSON schemas can be generated for all models."""
+    print("Testing JSON schema generation for all models...")
     
-    json_schemas = registry.get_json_schemas()
+    # Test JSON schema generation for all models
+    expected_schemas = [
+        CleanTransaction,
+        TransactionsResponse, 
+        CleanCategory,
+        CategoryGroup,
+        CategoriesResponse,
+        MonthCategory,
+        PlanMonth,
+        PlanMonthResponse,
+        PlanMonthSummary,
+        AllPlanMonthsResponse
+    ]
     
-    # Verify we get JSON schemas for all registered models
-    assert len(json_schemas) > 0, "Registry should provide JSON schemas"
+    # Verify we get JSON schemas for all models
+    assert len(expected_schemas) > 0, "Should have schemas to test"
     
-    for schema_name, json_schema in json_schemas.items():
-        assert isinstance(json_schema, dict), f"{schema_name} should have dict schema"
-        assert 'properties' in json_schema, f"{schema_name} schema should have properties"
-        print(f"✓ {schema_name} JSON schema available from registry")
+    for schema_class in expected_schemas:
+        json_schema = schema_class.model_json_schema()
+        assert isinstance(json_schema, dict), f"{schema_class.__name__} should have dict schema"
+        assert 'properties' in json_schema, f"{schema_class.__name__} schema should have properties"
+        print(f"✓ {schema_class.__name__} JSON schema available")
     
-    print("✓ Registry JSON schema test passed")
+    print("✓ JSON schema generation test passed")
 
 
 def main():
