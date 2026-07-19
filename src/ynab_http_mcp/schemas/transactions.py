@@ -6,8 +6,12 @@ YNAB transaction data using basic data types suitable for agents.
 """
 
 from typing import Optional, List, Dict, Any
-from datetime import date as date_type
+from datetime import date as date_type, datetime as datetime_type
 from pydantic import BaseModel, Field, ConfigDict
+from ynab import TransactionsResponse as ynabTransactionsResponse, TransactionResponse as ynabTransactionResponse
+from ynab_http_mcp.utils.simple_validation import simple_validate
+from ynab_http_mcp.utils.schema_utils import clean_ynab_data
+from ynab_http_mcp.debug import debug_exception
 
 
 class CleanTransaction(BaseModel):
@@ -17,7 +21,7 @@ class CleanTransaction(BaseModel):
     This represents a YNAB transaction with all essential fields
     using simple types that are easily consumable by AI agents.
     """
-    model_config = ConfigDict(json_encoders={date_type: str})
+    model_config = ConfigDict(json_encoders={date_type: str, datetime_type: str})
 
     # Required fields
     id: str = Field(..., description="Unique transaction identifier")
@@ -74,6 +78,95 @@ class TransactionsResponse(BaseModel):
     server_knowledge: int = Field(
         ..., description="Server knowledge version for pagination"
     )
+    @staticmethod
+    def from_ynab_response(ynab_reponse: ynabTransactionsResponse) -> "TransactionsResponse":
+        # Convert to dict and clean data using unified function
+        raw_data = ynab_reponse.to_dict()
 
+        # Clean each transaction using unified data cleaning
+        cleaned_transactions = []
+        for transaction_data in raw_data.get("data", {}).get("transactions", []):
+            # Clean data using unified function (handles UUID→string, import field filtering, etc.)
+            cleaned_data = clean_ynab_data(transaction_data)
+
+            # Validate using simplified approach
+            try:
+                validated_transaction = simple_validate(cleaned_data, CleanTransaction)
+                cleaned_transactions.append(validated_transaction.model_dump())
+            except Exception:
+                debug_exception(
+                    f"Failed to validate transaction {transaction_data.get('id', 'unknown')}"
+                )
+                # Skip invalid transactions but continue processing others
+                continue
+
+        # Create final response with contextual hints extracted from schema
+        hints = {}
+        for field_name, field_info in CleanTransaction.model_fields.items():
+            if field_info.description and any(keyword in field_info.description for keyword in ['transfer', 'matched', 'flag', 'debt', 'amount', 'cleared']):
+                hints[field_name] = field_info.description
+        
+        final_response = {
+            "transactions": cleaned_transactions,
+            "server_knowledge": raw_data.get("data", {}).get("server_knowledge", 0),
+            "_hints": hints
+        }
+
+        # Validate the complete response structure using simplified approach
+        validated_response = simple_validate(final_response, TransactionsResponse)
+        return validated_response
+
+
+
+class TransactionResponse(BaseModel):
+    """
+    Simplified response structure for transactions endpoint.
+
+    Wraps the list of simplified transactions with metadata.
+    """
+
+    transaction: CleanTransaction = Field(
+        ..., description="Single simplified transaction"
+    )
+    server_knowledge: int = Field(
+        ..., description="Server knowledge version for pagination"
+    )
+
+    @staticmethod
+    def from_ynab_response(ynab_reponse: ynabTransactionResponse) -> "TransactionResponse":
+        # Convert to dict and clean data using unified function
+        raw_data = ynab_reponse.to_dict()
+        transaction_data = raw_data.get("data", {})["transaction"]
+
+        # Clean each transaction using unified data cleaning
+        cleaned_transaction = {}
+
+        # Clean data using unified function (handles UUID→string, import field filtering, etc.)
+        cleaned_data = clean_ynab_data(transaction_data)
+
+        # Validate using simplified approach
+        try:
+            validated_transaction = simple_validate(cleaned_data, CleanTransaction)
+            cleaned_transaction = validated_transaction.model_dump()
+        except Exception:
+            debug_exception(
+                f"Failed to validate transaction {transaction_data.get('id', 'unknown')}"
+            )                
+
+        # Create final response with contextual hints extracted from schema
+        hints = {}
+        for field_name, field_info in CleanTransaction.model_fields.items():
+            if field_info.description and any(keyword in field_info.description for keyword in ['transfer', 'matched', 'flag', 'debt', 'amount', 'cleared']):
+                hints[field_name] = field_info.description
+        
+        final_response = {
+            "transaction": cleaned_transaction,
+            "server_knowledge": raw_data.get("data", {}).get("server_knowledge", 0),
+            "_hints": hints
+        }
+
+        # Validate the complete response structure using simplified approach
+        validated_response = simple_validate(final_response, TransactionResponse)
+        return validated_response
 
 

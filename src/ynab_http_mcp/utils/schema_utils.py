@@ -6,7 +6,7 @@ YNAB API response processing and make data agent-friendly.
 """
 
 from typing import Any, Dict
-from datetime import date as datetime_date
+from datetime import date as datetime_date, datetime as datetime_datetime
 from uuid import UUID
 import logging
 
@@ -58,6 +58,10 @@ def _clean_value(value: Any) -> Any:
     if isinstance(value, UUID):
         # Convert UUID objects to strings
         return str(value)
+    elif isinstance(value, datetime_datetime):
+        # Convert datetime objects to date string format (YYYY-MM-DD)
+        # This ensures compatibility with Pydantic date fields
+        return value.date().isoformat()
     elif isinstance(value, datetime_date):
         # Convert date objects to ISO string format (YYYY-MM-DD)
         return value.isoformat()

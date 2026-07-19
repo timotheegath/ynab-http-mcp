@@ -3,7 +3,7 @@ from ynab_http_mcp.ynab_service import YnabService
 from typing import Annotated, Literal
 from datetime import datetime
 from ynab_http_mcp.debug import debug_exception
-from ynab_http_mcp.schemas.transactions import CleanTransaction, TransactionsResponse
+from ynab_http_mcp.schemas.transactions import CleanTransaction, TransactionsResponse, TransactionResponse
 from ynab_http_mcp.utils.schema_utils import clean_ynab_data
 from ynab_http_mcp.utils.simple_validation import simple_validate
 import json
@@ -97,42 +97,35 @@ def register(mcp, ynab_service: YnabService):
             category_id=category_id,
         )
 
-        # Convert to dict and clean data using unified function
-        raw_data = raw_response.to_dict()
-
-        # Clean each transaction using unified data cleaning
-        cleaned_transactions = []
-        for transaction_data in raw_data.get("data", {}).get("transactions", []):
-            # Clean data using unified function (handles UUID→string, import field filtering, etc.)
-            cleaned_data = clean_ynab_data(transaction_data)
-
-            # Validate using simplified approach
-            try:
-                validated_transaction = simple_validate(cleaned_data, CleanTransaction)
-                cleaned_transactions.append(validated_transaction.model_dump())
-            except Exception:
-                debug_exception(
-                    f"Failed to validate transaction {transaction_data.get('id', 'unknown')}"
-                )
-                # Skip invalid transactions but continue processing others
-                continue
-
-        # Create final response with contextual hints extracted from schema
-        hints = {}
-        for field_name, field_info in CleanTransaction.model_fields.items():
-            if field_info.description and any(keyword in field_info.description for keyword in ['transfer', 'matched', 'flag', 'debt', 'amount', 'cleared']):
-                hints[field_name] = field_info.description
         
-        final_response = {
-            "transactions": cleaned_transactions,
-            "server_knowledge": raw_data.get("data", {}).get("server_knowledge", 0),
-            "_hints": hints
-        }
+        validated_response = TransactionsResponse.from_ynab_response(raw_response)
+        # Return as JSON string for MCP resource compatibility
+        return validated_response.model_dump_json()
+     
+    @mcp.resource(
+        uri="data://transactions/{id}",
+        mime_type="application/json"
+    )
+    async def get_single_transaction_resource(
+         id: Annotated[
+            str,
+            "UUID of the transaction to retrieve.",
+        ],
+    ) -> str:
+        """
+        Get a single transaction by its UUID
 
-        # Validate the complete response structure using simplified approach
-        validated_response = simple_validate(final_response, TransactionsResponse)
+        Example:
+        - data://transactions/fd6bb67d-b77f-4dee-a2f5-47ef2bd8613c
+        """
+        # Parse filter parameters from the path
+
+        # Get raw YNAB response
+        raw_response = ynab_service.get_transaction(id)
+
+        validated_response = TransactionResponse.from_ynab_response(raw_response)
 
         # Return as JSON string for MCP resource compatibility
-        return json.dumps(validated_response.model_dump())
-
-    
+        return validated_response.model_dump_json()
+     
+     

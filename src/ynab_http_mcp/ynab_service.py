@@ -127,10 +127,10 @@ class YnabService:
         since_date: Optional[datetime],
         until_date: Optional[datetime],
         type: str,
-        account_id: Optional[str],
-        month: Optional[datetime],
-        payee_id: Optional[str],
-        category_id: Optional[str],
+        account_id: Optional[str] = None,
+        month: Optional[datetime] = None,
+        payee_id: Optional[str] = None,
+        category_id: Optional[str] = None,
     ) -> ynab.TransactionsResponse:
         """
         Will always consider since, until, type as parameters.
@@ -181,6 +181,12 @@ class YnabService:
             return self._call_api(
                 ynab.TransactionsApi,
                 lambda api: api.get_transactions(str(self.plan_id), **params),
+            )
+    def get_transaction(self, id: str):
+
+        return self._call_api(
+                ynab.TransactionsApi,
+                lambda api: api.get_transaction_by_id(str(self.plan_id), id),
             )
 
     @staticmethod
