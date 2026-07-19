@@ -31,8 +31,14 @@ The YNAB HTTP MCP now uses a simplified validation approach that provides:
 
 All schemas now use plain Pydantic `BaseModel` with simple field types:
 - `str` for IDs (instead of UUID objects)
-- `str` for dates (ISO format instead of date objects)
+- `date` for dates (native datetime.date objects with JSON serialization)
 - Basic types: `int`, `float`, `bool`, `List`, `Dict`
+
+#### Flat Public API
+
+- Direct imports from `ynab_http_mcp.schemas`
+- No registry needed - all models are directly importable
+- Simplified schema discovery and usage
 
 ### Available Schemas
 
@@ -87,11 +93,11 @@ All schemas now use plain Pydantic `BaseModel` with simple field types:
 │  Key Components:                                                               │
 │  • clean_ynab_data(): Unified data cleaning function                         │
 │  • simple_validate(): Basic Pydantic validation                             │
-│  • SchemaRegistry: Central registry for all available schemas                 │
+│  • Flat Public API: Direct imports from ynab_http_mcp.schemas                │
 │  • get_json_schema(): JSON schema generation for FastMCP metadata           │
 │                                                                               │
 │  Benefits:                                                                   │
-│  ✅ Simple data types (strings, ints, floats)                                │
+│  ✅ Simple data types (strings, ints, floats, dates)                         │
 │  ✅ Single-pass data cleaning                                                 │
 │  ✅ Basic Pydantic validation                                                │
 │  ✅ Automatic FastMCP metadata                                              │
@@ -189,27 +195,29 @@ def get_transactions_tool():
     return validated_response
 ```
 
-### Schema Registry Usage
+### Flat Public API Usage
 
 ```python
-from ynab_http_mcp.schemas import registry
+# Direct imports from the schemas module
+from ynab_http_mcp.schemas import (
+    CleanTransaction, TransactionsResponse,
+    CleanCategory, CategoryGroup, CategoriesResponse,
+    MonthCategory, PlanMonth, PlanMonthResponse,
+    PlanMonthSummary, AllPlanMonthsResponse
+)
 
-# Get all registered schemas
-all_schemas = registry.all_schemas()
+# Get JSON schema for FastMCP metadata using Pydantic's built-in method
+json_schema = CleanTransaction.model_json_schema()
 
-# Get JSON schemas for FastMCP metadata
-json_schemas = registry.get_json_schemas()
-
-# Get specific schema by name
-transaction_schema = registry.get('CleanTransaction')
+# All models are directly accessible without a registry
 ```
 
 ### FastMCP Metadata Integration
 
 ```python
-from ynab_http_mcp.schemas.transactions import TransactionsResponse
+from ynab_http_mcp.schemas import TransactionsResponse
 
-# Get JSON schema for FastMCP tool annotations
+# Get JSON schema for FastMCP tool annotations using direct import
 json_schema = TransactionsResponse.model_json_schema()
 
 # Use in tool registration
@@ -250,10 +258,11 @@ validated = simple_validate(cleaned_data, CleanTransaction)
 
 ### Key Changes
 
-1. **Removed Complex Types**: All IDs and dates are now strings
+1. **Removed Complex Types**: All IDs are now strings, dates use native `datetime.date`
 2. **Simplified Error Handling**: Uses Pydantic's built-in ValidationError
 3. **Unified Cleaning**: Single function handles all data transformations
 4. **Better Agent Compatibility**: Simple data types are easier for agents to consume
+5. **Flat Public API**: Direct imports instead of registry-based access
 
 ### Benefits of Simplified Approach
 
@@ -262,3 +271,4 @@ validated = simple_validate(cleaned_data, CleanTransaction)
 - **Easier Debugging**: Standard Pydantic errors instead of custom error classes
 - **Agent-Friendly**: Simple data types work better with AI agents
 - **Maintainable**: Less complexity means easier to understand and modify
+- **Simplified API**: Direct imports make schema usage more intuitive
