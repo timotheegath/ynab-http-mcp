@@ -1,6 +1,6 @@
 # All transaction actions.
 from ynab_http_mcp.ynab_service import YnabService
-from typing import Annotated
+from typing import Annotated, Literal
 from datetime import datetime
 from ynab_http_mcp.debug import debug_exception
 from ynab_http_mcp.schemas.transactions import CleanTransaction, TransactionsResponse
@@ -24,10 +24,10 @@ def register(mcp, ynab_service: YnabService):
             str | None,
             "ISO-format date (YYYY-MM-DD) to filter transactions up to this date. Leave blank for no end date filter.",
         ] = None,
-        type: Annotated[
-            str | None,
-            "Transaction type filter. Common values: 'uncleared', 'cleared', 'reconciled'.",
-        ] = "all",
+         type: Annotated[
+             Literal["all", "uncleared", "cleared", "reconciled"] | None,
+             "Transaction type filter. Must be one of: 'all', 'uncleared', 'cleared', 'reconciled'.",
+         ] = "all",
         account_id: Annotated[
             str | None,
             "Account ID to filter transactions by specific account. Takes precedence over month, payee, and category filters.",

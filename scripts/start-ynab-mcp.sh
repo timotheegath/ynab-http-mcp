@@ -20,8 +20,8 @@ cd "$ROOT_DIR"
     echo "COMMAND: source .venv/bin/activate && python -m ynab_http_mcp"
     echo "WORKDIR: $ROOT_DIR"
     echo "============================================================"
-  } >> "$LOG_FILE"
-  ;;
+   } >> "$LOG_FILE"
+
 
 
 nohup bash -lc 'source .venv/bin/activate && exec python -m ynab_http_mcp' >> "$LOG_FILE" 2>&1 &
