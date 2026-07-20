@@ -85,7 +85,7 @@ class BudgetManagementTools:
             BudgetHealthResponse with health metrics
         """
         # Get month data
-        month_detail = self.ynab_service.get_plan_month(month)
+        month_detail = self.ynab_service.get_plan_month(month).data.month
 
         # Calculate health metrics from month detail
         total_budgeted = month_detail.budgeted
@@ -115,7 +115,7 @@ class BudgetManagementTools:
             if is_healthy:
                 healthy_categories += 1
 
-            category_health[category.id] = {
+            category_health[str(category.id)] = {
                 "category_name": category.name,
                 "budgeted": cat_budgeted,
                 "activity": cat_activity,

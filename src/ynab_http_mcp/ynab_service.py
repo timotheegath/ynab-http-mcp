@@ -92,7 +92,7 @@ class YnabService:
                 f"Failed to retrieve month category data: {str(e)}"
             ) from e
 
-    def get_plan_month(self, date: datetime | str | None = None) -> ynab.MonthDetail:
+    def get_plan_month(self, date: datetime | str | None = None) -> ynab.MonthDetailResponse:
         """
         Returns the plan for a specific month.
         If no date is passed, returns the current month's plan.
@@ -477,7 +477,7 @@ class YnabService:
         Raises:
             ValueError: If validation fails
         """
-        validated_data = {}
+        validated_data : Dict[str, Any]= {}
 
         if operation_type == "update_category":
             # Validate month_date

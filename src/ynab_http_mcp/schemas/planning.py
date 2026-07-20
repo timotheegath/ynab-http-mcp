@@ -9,7 +9,7 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 from datetime import date
 from ynab import (
-    MonthDetail as ynabPlanMonthResponse,
+    MonthDetailResponse as ynabPlanMonthResponse,
     MonthSummariesResponse as ynabAllPlanMonthsResponse,
     MonthSummary as ynabMonthSummaryResponse,
 )
