@@ -8,7 +8,7 @@ YNAB planning/month data using basic data types suitable for agents.
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from datetime import date
-from ynab import MonthDetail as ynabPlanMonthResponse, MonthSummariesResponse as ynabAllPlanMonthsResponse, MonthDetail, MonthSummary
+from ynab import MonthDetail as ynabPlanMonthResponse, MonthSummariesResponse as ynabAllPlanMonthsResponse, MonthSummary as ynabMonthSummaryResponse
 from ynab_http_mcp.utils.schema_utils import simple_validate
 
 
@@ -59,7 +59,7 @@ class PlanMonth(BaseModel):
     )
 
     @staticmethod
-    def from_ynab_response(ynab_response: MonthDetail) -> "PlanMonth":
+    def from_ynab_response(ynab_response: ynabPlanMonthResponse) -> "PlanMonth":
         """Transform YNAB API response to match our simplified schema."""
         # Convert MonthDetail to dict
         data = ynab_response.to_dict()
@@ -133,7 +133,7 @@ class PlanMonthSummary(BaseModel):
     to_be_budgeted: int = Field(..., description="Amount to be budgeted")
 
     @staticmethod
-    def from_ynab_response(ynab_response: MonthSummary) -> "PlanMonthSummary":
+    def from_ynab_response(ynab_response: ynabMonthSummaryResponse) -> "PlanMonthSummary":
         """Transform YNAB API response to match our simplified schema."""
         # Convert MonthSummary to dict
         data = ynab_response.to_dict()
