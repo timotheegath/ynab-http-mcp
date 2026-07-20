@@ -12,8 +12,7 @@ from ynab import (
     TransactionsResponse as ynabTransactionsResponse,
     TransactionResponse as ynabTransactionResponse,
 )
-from ynab_http_mcp.utils.simple_validation import simple_validate
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data
+from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
 from ynab_http_mcp.debug import debug_exception
 
 
