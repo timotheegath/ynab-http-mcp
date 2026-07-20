@@ -5,8 +5,7 @@ from ynab_http_mcp.schemas.categories import (
     CleanCategory,
 )
 from ynab_http_mcp.schemas.transactions import TransactionsResponse
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data
-from ynab_http_mcp.utils.simple_validation import simple_validate
+from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
 from typing import Literal, Annotated
 import json
 from datetime import datetime

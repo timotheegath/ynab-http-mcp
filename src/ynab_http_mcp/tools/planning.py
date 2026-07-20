@@ -8,7 +8,7 @@ from ynab_http_mcp.schemas.planning import (
     AllPlanMonthsResponse,
     PlanMonthSummary,
 )
-from ynab_http_mcp.utils.simple_validation import simple_validate
+from ynab_http_mcp.utils.schema_utils import simple_validate
 
 
 def register(mcp, ynab_service: YnabService):
@@ -47,12 +47,7 @@ def register(mcp, ynab_service: YnabService):
         month_data = raw_data.get("data", {}).get("month", {})
 
         # Transform YNAB data to match our schema
-        transformed_data = PlanMonthResponse.from_ynab_data({"month": month_data})
-
-        # Validate using simplified approach
-        validated_response = simple_validate(
-            transformed_data.model_dump(), PlanMonthResponse
-        )
+        validated_response = PlanMonthResponse.from_ynab_data({"month": month_data})
 
         return validated_response
 

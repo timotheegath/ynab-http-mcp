@@ -112,7 +112,7 @@ class TransactionsResponse(BaseModel):
     server_knowledge: int = Field(
         ..., description="Server knowledge version for pagination"
     )
-    _hints: Optional[Dict[str, str]] = Field(
+    hints: Optional[Dict[str, str]] = Field(
         None, description="Contextual hints for complex fields"
     )
 
@@ -146,7 +146,7 @@ class TransactionsResponse(BaseModel):
         final_response = {
             "transactions": cleaned_transactions,
             "server_knowledge": raw_data.get("data", {}).get("server_knowledge", 0),
-            "_hints": hints,
+            "hints": hints,
         }
 
         # Validate the complete response structure using simplified approach
@@ -167,7 +167,7 @@ class TransactionResponse(BaseModel):
     server_knowledge: int = Field(
         ..., description="Server knowledge version for pagination"
     )
-    _hints: Optional[Dict[str, str]] = Field(
+    hints: Optional[Dict[str, str]] = Field(
         None, description="Contextual hints for complex fields"
     )
 
@@ -200,7 +200,7 @@ class TransactionResponse(BaseModel):
         final_response = {
             "transaction": cleaned_transaction,
             "server_knowledge": raw_data.get("data", {}).get("server_knowledge", 0),
-            "_hints": hints,
+            "hints": hints,
         }
 
         # Validate the complete response structure using simplified approach

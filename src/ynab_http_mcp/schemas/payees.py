@@ -54,7 +54,7 @@ class PayeesResponse(BaseModel):
     """
 
     payees: List[CleanPayee] = Field(..., description="List of payees")
-    _hints: Optional[Dict[str, str]] = Field(
+    hints: Optional[Dict[str, str]] = Field(
         None, description="Contextual hints for complex fields"
     )
 
@@ -85,7 +85,7 @@ class PayeesResponse(BaseModel):
         final_response = {
             "payees": cleaned_payees,
             "server_knowledge": raw_data.get("data", {}).get("server_knowledge", 0),
-            "_hints": hints,
+            "hints": hints,
         }
 
         # Validate the complete response structure using simplified approach
@@ -101,7 +101,7 @@ class PayeeResponse(BaseModel):
     """
 
     payee: CleanPayee = Field(..., description="Payee")
-    _hints: Optional[Dict[str, str]] = Field(
+    hints: Optional[Dict[str, str]] = Field(
         None, description="Contextual hints for complex fields"
     )
 
@@ -132,7 +132,7 @@ class PayeeResponse(BaseModel):
         final_response = {
             "payee": cleaned_payee,
             "server_knowledge": raw_data.get("data", {}).get("server_knowledge", 0),
-            "_hints": hints,
+            "hints": hints,
         }
 
         # Validate the complete response structure using simplified approach

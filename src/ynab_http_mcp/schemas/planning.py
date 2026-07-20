@@ -8,6 +8,7 @@ YNAB planning/month data using basic data types suitable for agents.
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from datetime import date
+from ynab_http_mcp.utils.schema_utils import simple_validate
 
 
 def _convert_date_to_string(date_value):
@@ -104,7 +105,11 @@ class PlanMonthResponse(BaseModel):
         """Transform YNAB API data to match our simplified schema."""
         if "month" in data:
             data["month"] = PlanMonth.from_ynab_data(data["month"])
-        return cls(**data)
+        response = cls(**data)
+        validated_response = simple_validate(
+            response.model_dump(), PlanMonthResponse
+        )
+        return validated_response
 
 
 class PlanMonthSummary(BaseModel):
@@ -124,7 +129,11 @@ class PlanMonthSummary(BaseModel):
         # Convert date object to YYYY-MM string format if needed
         if "month" in data and isinstance(data["month"], date):
             data["month"] = data["month"].strftime("%Y-%m")
-        return cls(**data)
+        response = cls(**data)
+        validated_response = simple_validate(
+            response.model_dump(), PlanMonthSummary
+        )
+        return validated_response
 
 
 class AllPlanMonthsResponse(BaseModel):
