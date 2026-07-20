@@ -3,7 +3,7 @@ import ynab
 from uuid import UUID
 from datetime import datetime
 from ynab_http_mcp.debug import debug_exception, debug_ynab_response
-from typing import Optional, Callable, TypeVar, Dict, Any
+from typing import Optional, Callable, TypeVar
 
 T = TypeVar("T")
 

@@ -155,11 +155,14 @@ class BudgetManagementTools:
             SpendingInsightsResponse with spending metrics
         """
         # Get transactions for the month
+        from datetime import datetime
+
+        month_datetime = datetime.strptime(f"{month}-01", "%Y-%m-%d")
         transactions_response = self.ynab_service.get_transactions(
             since_date=f"{month}-01",
             until_date=None,
             type="outflow",
-            month=month,
+            month=month_datetime,
             category_id=category_id,
         )
 
