@@ -155,7 +155,9 @@ def test_check_budget_health_resource():
     mock_category3.activity = 15000
     mock_category3.balance = 5000
 
-    mock_month_detail.categories = [mock_category1, mock_category2, mock_category3]
+    # Set up categories as a list that can be iterated
+    categories_list = [mock_category1, mock_category2, mock_category3]
+    mock_month_detail.categories = categories_list
 
     mock_service.get_plan_month.return_value = mock_month_detail
 
@@ -312,7 +314,9 @@ def test_budget_health_unhealthy_scenario():
     mock_category3.activity = 25000  # Over-spent
     mock_category3.balance = -5000  # Negative balance
 
-    mock_month_detail.categories = [mock_category1, mock_category2, mock_category3]
+    # Set up categories as a list that can be iterated
+    categories_list = [mock_category1, mock_category2, mock_category3]
+    mock_month_detail.categories = categories_list
 
     mock_service.get_plan_month.return_value = mock_month_detail
 
