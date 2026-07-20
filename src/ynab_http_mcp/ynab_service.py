@@ -342,6 +342,44 @@ class YnabService:
         except Exception as e:
             debug_exception(f"Error updating month category: {str(e)}")
             raise RuntimeError(f"Failed to update month category data: {str(e)}") from e
+    def assign_money(self, month_date: datetime | str, category_id: str, assigned_money: int) -> ynab.SaveCategoryResponse:
+        # Validate inputs
+        if not category_id or not isinstance(category_id, str):
+            raise ValueError("category_id must be a non-empty string")
+        
+         # Validate and convert month_date
+        if isinstance(month_date, str):
+            try:
+                # Handle both 'YYYY-MM' and 'YYYY-MM-DD' formats
+                if len(month_date) == 7 and month_date[4] == "-":  # YYYY-MM format
+                    # Append '-01' to make it a valid date string
+                    month_date = datetime.fromisoformat(month_date + "-01")
+                else:
+                    # Full date format YYYY-MM-DD
+                    month_date = datetime.fromisoformat(month_date)
+            except ValueError as e:
+                raise ValueError(
+                    f"Invalid month_date format: {str(e)}. Expected 'YYYY-MM' or 'YYYY-MM-DD' format"
+                ) from e
+        elif not isinstance(month_date, datetime):
+            raise ValueError(
+                "month_date must be a datetime object or ISO format string ('YYYY-MM' or 'YYYY-MM-DD')"
+            )    
+
+        try:
+            # Format month as YYYY-MM-DD with day=01 (YNAB API expects full date format)
+            month_str = month_date.replace(day=1).strftime("%Y-%m-%d")
+            
+            payload = ynab.PatchMonthCategoryWrapper.from_dict({"category":{"budgeted":assigned_money*1000}})
+            return self._call_api(
+                ynab.CategoriesApi,
+                lambda api: api.update_month_category(
+                    str(self.plan_id), month_str, category_id, payload
+                ),
+            )
+        except Exception as e:
+            debug_exception(f"Error assigning money to month category: {str(e)}")
+            raise RuntimeError(f"Failed to assign money to month category: {str(e)}") from e
 
     def create_transaction(
         self,

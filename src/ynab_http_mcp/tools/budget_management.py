@@ -49,6 +49,15 @@ class BudgetManagementTools:
             f"{month}-01", category_id, request.budgeted_amount
         )
         return {"success": True, "category": result.data.category}
+    
+    def assign_money_to_category(
+            self,
+            month: str,
+            category_id: str,
+            budget: int
+    ) -> str:
+        result = self.ynab_service.assign_money(month, category_id, budget)
+        return "success"
 
     def create_transaction(self, request: CreateTransactionRequest) -> Dict[str, Any]:
         """
@@ -210,8 +219,17 @@ def register(mcp, ynab_service: YnabService):
         category_id: str,
         request: UpdateMonthCategoryRequest,
     ) -> str:
-        """Update a month category budget amount."""
+        """Update a month category's targets."""
         result = tools.update_month_category(month, category_id, request)
+        return json.dumps(result)
+    @mcp.tool(name="assign_budget_to_category")
+    def assign_budget_to_category_tool(
+        month: str,
+        category_id: str,
+        budget: int,
+    ) -> str:
+        """Assign budget to a month category. Pass an integer expressed in the correct currency."""
+        result = tools.assign_money_to_category(month, category_id, budget)
         return json.dumps(result)
 
     @mcp.tool(name="create_transaction")
