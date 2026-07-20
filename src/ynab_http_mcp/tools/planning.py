@@ -5,11 +5,8 @@ from datetime import datetime
 from ynab_http_mcp.debug import debug_exception
 from ynab_http_mcp.schemas.planning import (
     PlanMonthResponse,
-    AllPlanMonthsResponse,
-    PlanMonthSummary,
+    AllPlanMonthsResponse
 )
-from ynab_http_mcp.utils.schema_utils import simple_validate
-
 
 def register(mcp, ynab_service: YnabService):
     @mcp.tool(
