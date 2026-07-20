@@ -135,6 +135,3 @@ class AllPlanMonthsResponse(BaseModel):
     months: List[PlanMonthSummary] = Field(
         ..., description="List of plan month summaries"
     )
-
-
-

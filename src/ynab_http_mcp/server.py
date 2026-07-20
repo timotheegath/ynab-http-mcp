@@ -13,8 +13,8 @@ import ynab_http_mcp.tools.accounts as account_tools
 load_dotenv()  # loads .env into environment
 # Initialize FastMCP server
 
-HOST="0.0.0.0"
-PORT=int(os.getenv("HTTP_PORT", 8000))
+HOST = "0.0.0.0"
+PORT = int(os.getenv("HTTP_PORT", 8000))
 mcp = FastMCP("ynab")
 # Create service:
 ynab_service = YnabService()

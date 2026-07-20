@@ -71,6 +71,3 @@ class CategoriesResponse(BaseModel):
     category_groups: List[CategoryGroup] = Field(
         ..., description="List of category groups"
     )
-
-
-

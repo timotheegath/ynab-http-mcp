@@ -182,12 +182,27 @@ class YnabService:
                 ynab.TransactionsApi,
                 lambda api: api.get_transactions(str(self.plan_id), **params),
             )
-    def get_transaction(self, id: str):
+
+    def get_transaction(self, id: str) -> ynab.TransactionResponse:
 
         return self._call_api(
-                ynab.TransactionsApi,
-                lambda api: api.get_transaction_by_id(str(self.plan_id), id),
-            )
+            ynab.TransactionsApi,
+            lambda api: api.get_transaction_by_id(str(self.plan_id), id),
+        )
+
+    def get_payees(self) -> ynab.PayeesResponse:
+
+        return self._call_api(
+            ynab.PayeesApi,
+            lambda api: api.get_payees(str(self.plan_id)),
+        )
+
+    def get_payee(self, id: str) -> ynab.PayeeResponse:
+
+        return self._call_api(
+            ynab.PayeesApi,
+            lambda api: api.get_payee_by_id(str(self.plan_id), id),
+        )
 
     @staticmethod
     def _create_empty_response(response_type) -> Any:
@@ -251,14 +266,3 @@ class YnabService:
             key=lambda plan: plan.last_modified_on or datetime.min,
         )
         return most_recent_plan.id
-
-    @staticmethod
-    def _handle_api_output(resp) -> dict[str, Any]:
-
-        if not hasattr(resp, "to_dict"):
-            debug_exception(
-                "YnabService API returned a response with no to_dict() method"
-            )
-            raise AttributeError("Cannot convert YNAB API response to dict")
-
-        return resp.to_dict()

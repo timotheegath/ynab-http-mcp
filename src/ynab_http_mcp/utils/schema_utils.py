@@ -5,13 +5,15 @@ This module provides unified data cleaning functions to simplify
 YNAB API response processing and make data agent-friendly.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Type, TypeVar
 from datetime import date as datetime_date, datetime as datetime_datetime
 from uuid import UUID
 import logging
+from pydantic import BaseModel, ValidationError
+import os
 
 logger = logging.getLogger(__name__)
-
+T = TypeVar("T", bound=BaseModel)
 
 def clean_ynab_data(data: Any) -> Any:
     """
@@ -91,3 +93,34 @@ def filter_import_fields(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     import_fields = {"import_id", "import_payee_name", "import_payee_name_original"}
     return {key: value for key, value in data.items() if key not in import_fields}
+
+def simple_validate(data: Any, model: Type[T]) -> T:
+    """
+    Simple validation function using basic Pydantic validation.
+
+    Args:
+        data: Raw data to validate
+        model: Pydantic model class to validate against
+
+    Returns:
+        Validated model instance
+
+    Raises:
+        ValidationError: If validation fails (using Pydantic's built-in error handling)
+    """
+    try:
+        debug_mode = os.getenv("DEBUG_MODE", "false").lower() in ("true", "1", "yes")
+        if debug_mode:
+            logger.debug(f"Validating data against {model.__name__}")
+
+        return model.model_validate(data)
+    except ValidationError as e:
+        debug_mode = os.getenv("DEBUG_MODE", "false").lower() in ("true", "1", "yes")
+        if debug_mode:
+            logger.warning(f"Validation error for {model.__name__}: {str(e)}")
+        raise  # Re-raise the Pydantic ValidationError
+    except Exception as e:
+        debug_mode = os.getenv("DEBUG_MODE", "false").lower() in ("true", "1", "yes")
+        if debug_mode:
+            logger.error(f"Unexpected error validating {model.__name__}: {str(e)}")
+        raise

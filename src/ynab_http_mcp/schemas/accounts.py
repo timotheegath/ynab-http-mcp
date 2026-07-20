@@ -82,6 +82,3 @@ class AccountsResponse(BaseModel):
     """
 
     accounts: List[CleanAccount] = Field(..., description="List of accounts")
-
-
-
