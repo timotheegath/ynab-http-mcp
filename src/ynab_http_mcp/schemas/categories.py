@@ -29,6 +29,17 @@ class CleanCategory(BaseModel):
     hidden: bool = Field(..., description="Whether category is hidden")
     deleted: bool = Field(..., description="Whether category is deleted")
 
+    # Budget fields (using formatted currency from YNAB)
+    budgeted_formatted: Optional[str] = Field(
+        None, description="Budgeted amount with currency formatting"
+    )
+    activity_formatted: Optional[str] = Field(
+        None, description="Activity amount with currency formatting"
+    )
+    balance_formatted: Optional[str] = Field(
+        None, description="Balance with currency formatting"
+    )
+
     # Optional fields
     original_category_group_id: Optional[str] = Field(
         None, description="Original category group ID if moved"
@@ -47,6 +58,13 @@ class CleanCategory(BaseModel):
     goal_target_month: Optional[str] = Field(None, description="Target month for goal")
     goal_percentage_complete: Optional[int] = Field(
         None, description="Percentage of goal completed"
+    )
+
+    # Goal summary fields (human-readable)
+    goal_summary: Optional[str] = Field(None, description="Human-readable goal summary")
+    goal_status: Optional[str] = Field(None, description="Human-readable goal status")
+    goal_technical_details: Optional[str] = Field(
+        None, description="Technical goal details for advanced use"
     )
 
 

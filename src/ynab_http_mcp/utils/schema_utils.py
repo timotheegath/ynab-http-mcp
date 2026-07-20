@@ -5,12 +5,13 @@ This module provides unified data cleaning functions to simplify
 YNAB API response processing and make data agent-friendly.
 """
 
-from typing import Any, Dict, Type, TypeVar
+from typing import Any, Dict, Type, TypeVar, Optional
 from datetime import date as datetime_date, datetime as datetime_datetime
 from uuid import UUID
 import logging
 from pydantic import BaseModel, ValidationError
 import os
+import locale
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)

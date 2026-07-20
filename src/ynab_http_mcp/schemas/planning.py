@@ -37,6 +37,18 @@ class MonthCategory(BaseModel):
     budgeted: int = Field(..., description="Budgeted amount in milliunits")
     activity: int = Field(..., description="Activity amount in milliunits")
     balance: int = Field(..., description="Balance in milliunits")
+
+    # Formatted currency fields from YNAB
+    budgeted_formatted: Optional[str] = Field(
+        None, description="Budgeted amount with currency formatting"
+    )
+    activity_formatted: Optional[str] = Field(
+        None, description="Activity amount with currency formatting"
+    )
+    balance_formatted: Optional[str] = Field(
+        None, description="Balance with currency formatting"
+    )
+
     goal_type: Optional[str] = Field(None, description="Goal type if set")
     goal_creation_month: Optional[str] = Field(None, description="Goal creation month")
     goal_target: Optional[int] = Field(None, description="Goal target amount")
@@ -45,6 +57,13 @@ class MonthCategory(BaseModel):
         None, description="Goal percentage complete"
     )
     deleted: bool = Field(..., description="Whether category is deleted")
+
+    # Goal summary fields (human-readable)
+    goal_summary: Optional[str] = Field(None, description="Human-readable goal summary")
+    goal_status: Optional[str] = Field(None, description="Human-readable goal status")
+    goal_technical_details: Optional[str] = Field(
+        None, description="Technical goal details for advanced use"
+    )
 
 
 class PlanMonth(BaseModel):
