@@ -97,31 +97,17 @@ def register(mcp, ynab_service: YnabService):
         """
         # Parse filter parameters from the path
 
-        # Implement mandatory filter validation
-        if not any([since_date, until_date, type and type != "all"]):
-            error_response = {
-                "error": "At least one of 'since_date', 'until_date', or 'type' (non-'all') filters must be provided"
-            }
-
-        # Convert string parameters to appropriate types with error handling
+        # Get raw YNAB response - validation is now handled by the service method
         try:
-            converted_since_date = (
-                datetime.fromisoformat(since_date) if since_date else None
-            )
-            converted_until_date = (
-                datetime.fromisoformat(until_date) if until_date else None
+            raw_response = ynab_service.get_transactions(
+                since_date=since_date,
+                until_date=until_date,
+                type=type if type else "all",
+                account_id=account_id,
             )
         except ValueError as e:
             error_response = {"error": f"Invalid parameter format: {str(e)}"}
             return json.dumps(error_response)
-
-        # Get raw YNAB response
-        raw_response = ynab_service.get_transactions(
-            since_date=converted_since_date,
-            until_date=converted_until_date,
-            type=type if type else "all",
-            account_id=account_id,
-        )
 
         validated_response = TransactionsResponse.from_ynab_response(raw_response)
         # Return as JSON string for MCP resource compatibility

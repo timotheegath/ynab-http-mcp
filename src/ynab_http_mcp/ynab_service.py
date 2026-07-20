@@ -63,10 +63,10 @@ class YnabService:
 
     def get_transactions(
         self,
-        since_date: Optional[datetime],
-        until_date: Optional[datetime],
+        since_date: Optional[datetime | str],
+        until_date: Optional[datetime | str],
         type: str,
-        month: Optional[datetime] = None,
+        month: Optional[datetime | str] = None,
         payee_id: Optional[str] = None,
         category_id: Optional[str] = None,
         account_id: Optional[str] = None,
@@ -74,21 +74,41 @@ class YnabService:
         """
         Will always consider since, until, type as parameters.
         Will only consider one of month, payee_id, category_id, or account_id. Whoever is defined first.
+        
+        Now includes validation logic to handle string dates and ensure proper filtering.
         """
+        # Validate that at least one filter is provided
+        if not any([since_date, until_date, type and type != "all", month, payee_id, category_id, account_id]):
+            raise ValueError("At least one filter parameter must be provided (since_date, until_date, type, month, payee_id, category_id, or account_id)")
+        
+        # Convert string parameters to appropriate types with error handling
+        try:
+            converted_since_date = (
+                datetime.fromisoformat(since_date) if isinstance(since_date, str) else since_date
+            ) if since_date else None
+            converted_until_date = (
+                datetime.fromisoformat(until_date) if isinstance(until_date, str) else until_date
+            ) if until_date else None
+            converted_month = (
+                datetime.fromisoformat(month) if isinstance(month, str) else month
+            ) if month else None
+        except ValueError as e:
+            raise ValueError(f"Invalid date format: {str(e)}")
+        
         # Build parameters dictionary
         params = {}
 
         # 1. Take all of since, until, and type parameters if they are not none
-        if since_date is not None:
-            params["since_date"] = since_date.strftime("%Y-%m-%d")
-        if until_date is not None:
-            params["until_date"] = until_date.strftime("%Y-%m-%d")
+        if converted_since_date is not None:
+            params["since_date"] = converted_since_date.strftime("%Y-%m-%d")
+        if converted_until_date is not None:
+            params["until_date"] = converted_until_date.strftime("%Y-%m-%d")
         if type is not None:
             params["type"] = type
 
         # 2. Take the first of month, payee_id, category_id, or account_id that is not none
-        if month is not None:
-            params["month"] = month.replace(day=1).strftime("%Y-%m-%d")
+        if converted_month is not None:
+            params["month"] = converted_month.replace(day=1).strftime("%Y-%m-%d")
             return self._call_api(
                 ynab.TransactionsApi,
                 lambda api: api.get_transactions_by_month(str(self.plan_id), **params),
