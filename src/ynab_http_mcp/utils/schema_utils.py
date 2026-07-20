@@ -15,6 +15,7 @@ import os
 logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
+
 def clean_ynab_data(data: Any) -> Any:
     """
     Unified data cleaning function for YNAB API responses.
@@ -93,6 +94,7 @@ def filter_import_fields(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     import_fields = {"import_id", "import_payee_name", "import_payee_name_original"}
     return {key: value for key, value in data.items() if key not in import_fields}
+
 
 def simple_validate(data: Any, model: Type[T]) -> T:
     """
