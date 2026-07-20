@@ -69,10 +69,11 @@ class YnabService:
         month: Optional[datetime] = None,
         payee_id: Optional[str] = None,
         category_id: Optional[str] = None,
+        account_id: Optional[str] = None,
     ) -> ynab.TransactionsResponse:
         """
         Will always consider since, until, type as parameters.
-        Will only consider one of month, payee_id, category_id. Whoever is defined first.
+        Will only consider one of month, payee_id, category_id, or account_id. Whoever is defined first.
         """
         # Build parameters dictionary
         params = {}
@@ -85,7 +86,7 @@ class YnabService:
         if type is not None:
             params["type"] = type
 
-        # 2. Take the first of month, payee_id or category_id that is not none
+        # 2. Take the first of month, payee_id, category_id, or account_id that is not none
         if month is not None:
             params["month"] = month.replace(day=1).strftime("%Y-%m-%d")
             return self._call_api(
@@ -106,6 +107,12 @@ class YnabService:
                 lambda api: api.get_transactions_by_category(
                     str(self.plan_id), **params
                 ),
+            )
+        elif account_id is not None:
+            params["account_id"] = account_id
+            return self._call_api(
+                ynab.TransactionsApi,
+                lambda api: api.get_transactions_by_account(str(self.plan_id), **params),
             )
         else:
             return self._call_api(

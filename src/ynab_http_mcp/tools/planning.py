@@ -25,7 +25,7 @@ def register(mcp, ynab_service: YnabService):
             str | None,
             "ISO-format date within the month of choice. For instance, '2023-12-11' targets December 2023. Leave blank to select current month",
         ] = None,
-    ) -> PlanMonthResponse:
+    ) -> str:
         """Get the details of a particular plan month, the money assigned to each category in that month."""
         if month_date:
             try:
@@ -38,18 +38,14 @@ def register(mcp, ynab_service: YnabService):
         else:
             converted_month_date = None
 
-        # Get raw response and validate with schema
+        # Get raw YNAB response
         raw_response = ynab_service.get_plan_month(date=converted_month_date)
-        raw_data = raw_response.to_dict()
 
-        # Extract the month data from the YNAB response structure
-        # YNAB API returns {'data': {'month': {...}}} but our schema expects {'month': {...}}
-        month_data = raw_data.get("data", {}).get("month", {})
+        # Transform and validate with schema
+        validated_response = PlanMonthResponse.from_ynab_response(raw_response)
 
-        # Transform YNAB data to match our schema
-        validated_response = PlanMonthResponse.from_ynab_data({"month": month_data})
-
-        return validated_response
+        # Return as JSON string for MCP resource compatibility
+        return validated_response.model_dump_json()
 
     @mcp.tool(
         annotations={
@@ -59,25 +55,13 @@ def register(mcp, ynab_service: YnabService):
             "idempotentHint": True,
         }
     )
-    async def get_all_plan_months() -> AllPlanMonthsResponse:
+    async def get_all_plan_months() -> str:
         """Get a summarised list of all months in the plan."""
-        # Get raw response and validate with schema
+        # Get raw YNAB response
         raw_response = ynab_service.get_all_plan_months()
-        raw_data = raw_response.to_dict()
 
-        # Extract the months data from the YNAB response structure
-        # YNAB API returns {'data': {'months': [...]}} but our schema expects {'months': [...]}
-        months_data = raw_data.get("data", {}).get("months", [])
+        # Transform and validate with schema
+        validated_response = AllPlanMonthsResponse.from_ynab_response(raw_response)
 
-        # Transform YNAB data to match our schema
-        transformed_months = []
-        for month_data in months_data:
-            transformed_month = PlanMonthSummary.from_ynab_data(month_data)
-            transformed_months.append(transformed_month.model_dump())
-
-        # Validate using simplified approach
-        validated_response = simple_validate(
-            {"months": transformed_months}, AllPlanMonthsResponse
-        )
-
-        return validated_response
+        # Return as JSON string for MCP resource compatibility
+        return validated_response.model_dump_json()
