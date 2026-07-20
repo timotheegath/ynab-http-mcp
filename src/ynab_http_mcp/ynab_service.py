@@ -9,9 +9,6 @@ from functools import wraps
 T = TypeVar("T")
 
 
-
-
-
 class YnabService:
     def __init__(self):
         self.config = ynab.Configuration(access_token=os.getenv("YNAB_API_KEY"))
@@ -31,6 +28,12 @@ class YnabService:
         return self._call_api(
             ynab.CategoriesApi,
             lambda api: api.get_categories(str(self.plan_id)),
+        )
+
+    def get_category(self, id: str) -> ynab.CategoryResponse:
+        return self._call_api(
+            ynab.CategoriesApi,
+            lambda api: api.get_category_by_id(str(self.plan_id), id),
         )
 
     def get_plan_month(self, date: datetime | None = None) -> ynab.MonthDetail:
@@ -74,27 +77,53 @@ class YnabService:
         """
         Will always consider since, until, type as parameters.
         Will only consider one of month, payee_id, category_id, or account_id. Whoever is defined first.
-        
+
         Now includes validation logic to handle string dates and ensure proper filtering.
         """
         # Validate that at least one filter is provided
-        if not any([since_date, until_date, type and type != "all", month, payee_id, category_id, account_id]):
-            raise ValueError("At least one filter parameter must be provided (since_date, until_date, type, month, payee_id, category_id, or account_id)")
-        
+        if not any(
+            [
+                since_date,
+                until_date,
+                type and type != "all",
+                month,
+                payee_id,
+                category_id,
+                account_id,
+            ]
+        ):
+            raise ValueError(
+                "At least one filter parameter must be provided (since_date, until_date, type, month, payee_id, category_id, or account_id)"
+            )
+
         # Convert string parameters to appropriate types with error handling
         try:
             converted_since_date = (
-                datetime.fromisoformat(since_date) if isinstance(since_date, str) else since_date
-            ) if since_date else None
+                (
+                    datetime.fromisoformat(since_date)
+                    if isinstance(since_date, str)
+                    else since_date
+                )
+                if since_date
+                else None
+            )
             converted_until_date = (
-                datetime.fromisoformat(until_date) if isinstance(until_date, str) else until_date
-            ) if until_date else None
+                (
+                    datetime.fromisoformat(until_date)
+                    if isinstance(until_date, str)
+                    else until_date
+                )
+                if until_date
+                else None
+            )
             converted_month = (
-                datetime.fromisoformat(month) if isinstance(month, str) else month
-            ) if month else None
+                (datetime.fromisoformat(month) if isinstance(month, str) else month)
+                if month
+                else None
+            )
         except ValueError as e:
             raise ValueError(f"Invalid date format: {str(e)}")
-        
+
         # Build parameters dictionary
         params = {}
 
@@ -132,7 +161,9 @@ class YnabService:
             params["account_id"] = account_id
             return self._call_api(
                 ynab.TransactionsApi,
-                lambda api: api.get_transactions_by_account(str(self.plan_id), **params),
+                lambda api: api.get_transactions_by_account(
+                    str(self.plan_id), **params
+                ),
             )
         else:
             return self._call_api(
@@ -160,8 +191,6 @@ class YnabService:
             ynab.PayeesApi,
             lambda api: api.get_payee_by_id(str(self.plan_id), id),
         )
-
-
 
     @staticmethod
     def _set_default_plan(config: ynab.Configuration):

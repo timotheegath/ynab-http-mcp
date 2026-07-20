@@ -8,7 +8,11 @@ YNAB planning/month data using basic data types suitable for agents.
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from datetime import date
-from ynab import MonthDetail as ynabPlanMonthResponse, MonthSummariesResponse as ynabAllPlanMonthsResponse, MonthSummary as ynabMonthSummaryResponse
+from ynab import (
+    MonthDetail as ynabPlanMonthResponse,
+    MonthSummariesResponse as ynabAllPlanMonthsResponse,
+    MonthSummary as ynabMonthSummaryResponse,
+)
 from ynab_http_mcp.utils.schema_utils import simple_validate
 
 
@@ -63,7 +67,7 @@ class PlanMonth(BaseModel):
         """Transform YNAB API response to match our simplified schema."""
         # Convert MonthDetail to dict
         data = ynab_response.to_dict()
-        
+
         # Convert date object to YYYY-MM string format if needed
         if "month" in data and isinstance(data["month"], date):
             data["month"] = data["month"].strftime("%Y-%m")
@@ -109,13 +113,13 @@ class PlanMonthResponse(BaseModel):
         """Transform YNAB API response to match our simplified schema."""
         # Convert MonthDetail to dict - it contains the month data directly
         month_data = ynab_response.to_dict()
-        
+
         # Transform YNAB data to match our schema
         transformed_month = PlanMonth.from_ynab_response(ynab_response)
-        
+
         # Create final response
         final_response = {"month": transformed_month.model_dump()}
-        
+
         # Validate using simplified approach
         validated_response = simple_validate(final_response, PlanMonthResponse)
         return validated_response
@@ -133,18 +137,18 @@ class PlanMonthSummary(BaseModel):
     to_be_budgeted: int = Field(..., description="Amount to be budgeted")
 
     @staticmethod
-    def from_ynab_response(ynab_response: ynabMonthSummaryResponse) -> "PlanMonthSummary":
+    def from_ynab_response(
+        ynab_response: ynabMonthSummaryResponse,
+    ) -> "PlanMonthSummary":
         """Transform YNAB API response to match our simplified schema."""
         # Convert MonthSummary to dict
         data = ynab_response.to_dict()
-        
+
         # Convert date object to YYYY-MM string format if needed
         if "month" in data and isinstance(data["month"], date):
             data["month"] = data["month"].strftime("%Y-%m")
         response = PlanMonthSummary(**data)
-        validated_response = simple_validate(
-            response.model_dump(), PlanMonthSummary
-        )
+        validated_response = simple_validate(response.model_dump(), PlanMonthSummary)
         return validated_response
 
 
@@ -158,17 +162,19 @@ class AllPlanMonthsResponse(BaseModel):
     )
 
     @staticmethod
-    def from_ynab_response(ynab_response: ynabAllPlanMonthsResponse) -> "AllPlanMonthsResponse":
+    def from_ynab_response(
+        ynab_response: ynabAllPlanMonthsResponse,
+    ) -> "AllPlanMonthsResponse":
         """Transform YNAB API response to match our simplified schema."""
         # Transform YNAB data to match our schema
         transformed_months = []
         for month_summary in ynab_response.data.months:
             transformed_month = PlanMonthSummary.from_ynab_response(month_summary)
             transformed_months.append(transformed_month.model_dump())
-        
+
         # Create final response
         final_response = {"months": transformed_months}
-        
+
         # Validate using simplified approach
         validated_response = simple_validate(final_response, AllPlanMonthsResponse)
         return validated_response

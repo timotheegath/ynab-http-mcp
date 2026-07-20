@@ -7,7 +7,10 @@ YNAB category data using basic data types suitable for agents.
 
 from typing import Optional, List
 from pydantic import BaseModel, Field
-from ynab import CategoriesResponse as ynabCategoriesResponse
+from ynab import (
+    CategoriesResponse as ynabCategoriesResponse,
+    CategoryResponse as ynabCategoryResponse,
+)
 from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
 
 
@@ -75,7 +78,9 @@ class CategoriesResponse(BaseModel):
     )
 
     @staticmethod
-    def from_ynab_response(ynab_response: ynabCategoriesResponse) -> "CategoriesResponse":
+    def from_ynab_response(
+        ynab_response: ynabCategoriesResponse,
+    ) -> "CategoriesResponse":
         """Transform YNAB API response to match our simplified schema."""
         # Convert to dict
         raw_data = ynab_response.to_dict()
@@ -153,3 +158,71 @@ class CategoriesResponse(BaseModel):
 
             fallback_response = CategoriesResponse(category_groups=fallback_groups)
             return fallback_response
+
+
+class CategoryResponse(BaseModel):
+    """
+    Simplified response structure for single category endpoint.
+
+    Wraps a single category with its group information.
+    """
+
+    category: CleanCategory = Field(..., description="Single category details")
+    category_group: CategoryGroup = Field(..., description="Parent category group")
+
+    @staticmethod
+    def from_ynab_response(ynab_response: ynabCategoryResponse) -> "CategoryResponse":
+        """Transform YNAB API response to match our simplified schema."""
+        # Convert to dict
+        raw_data = ynab_response.to_dict()
+
+        # Extract category and group data from YNAB response structure
+        category_data = raw_data.get("data", {}).get("category", {})
+        group_data = raw_data.get("data", {}).get("category_group", {})
+
+        try:
+            # Clean and validate category data
+            cleaned_category_data = clean_ynab_data(category_data)
+            validated_category = simple_validate(cleaned_category_data, CleanCategory)
+
+            # Clean and validate group data
+            cleaned_group_data = clean_ynab_data(group_data)
+            # Add the cleaned category to the group
+            cleaned_group_data["categories"] = [validated_category.model_dump()]
+            validated_group = simple_validate(cleaned_group_data, CategoryGroup)
+
+            # Create final response
+            final_response = {
+                "category": validated_category.model_dump(),
+                "category_group": validated_group.model_dump(),
+            }
+
+            # Validate complete response structure
+            validated_response = simple_validate(final_response, CategoryResponse)
+            return validated_response
+
+        except Exception:
+            from ynab_http_mcp.debug import debug_exception
+
+            debug_exception(
+                f"Failed to validate category response for category {category_data.get('id', 'unknown')}"
+            )
+
+            # Return a fallback response if validation fails
+            try:
+                # Try to create basic objects even if validation failed
+                basic_category = CleanCategory(**clean_ynab_data(category_data))
+                basic_group = CategoryGroup(
+                    id=group_data.get("id", ""),
+                    name=group_data.get("name", ""),
+                    hidden=group_data.get("hidden", False),
+                    deleted=group_data.get("deleted", False),
+                    categories=[basic_category],
+                )
+                fallback_response = CategoryResponse(
+                    category=basic_category, category_group=basic_group
+                )
+                return fallback_response
+            except Exception:
+                # If all else fails, raise the original exception
+                raise

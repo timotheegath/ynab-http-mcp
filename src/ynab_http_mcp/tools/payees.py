@@ -43,7 +43,7 @@ def register(mcp, ynab_service: YnabService):
 
         # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json()
-    
+
     @mcp.resource(
         uri="data://payees/{payee_id}/transactions{?since_date,until_date,type}",
         mime_type="application/json",
@@ -92,4 +92,3 @@ def register(mcp, ynab_service: YnabService):
         validated_response = TransactionsResponse.from_ynab_response(raw_response)
         # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json()
-

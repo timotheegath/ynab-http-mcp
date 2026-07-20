@@ -36,6 +36,7 @@ class CleanPayee(BaseModel):
             if field_info.description:
                 hints[field_name] = field_info.description
         return hints
+
     name: str = Field(..., description="Payee name")
     deleted: bool = Field(..., description="Whether payee is deleted")
 
