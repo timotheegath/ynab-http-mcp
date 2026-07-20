@@ -5,7 +5,7 @@ This module defines simplified Pydantic models for validating
 YNAB payee data using basic data types suitable for agents.
 """
 
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import BaseModel, Field
 from ynab import (
     PayeesResponse as ynabPayeesResponse,
@@ -25,6 +25,17 @@ class CleanPayee(BaseModel):
 
     # Required fields
     id: str = Field(..., description="Unique payee identifier")
+
+    @staticmethod
+    def _extract_hints() -> Dict[str, str]:
+        """
+        Extract contextual hints for complex fields from the schema.
+        """
+        hints = {}
+        for field_name, field_info in CleanPayee.model_fields.items():
+            if field_info.description:
+                hints[field_name] = field_info.description
+        return hints
     name: str = Field(..., description="Payee name")
     deleted: bool = Field(..., description="Whether payee is deleted")
 
@@ -43,6 +54,9 @@ class PayeesResponse(BaseModel):
     """
 
     payees: List[CleanPayee] = Field(..., description="List of payees")
+    _hints: Optional[Dict[str, str]] = Field(
+        None, description="Contextual hints for complex fields"
+    )
 
     @staticmethod
     def from_ynab_response(ynab_response: ynabPayeesResponse) -> "PayeesResponse":
@@ -66,10 +80,7 @@ class PayeesResponse(BaseModel):
                 continue
 
         # Create final response with contextual hints extracted from schema
-        hints = {}
-        for field_name, field_info in CleanPayee.model_fields.items():
-            if field_info.description:
-                hints[field_name] = field_info.description
+        hints = CleanPayee._extract_hints()
 
         final_response = {
             "payees": cleaned_payees,
@@ -90,6 +101,9 @@ class PayeeResponse(BaseModel):
     """
 
     payee: CleanPayee = Field(..., description="Payee")
+    _hints: Optional[Dict[str, str]] = Field(
+        None, description="Contextual hints for complex fields"
+    )
 
     @staticmethod
     def from_ynab_response(ynab_reponse: ynabPayeeResponse) -> "PayeeResponse":
@@ -113,10 +127,7 @@ class PayeeResponse(BaseModel):
             )
 
         # Create final response with contextual hints extracted from schema
-        hints = {}
-        for field_name, field_info in CleanPayee.model_fields.items():
-            if field_info.description:
-                hints[field_name] = field_info.description
+        hints = CleanPayee._extract_hints()
 
         final_response = {
             "payee": cleaned_payee,

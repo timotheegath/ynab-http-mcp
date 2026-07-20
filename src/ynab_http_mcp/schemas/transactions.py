@@ -26,6 +26,27 @@ class CleanTransaction(BaseModel):
 
     model_config = ConfigDict(json_encoders={date_type: str, datetime_type: str})
 
+    @staticmethod
+    def _extract_hints() -> Dict[str, str]:
+        """
+        Extract contextual hints for complex fields from the schema.
+        """
+        hints = {}
+        for field_name, field_info in CleanTransaction.model_fields.items():
+            if field_info.description and any(
+                keyword in field_info.description
+                for keyword in [
+                    "transfer",
+                    "matched",
+                    "flag",
+                    "debt",
+                    "amount",
+                    "cleared",
+                ]
+            ):
+                hints[field_name] = field_info.description
+        return hints
+
     # Required fields
     id: str = Field(..., description="Unique transaction identifier")
     date: date_type = Field(..., description="Transaction date")
@@ -91,6 +112,9 @@ class TransactionsResponse(BaseModel):
     server_knowledge: int = Field(
         ..., description="Server knowledge version for pagination"
     )
+    _hints: Optional[Dict[str, str]] = Field(
+        None, description="Contextual hints for complex fields"
+    )
 
     @staticmethod
     def from_ynab_response(
@@ -117,20 +141,7 @@ class TransactionsResponse(BaseModel):
                 continue
 
         # Create final response with contextual hints extracted from schema
-        hints = {}
-        for field_name, field_info in CleanTransaction.model_fields.items():
-            if field_info.description and any(
-                keyword in field_info.description
-                for keyword in [
-                    "transfer",
-                    "matched",
-                    "flag",
-                    "debt",
-                    "amount",
-                    "cleared",
-                ]
-            ):
-                hints[field_name] = field_info.description
+        hints = CleanTransaction._extract_hints()
 
         final_response = {
             "transactions": cleaned_transactions,
@@ -155,6 +166,9 @@ class TransactionResponse(BaseModel):
     )
     server_knowledge: int = Field(
         ..., description="Server knowledge version for pagination"
+    )
+    _hints: Optional[Dict[str, str]] = Field(
+        None, description="Contextual hints for complex fields"
     )
 
     @staticmethod
@@ -181,20 +195,7 @@ class TransactionResponse(BaseModel):
             )
 
         # Create final response with contextual hints extracted from schema
-        hints = {}
-        for field_name, field_info in CleanTransaction.model_fields.items():
-            if field_info.description and any(
-                keyword in field_info.description
-                for keyword in [
-                    "transfer",
-                    "matched",
-                    "flag",
-                    "debt",
-                    "amount",
-                    "cleared",
-                ]
-            ):
-                hints[field_name] = field_info.description
+        hints = CleanTransaction._extract_hints()
 
         final_response = {
             "transaction": cleaned_transaction,
