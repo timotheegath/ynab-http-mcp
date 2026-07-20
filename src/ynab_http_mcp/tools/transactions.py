@@ -12,7 +12,7 @@ import json
 def register(mcp, ynab_service: YnabService):
 
     @mcp.resource(
-        uri="data://transactions{?since_date,until_date,type,payee_id,limit,month}",
+        uri="data://transactions{?since_date,until_date,type,limit,month}",
         mime_type="application/json",
     )
     async def get_transactions_resource(
@@ -28,10 +28,6 @@ def register(mcp, ynab_service: YnabService):
             Literal["all", "uncleared", "cleared", "reconciled"] | None,
             "Transaction type filter. Must be one of: 'all', 'uncleared', 'cleared', 'reconciled'.",
         ] = "all",
-        payee_id: Annotated[
-            str | None,
-            "Payee ID to filter transactions by specific payee.",
-        ] = None,
         limit: Annotated[
             int | None,
             "Maximum number of transactions to return. Leave blank for no limit.",
@@ -80,7 +76,6 @@ def register(mcp, ynab_service: YnabService):
             until_date=converted_until_date,
             type=type if type else "all",
             month=converted_month,
-            payee_id=payee_id,
         )
 
         validated_response = TransactionsResponse.from_ynab_response(raw_response)
