@@ -30,7 +30,6 @@ class BudgetManagementTools:
 
     def update_month_category(
         self,
-        budget_id: str,
         month: str,
         category_id: str,
         request: UpdateMonthCategoryRequest,
@@ -39,7 +38,6 @@ class BudgetManagementTools:
         Update a month category budget amount.
 
         Args:
-            budget_id: YNAB budget ID
             month: Month in YYYY-MM format
             category_id: YNAB category ID
             request: Update request with new budgeted amount
@@ -52,14 +50,11 @@ class BudgetManagementTools:
         )
         return {"success": True, "category": result.data.category}
 
-    def create_transaction(
-        self, budget_id: str, request: CreateTransactionRequest
-    ) -> Dict[str, Any]:
+    def create_transaction(self, request: CreateTransactionRequest) -> Dict[str, Any]:
         """
         Create a new transaction.
 
         Args:
-            budget_id: YNAB budget ID
             request: Transaction creation request
 
         Returns:
@@ -79,12 +74,11 @@ class BudgetManagementTools:
         )
         return {"success": True, "transaction": result.data.transaction}
 
-    def check_budget_health(self, budget_id: str, month: str) -> BudgetHealthResponse:
+    def check_budget_health(self, month: str) -> BudgetHealthResponse:
         """
         Check overall budget health for a specific month.
 
         Args:
-            budget_id: YNAB budget ID
             month: Month in YYYY-MM format
 
         Returns:
@@ -115,7 +109,7 @@ class BudgetManagementTools:
         )
 
     def get_spending_insights(
-        self, budget_id: str, month: str, category_id: Optional[str] = None
+        self, month: str, category_id: Optional[str] = None
     ) -> SpendingInsightsResponse:
         """
         Get spending insights for a month and optional category.
@@ -177,33 +171,36 @@ def register(mcp, ynab_service: YnabService):
 
     @mcp.tool(name="update_month_category")
     def update_month_category_tool(
-        budget_id: str,
         month: str,
         category_id: str,
         request: UpdateMonthCategoryRequest,
     ) -> str:
         """Update a month category budget amount."""
-        result = tools.update_month_category(budget_id, month, category_id, request)
+        result = tools.update_month_category(month, category_id, request)
         return json.dumps(result)
 
     @mcp.tool(name="create_transaction")
-    def create_transaction_tool(
-        budget_id: str, request: CreateTransactionRequest
-    ) -> str:
+    def create_transaction_tool(request: CreateTransactionRequest) -> str:
         """Create a new transaction."""
-        result = tools.create_transaction(budget_id, request)
+        result = tools.create_transaction(request)
         return json.dumps(result)
 
-    @mcp.resource(uri="data://budget/check-health", mime_type="application/json")
-    def check_budget_health_resource(budget_id: str, month: str) -> str:
+    @mcp.resource(
+        uri="data://budget/check-health/{month}",
+        mime_type="application/json",
+    )
+    def check_budget_health_resource(month: str) -> str:
         """Check overall budget health for a specific month."""
-        result = tools.check_budget_health(budget_id, month)
+        result = tools.check_budget_health(month)
         return result.model_dump_json()
 
-    @mcp.resource(uri="data://budget/spending-insights", mime_type="application/json")
+    @mcp.resource(
+        uri="data://budget/spending-insights/{month}",
+        mime_type="application/json",
+    )
     def get_spending_insights_resource(
-        budget_id: str, month: str, category_id: Optional[str] = None
+        month: str, category_id: Optional[str] = None
     ) -> str:
         """Get spending insights for a month and optional category."""
-        result = tools.get_spending_insights(budget_id, month, category_id)
+        result = tools.get_spending_insights(month, category_id)
         return result.model_dump_json()
