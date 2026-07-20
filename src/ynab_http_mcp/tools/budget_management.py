@@ -175,10 +175,8 @@ def register(mcp, ynab_service: YnabService):
     """Register budget management tools with MCP server."""
     tools = BudgetManagementTools(ynab_service)
 
-    @mcp.resource(
-        uri="data://budget/update-month-category", mime_type="application/json"
-    )
-    def update_month_category_resource(
+    @mcp.tool(name="update_month_category")
+    def update_month_category_tool(
         budget_id: str,
         month: str,
         category_id: str,
@@ -188,8 +186,8 @@ def register(mcp, ynab_service: YnabService):
         result = tools.update_month_category(budget_id, month, category_id, request)
         return json.dumps(result)
 
-    @mcp.resource(uri="data://budget/create-transaction", mime_type="application/json")
-    def create_transaction_resource(
+    @mcp.tool(name="create_transaction")
+    def create_transaction_tool(
         budget_id: str, request: CreateTransactionRequest
     ) -> str:
         """Create a new transaction."""
