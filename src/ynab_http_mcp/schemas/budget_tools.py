@@ -42,13 +42,16 @@ class BudgetHealthResponse(BaseModel):
     """
 
     month: str = Field(..., description="Month in YYYY-MM format")
-    total_income: int = Field(..., description="Total income in milliunits")
     total_budgeted: int = Field(..., description="Total budgeted in milliunits")
     total_activity: int = Field(..., description="Total activity in milliunits")
     to_be_budgeted: int = Field(..., description="To be budgeted in milliunits")
-    budgeted_ratio: float = Field(..., description="Ratio of budgeted to income")
-    activity_ratio: float = Field(..., description="Ratio of activity to income")
-    is_healthy: bool = Field(..., description="Whether budget is healthy")
+    category_health: Dict[str, Dict[str, Any]] = Field(
+        ..., description="Category-level health metrics"
+    )
+    health_percentage: float = Field(
+        ..., description="Percentage of healthy categories"
+    )
+    is_healthy: bool = Field(..., description="Whether budget is healthy overall")
 
 
 class SpendingInsightCategory(BaseModel):

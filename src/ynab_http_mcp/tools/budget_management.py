@@ -88,24 +88,56 @@ class BudgetManagementTools:
         month_detail = self.ynab_service.get_plan_month(month)
 
         # Calculate health metrics from month detail
-        total_income = month_detail.income
         total_budgeted = month_detail.budgeted
         total_activity = month_detail.activity
         to_be_budgeted = month_detail.to_be_budgeted
 
-        # Calculate ratios
-        budgeted_ratio = total_budgeted / total_income if total_income > 0 else 0
-        activity_ratio = total_activity / total_income if total_income > 0 else 0
+        # Calculate category-level health metrics
+        category_health = {}
+        healthy_categories = 0
+        total_categories = 0
+
+        for category in month_detail.categories:
+            cat_budgeted = category.budgeted
+            cat_activity = category.activity
+            cat_balance = category.balance
+
+            # Skip categories with no budgeted amount
+            if cat_budgeted == 0:
+                continue
+
+            total_categories += 1
+
+            # Calculate category health metrics
+            activity_ratio = cat_activity / cat_budgeted if cat_budgeted > 0 else 0
+            is_healthy = cat_balance >= 0 and activity_ratio <= 1.0
+
+            if is_healthy:
+                healthy_categories += 1
+
+            category_health[category.id] = {
+                "category_name": category.name,
+                "budgeted": cat_budgeted,
+                "activity": cat_activity,
+                "balance": cat_balance,
+                "activity_ratio": activity_ratio,
+                "is_healthy": is_healthy,
+            }
+
+        # Calculate overall health percentage
+        health_percentage = (
+            (healthy_categories / total_categories) if total_categories > 0 else 1.0
+        )
 
         return BudgetHealthResponse(
             month=month,
-            total_income=total_income,
             total_budgeted=total_budgeted,
             total_activity=total_activity,
             to_be_budgeted=to_be_budgeted,
-            budgeted_ratio=budgeted_ratio,
-            activity_ratio=activity_ratio,
-            is_healthy=budgeted_ratio <= 1.0 and to_be_budgeted >= 0,
+            category_health=category_health,
+            health_percentage=health_percentage,
+            is_healthy=health_percentage
+            >= 0.8,  # Consider healthy if 80%+ categories are healthy
         )
 
     def get_spending_insights(
@@ -140,9 +172,9 @@ class BudgetManagementTools:
         transaction_count = len(transactions)
 
         # Get category insights
-        category_insights = {}
+        category_insights: Dict[str, Any] = {}
         for transaction in transactions:
-            cat_id = transaction.category_id
+            cat_id = str(transaction.category_id)
             if cat_id:
                 amount = transaction.amount
                 if cat_id in category_insights:

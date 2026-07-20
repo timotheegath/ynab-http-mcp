@@ -129,10 +129,33 @@ def test_check_budget_health_resource():
 
     # Create mock month detail response
     mock_month_detail = Mock()
-    mock_month_detail.income = 100000
     mock_month_detail.budgeted = 80000
     mock_month_detail.activity = 60000
     mock_month_detail.to_be_budgeted = 20000
+
+    # Create mock categories
+    mock_category1 = Mock()
+    mock_category1.id = "cat-1"
+    mock_category1.name = "Groceries"
+    mock_category1.budgeted = 40000
+    mock_category1.activity = 30000
+    mock_category1.balance = 10000
+
+    mock_category2 = Mock()
+    mock_category2.id = "cat-2"
+    mock_category2.name = "Dining Out"
+    mock_category2.budgeted = 20000
+    mock_category2.activity = 15000
+    mock_category2.balance = 5000
+
+    mock_category3 = Mock()
+    mock_category3.id = "cat-3"
+    mock_category3.name = "Entertainment"
+    mock_category3.budgeted = 20000
+    mock_category3.activity = 15000
+    mock_category3.balance = 5000
+
+    mock_month_detail.categories = [mock_category1, mock_category2, mock_category3]
 
     mock_service.get_plan_month.return_value = mock_month_detail
 
@@ -145,12 +168,11 @@ def test_check_budget_health_resource():
     # Verify the result
     assert isinstance(result, BudgetHealthResponse)
     assert result.month == "2024-01"
-    assert result.total_income == 100000
     assert result.total_budgeted == 80000
     assert result.total_activity == 60000
     assert result.to_be_budgeted == 20000
-    assert result.budgeted_ratio == 0.8
-    assert result.activity_ratio == 0.6
+    assert len(result.category_health) == 3  # Should have 3 categories
+    assert result.health_percentage == 1.0  # All categories are healthy
     assert result.is_healthy is True
 
     # Verify the service was called correctly
@@ -264,10 +286,33 @@ def test_budget_health_unhealthy_scenario():
 
     # Create mock month detail response with unhealthy metrics
     mock_month_detail = Mock()
-    mock_month_detail.income = 100000
     mock_month_detail.budgeted = 120000  # Over-budgeted
     mock_month_detail.activity = 110000
     mock_month_detail.to_be_budgeted = -20000  # Negative
+
+    # Create mock categories - some unhealthy
+    mock_category1 = Mock()
+    mock_category1.id = "cat-1"
+    mock_category1.name = "Groceries"
+    mock_category1.budgeted = 40000
+    mock_category1.activity = 50000  # Over-spent
+    mock_category1.balance = -10000  # Negative balance
+
+    mock_category2 = Mock()
+    mock_category2.id = "cat-2"
+    mock_category2.name = "Dining Out"
+    mock_category2.budgeted = 20000
+    mock_category2.activity = 15000  # Healthy
+    mock_category2.balance = 5000
+
+    mock_category3 = Mock()
+    mock_category3.id = "cat-3"
+    mock_category3.name = "Entertainment"
+    mock_category3.budgeted = 20000
+    mock_category3.activity = 25000  # Over-spent
+    mock_category3.balance = -5000  # Negative balance
+
+    mock_month_detail.categories = [mock_category1, mock_category2, mock_category3]
 
     mock_service.get_plan_month.return_value = mock_month_detail
 
@@ -279,8 +324,11 @@ def test_budget_health_unhealthy_scenario():
 
     # Verify the result shows unhealthy budget
     assert isinstance(result, BudgetHealthResponse)
-    assert result.budgeted_ratio == 1.2
-    assert result.is_healthy is False
+    assert len(result.category_health) == 3  # Should have 3 categories
+    assert result.health_percentage == pytest.approx(
+        0.33, abs=0.01
+    )  # Only 1 out of 3 categories is healthy
+    assert result.is_healthy is False  # Less than 80% healthy
 
     print("✓ check_budget_health unhealthy scenario test passed")
 
