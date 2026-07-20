@@ -7,6 +7,7 @@ import ynab_http_mcp.tools.categories as category_tools
 import ynab_http_mcp.tools.planning as planning_tools
 import ynab_http_mcp.tools.transactions as transaction_tools
 import ynab_http_mcp.tools.accounts as account_tools
+import ynab_http_mcp.tools.payees as payee_tools
 
 
 # Load .env
@@ -23,6 +24,7 @@ category_tools.register(mcp, ynab_service)
 planning_tools.register(mcp, ynab_service)
 transaction_tools.register(mcp, ynab_service)
 account_tools.register(mcp, ynab_service)
+payee_tools.register(mcp, ynab_service)
 
 
 async def main():
