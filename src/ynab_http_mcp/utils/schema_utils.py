@@ -113,7 +113,8 @@ def simple_validate(data: Any, model: Type[T]) -> T:
     try:
         debug_mode = os.getenv("DEBUG_MODE", "false").lower() in ("true", "1", "yes")
         if debug_mode:
-            logger.debug(f"Validating data against {model.__name__}")
+            # logger.debug(f"Validating data against {model.__name__}")
+            pass
 
         return model.model_validate(data)
     except ValidationError as e:

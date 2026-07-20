@@ -68,7 +68,7 @@ def register(mcp, ynab_service: YnabService):
         uri="data://accounts/{account_id}/transactions{?since_date,until_date,type}",
         mime_type="application/json",
     )
-    async def get_transactions_by_account_resource(
+    async def get_transactions_by_account(
         account_id: Annotated[
             str,
             "Account ID to filter transactions by specific account. Takes precedence over month, payee, and category filters.",
