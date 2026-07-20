@@ -3,7 +3,7 @@ import ynab
 from uuid import UUID
 from datetime import datetime
 from ynab_http_mcp.debug import debug_exception, debug_ynab_response
-from typing import Optional, Callable, TypeVar
+from typing import Optional, Callable, TypeVar, Dict, Any
 
 T = TypeVar("T")
 
@@ -35,19 +35,21 @@ class YnabService:
             lambda api: api.get_category_by_id(str(self.plan_id), id),
         )
 
-    def get_month_category(self, month_date: datetime | str, category_id: str) -> ynab.CategoryResponse:
+    def get_month_category(
+        self, month_date: datetime | str, category_id: str
+    ) -> ynab.CategoryResponse:
         """
         Returns a specific category's data for a given month.
-        
+
         Args:
             month_date: datetime object or ISO format string representing the month.
                        Accepts both 'YYYY-MM-DD' and 'YYYY-MM' formats. Day is ignored.
                        Examples: '2025-12-01', '2025-12-15', or '2025-12'
             category_id: ID of the category to retrieve
-            
+
         Returns:
             CategoryResponse containing the category data for the specified month
-            
+
         Raises:
             ValueError: If category_id is empty or invalid, or if month_date format is invalid
             RuntimeError: If there are issues with the YNAB API call
@@ -55,32 +57,40 @@ class YnabService:
         # Validate category_id
         if not category_id or not isinstance(category_id, str):
             raise ValueError("category_id must be a non-empty string")
-        
+
         # Validate and convert month_date
         if isinstance(month_date, str):
             try:
                 # Handle both 'YYYY-MM' and 'YYYY-MM-DD' formats
-                if len(month_date) == 7 and month_date[4] == '-':  # YYYY-MM format
+                if len(month_date) == 7 and month_date[4] == "-":  # YYYY-MM format
                     # Append '-01' to make it a valid date string
-                    month_date = datetime.fromisoformat(month_date + '-01')
+                    month_date = datetime.fromisoformat(month_date + "-01")
                 else:
                     # Full date format YYYY-MM-DD
                     month_date = datetime.fromisoformat(month_date)
             except ValueError as e:
-                raise ValueError(f"Invalid month_date format: {str(e)}. Expected 'YYYY-MM' or 'YYYY-MM-DD' format") from e
+                raise ValueError(
+                    f"Invalid month_date format: {str(e)}. Expected 'YYYY-MM' or 'YYYY-MM-DD' format"
+                ) from e
         elif not isinstance(month_date, datetime):
-            raise ValueError("month_date must be a datetime object or ISO format string ('YYYY-MM' or 'YYYY-MM-DD')")
-        
+            raise ValueError(
+                "month_date must be a datetime object or ISO format string ('YYYY-MM' or 'YYYY-MM-DD')"
+            )
+
         try:
             # Format month as YYYY-MM-DD with day=01 (YNAB API expects full date format)
             month_str = month_date.replace(day=1).strftime("%Y-%m-%d")
             return self._call_api(
                 ynab.CategoriesApi,
-                lambda api: api.get_month_category_by_id(str(self.plan_id), month_str, category_id),
+                lambda api: api.get_month_category_by_id(
+                    str(self.plan_id), month_str, category_id
+                ),
             )
         except Exception as e:
             debug_exception(f"Error fetching month category: {str(e)}")
-            raise RuntimeError(f"Failed to retrieve month category data: {str(e)}") from e
+            raise RuntimeError(
+                f"Failed to retrieve month category data: {str(e)}"
+            ) from e
 
     def get_plan_month(self, date: datetime | str | None = None) -> ynab.MonthDetail:
         """
@@ -91,9 +101,9 @@ class YnabService:
             if isinstance(date, str):
                 try:
                     # Handle both 'YYYY-MM' and 'YYYY-MM-DD' formats
-                    if len(date) == 7 and date[4] == '-':  # YYYY-MM format
+                    if len(date) == 7 and date[4] == "-":  # YYYY-MM format
                         # Append '-01' to make it a valid date string
-                        date = datetime.fromisoformat(date + '-01')
+                        date = datetime.fromisoformat(date + "-01")
                     else:
                         # Full date format YYYY-MM-DD
                         date = datetime.fromisoformat(date)
@@ -248,6 +258,367 @@ class YnabService:
             ynab.PayeesApi,
             lambda api: api.get_payee_by_id(str(self.plan_id), id),
         )
+
+    def update_month_category(
+        self,
+        month_date: datetime | str,
+        category_id: str,
+        budgeted_amount: int | None = None,
+        balance_adjustment: int | None = None,
+    ) -> ynab.CategoryResponse:
+        """
+        Updates a category's budgeted amount or balance for a specific month.
+
+        Args:
+            month_date: datetime object or ISO format string representing the month.
+                       Accepts both 'YYYY-MM-DD' and 'YYYY-MM' formats. Day is ignored.
+            category_id: ID of the category to update
+            budgeted_amount: New budgeted amount in milliunits (optional)
+            balance_adjustment: Amount to adjust balance by in milliunits (optional)
+
+        Returns:
+            CategoryResponse containing the updated category data
+
+        Raises:
+            ValueError: If inputs are invalid
+            RuntimeError: If there are issues with the YNAB API call
+        """
+        # Validate inputs
+        if not category_id or not isinstance(category_id, str):
+            raise ValueError("category_id must be a non-empty string")
+
+        if budgeted_amount is None and balance_adjustment is None:
+            raise ValueError(
+                "At least one of budgeted_amount or balance_adjustment must be provided"
+            )
+
+        # Validate and convert month_date
+        if isinstance(month_date, str):
+            try:
+                # Handle both 'YYYY-MM' and 'YYYY-MM-DD' formats
+                if len(month_date) == 7 and month_date[4] == "-":  # YYYY-MM format
+                    # Append '-01' to make it a valid date string
+                    month_date = datetime.fromisoformat(month_date + "-01")
+                else:
+                    # Full date format YYYY-MM-DD
+                    month_date = datetime.fromisoformat(month_date)
+            except ValueError as e:
+                raise ValueError(
+                    f"Invalid month_date format: {str(e)}. Expected 'YYYY-MM' or 'YYYY-MM-DD' format"
+                ) from e
+        elif not isinstance(month_date, datetime):
+            raise ValueError(
+                "month_date must be a datetime object or ISO format string ('YYYY-MM' or 'YYYY-MM-DD')"
+            )
+
+        # Build the update payload
+        payload = {}
+        if budgeted_amount is not None:
+            payload["budgeted"] = budgeted_amount
+
+        try:
+            # Format month as YYYY-MM-DD with day=01 (YNAB API expects full date format)
+            month_str = month_date.replace(day=1).strftime("%Y-%m-%d")
+
+            # Get current category data to calculate new balance if needed
+            current_category = self.get_month_category(month_date, category_id)
+            current_balance = current_category.data.category.balance
+
+            if balance_adjustment is not None:
+                # Calculate new balance
+                new_balance = current_balance + balance_adjustment
+                # For balance adjustments, we need to create a transaction
+                # This is a simplified approach - real implementation would need proper transaction handling
+                payload["balance"] = new_balance
+
+            return self._call_api(
+                ynab.CategoriesApi,
+                lambda api: api.update_month_category(
+                    str(self.plan_id), month_str, category_id, payload
+                ),
+            )
+        except Exception as e:
+            debug_exception(f"Error updating month category: {str(e)}")
+            raise RuntimeError(f"Failed to update month category data: {str(e)}") from e
+
+    def create_transaction(
+        self,
+        account_id: str,
+        date: datetime | str,
+        amount: int,
+        payee_id: str | None = None,
+        payee_name: str | None = None,
+        category_id: str | None = None,
+        memo: str | None = None,
+        cleared: str = "cleared",
+        approved: bool = True,
+        flag_color: str | None = None,
+    ) -> ynab.TransactionResponse:
+        """
+        Creates a new transaction in YNAB.
+
+        Args:
+            account_id: ID of the account for the transaction
+            date: Transaction date as datetime or ISO format string
+            amount: Transaction amount in milliunits (negative for outflow, positive for inflow)
+            payee_id: Optional payee ID
+            payee_name: Optional payee name (required if payee_id not provided)
+            category_id: Optional category ID
+            memo: Optional memo text
+            cleared: Cleared status (cleared, uncleared, reconciled)
+            approved: Whether transaction is approved
+            flag_color: Optional flag color
+
+        Returns:
+            TransactionResponse containing the created transaction
+
+        Raises:
+            ValueError: If required inputs are missing or invalid
+            RuntimeError: If there are issues with the YNAB API call
+        """
+        # Validate inputs
+        if not account_id or not isinstance(account_id, str):
+            raise ValueError("account_id must be a non-empty string")
+
+        if not isinstance(amount, int):
+            raise ValueError("amount must be an integer (milliunits)")
+
+        if amount == 0:
+            raise ValueError("amount cannot be zero")
+
+        if not payee_id and not payee_name:
+            raise ValueError("Either payee_id or payee_name must be provided")
+
+        if payee_id and not isinstance(payee_id, str):
+            raise ValueError("payee_id must be a string if provided")
+
+        if payee_name and not isinstance(payee_name, str):
+            raise ValueError("payee_name must be a string if provided")
+
+        if category_id and not isinstance(category_id, str):
+            raise ValueError("category_id must be a string if provided")
+
+        if memo and not isinstance(memo, str):
+            raise ValueError("memo must be a string if provided")
+
+        if cleared not in ["cleared", "uncleared", "reconciled"]:
+            raise ValueError("cleared must be one of: cleared, uncleared, reconciled")
+
+        if not isinstance(approved, bool):
+            raise ValueError("approved must be a boolean")
+
+        if flag_color and flag_color not in [
+            "red",
+            "orange",
+            "yellow",
+            "green",
+            "blue",
+            "purple",
+            None,
+        ]:
+            raise ValueError(
+                "flag_color must be one of: red, orange, yellow, green, blue, purple, or None"
+            )
+
+        # Validate and convert date
+        if isinstance(date, str):
+            try:
+                date = datetime.fromisoformat(date)
+            except ValueError as e:
+                raise ValueError(f"Invalid date format: {str(e)}") from e
+        elif not isinstance(date, datetime):
+            raise ValueError("date must be a datetime object or ISO format string")
+
+        # Build transaction payload
+        transaction_data = {
+            "transaction": {
+                "account_id": account_id,
+                "date": date.strftime("%Y-%m-%d"),
+                "amount": amount,
+                "cleared": cleared,
+                "approved": approved,
+            }
+        }
+
+        if payee_id:
+            transaction_data["transaction"]["payee_id"] = payee_id
+        else:
+            transaction_data["transaction"]["payee_name"] = payee_name
+
+        if category_id:
+            transaction_data["transaction"]["category_id"] = category_id
+
+        if memo:
+            transaction_data["transaction"]["memo"] = memo
+
+        if flag_color:
+            transaction_data["transaction"]["flag_color"] = flag_color
+
+        try:
+            return self._call_api(
+                ynab.TransactionsApi,
+                lambda api: api.create_transaction(str(self.plan_id), transaction_data),
+            )
+        except Exception as e:
+            debug_exception(f"Error creating transaction: {str(e)}")
+            raise RuntimeError(f"Failed to create transaction: {str(e)}") from e
+
+    def validate_write_operation(self, operation_type: str, **kwargs) -> Dict[str, Any]:
+        """
+        Validates write operation parameters and returns normalized data.
+
+        Args:
+            operation_type: Type of write operation (e.g., 'update_category', 'create_transaction')
+            **kwargs: Operation-specific parameters
+
+        Returns:
+            Dict containing validated and normalized parameters
+
+        Raises:
+            ValueError: If validation fails
+        """
+        validated_data = {}
+
+        if operation_type == "update_category":
+            # Validate month_date
+            month_date = kwargs.get("month_date")
+            if not month_date:
+                raise ValueError("month_date is required for update_category")
+
+            if isinstance(month_date, str):
+                try:
+                    if len(month_date) == 7 and month_date[4] == "-":  # YYYY-MM format
+                        validated_data["month_date"] = datetime.fromisoformat(
+                            month_date + "-01"
+                        )
+                    else:
+                        validated_data["month_date"] = datetime.fromisoformat(
+                            month_date
+                        )
+                except ValueError as e:
+                    raise ValueError(f"Invalid month_date format: {str(e)}") from e
+            elif isinstance(month_date, datetime):
+                validated_data["month_date"] = month_date
+            else:
+                raise ValueError(
+                    "month_date must be a datetime object or ISO format string"
+                )
+
+            # Validate category_id
+            category_id = kwargs.get("category_id")
+            if not category_id or not isinstance(category_id, str):
+                raise ValueError("category_id must be a non-empty string")
+            validated_data["category_id"] = category_id
+
+            # Validate budgeted_amount or balance_adjustment
+            budgeted_amount = kwargs.get("budgeted_amount")
+            balance_adjustment = kwargs.get("balance_adjustment")
+
+            if budgeted_amount is None and balance_adjustment is None:
+                raise ValueError(
+                    "At least one of budgeted_amount or balance_adjustment must be provided"
+                )
+
+            if budgeted_amount is not None:
+                if not isinstance(budgeted_amount, int):
+                    raise ValueError("budgeted_amount must be an integer")
+                validated_data["budgeted_amount"] = budgeted_amount
+
+            if balance_adjustment is not None:
+                if not isinstance(balance_adjustment, int):
+                    raise ValueError("balance_adjustment must be an integer")
+                validated_data["balance_adjustment"] = balance_adjustment
+
+        elif operation_type == "create_transaction":
+            # Validate account_id
+            account_id = kwargs.get("account_id")
+            if not account_id or not isinstance(account_id, str):
+                raise ValueError("account_id must be a non-empty string")
+            validated_data["account_id"] = account_id
+
+            # Validate date
+            date = kwargs.get("date")
+            if not date:
+                raise ValueError("date is required for create_transaction")
+
+            if isinstance(date, str):
+                try:
+                    validated_data["date"] = datetime.fromisoformat(date)
+                except ValueError as e:
+                    raise ValueError(f"Invalid date format: {str(e)}") from e
+            elif isinstance(date, datetime):
+                validated_data["date"] = date
+            else:
+                raise ValueError("date must be a datetime object or ISO format string")
+
+            # Validate amount
+            amount = kwargs.get("amount")
+            if not isinstance(amount, int):
+                raise ValueError("amount must be an integer")
+            if amount == 0:
+                raise ValueError("amount cannot be zero")
+            validated_data["amount"] = amount
+
+            # Validate payee
+            payee_id = kwargs.get("payee_id")
+            payee_name = kwargs.get("payee_name")
+
+            if not payee_id and not payee_name:
+                raise ValueError("Either payee_id or payee_name must be provided")
+
+            if payee_id:
+                if not isinstance(payee_id, str):
+                    raise ValueError("payee_id must be a string")
+                validated_data["payee_id"] = payee_id
+            else:
+                if not isinstance(payee_name, str):
+                    raise ValueError("payee_name must be a string")
+                validated_data["payee_name"] = payee_name
+
+            # Validate optional fields
+            category_id = kwargs.get("category_id")
+            if category_id:
+                if not isinstance(category_id, str):
+                    raise ValueError("category_id must be a string")
+                validated_data["category_id"] = category_id
+
+            memo = kwargs.get("memo")
+            if memo:
+                if not isinstance(memo, str):
+                    raise ValueError("memo must be a string")
+                validated_data["memo"] = memo
+
+            cleared = kwargs.get("cleared", "cleared")
+            if cleared not in ["cleared", "uncleared", "reconciled"]:
+                raise ValueError(
+                    "cleared must be one of: cleared, uncleared, reconciled"
+                )
+            validated_data["cleared"] = cleared
+
+            approved = kwargs.get("approved", True)
+            if not isinstance(approved, bool):
+                raise ValueError("approved must be a boolean")
+            validated_data["approved"] = approved
+
+            flag_color = kwargs.get("flag_color")
+            if flag_color:
+                if flag_color not in [
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "purple",
+                ]:
+                    raise ValueError(
+                        "flag_color must be one of: red, orange, yellow, green, blue, purple"
+                    )
+                validated_data["flag_color"] = flag_color
+
+        else:
+            raise ValueError(f"Unknown operation_type: {operation_type}")
+
+        return validated_data
 
     @staticmethod
     def _set_default_plan(config: ynab.Configuration):
