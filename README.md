@@ -13,6 +13,15 @@ This project provides an HTTP-based Micro Content Provider (MCP) server that ena
 
 ## Key Capabilities
 
+### Budget Management Tools (NEW)
+
+The budget management tools enable write operations for budget optimization and financial planning:
+
+- **Update Month Category**: `update_month_category` tool - Modify budgeted amounts for specific categories
+- **Create Transaction**: `create_transaction` tool - Add new transactions to your budget
+- **Check Budget Health**: `data://budget/check-health/{month}` resource - Analyze budget health metrics
+- **Get Spending Insights**: `data://budget/spending-insights/{month}` resource - Generate spending analysis
+
 ### Adding a new transaction
 
 ### Getting planning advice based on previous spending trends
@@ -29,6 +38,49 @@ Triage all transactions from the last few days. If any doubt on categories, ask 
 I am reaching the end of my Eating Out money. Which money could I reassign confidently?
 ```
 
+### Budget Management Examples
+
+**Update a category budget:**
+```json
+{
+  "tool": "update_month_category",
+  "parameters": {
+    "month": "2024-01",
+    "category_id": "category-123",
+    "request": {
+      "budgeted_amount": 50000
+    }
+  }
+}
+```
+
+**Create a new transaction:**
+```json
+{
+  "tool": "create_transaction",
+  "parameters": {
+    "request": {
+      "account_id": "account-456",
+      "date": "2024-01-15",
+      "amount": -50000,
+      "payee_name": "Grocery Store",
+      "category_id": "category-789",
+      "memo": "Weekly groceries"
+    }
+  }
+}
+```
+
+**Check budget health:**
+```bash
+GET /mcp/data://budget/check-health/2024-01
+```
+
+**Get spending insights:**
+```bash
+GET /mcp/data://budget/spending-insights/2024-01?category_id=category-123
+```
+
 ### Bulk cleanup operations
 
 - Clean up payee names
@@ -40,6 +92,11 @@ I am reaching the end of my Eating Out money. Which money could I reassign confi
 - **Get all months**: `data://months` - Retrieve summary of all plan months
 - **Get specific month**: `data://months/{YYYY-MM-DD}` - Get detailed planning data for a specific month
 - **Get month category**: `data://months/{YYYY-MM-DD}/categories/{category_id}` - Get category details for a specific month
+
+### Budget Management Resources
+
+- **Check Budget Health**: `data://budget/check-health/{month}` - Get budget health metrics including income, budgeted amounts, activity, and health status
+- **Get Spending Insights**: `data://budget/spending-insights/{month}` - Get detailed spending analysis with category breakdowns
 
 ## Environment Variables
 
@@ -148,6 +205,22 @@ GET /mcp/data://months/{month_date}/categories/{category_id}
 ```
 GET /mcp/data://months/2023-12-15
 ```
+
+## Error Handling Patterns
+
+The budget management tools follow consistent error handling patterns:
+
+- **Input Validation**: All requests are validated using Pydantic schemas before processing
+- **Service Errors**: YNAB API errors are caught and re-raised with descriptive messages
+- **Resource Not Found**: Returns appropriate error responses for invalid resources
+- **Currency Handling**: All amounts use milliunits (1/1000 of currency unit) for precision
+
+### Common Error Scenarios
+
+- **Invalid Category ID**: Returns validation error with available category suggestions
+- **Insufficient Funds**: Prevents budget updates that would create negative balances
+- **Duplicate Transactions**: Detects and prevents duplicate transaction creation
+- **Rate Limiting**: Handles YNAB API rate limits gracefully
 
 ## To do
 
