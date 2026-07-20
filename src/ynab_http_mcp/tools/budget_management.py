@@ -6,6 +6,7 @@ money reassignment, budget health checking, and spending insights.
 """
 
 from typing import Optional, Dict, Any
+import json
 from ..ynab_service import YnabService
 from ..schemas.budget_tools import (
     UpdateMonthCategoryRequest,
@@ -168,3 +169,43 @@ class BudgetManagementTools:
             transaction_count=transaction_count,
             category_insights=category_insights,
         )
+
+
+def register(mcp, ynab_service: YnabService):
+    """Register budget management tools with MCP server."""
+    tools = BudgetManagementTools(ynab_service)
+
+    @mcp.resource(
+        uri="data://budget/update-month-category", mime_type="application/json"
+    )
+    def update_month_category_resource(
+        budget_id: str,
+        month: str,
+        category_id: str,
+        request: UpdateMonthCategoryRequest,
+    ) -> str:
+        """Update a month category budget amount."""
+        result = tools.update_month_category(budget_id, month, category_id, request)
+        return json.dumps(result)
+
+    @mcp.resource(uri="data://budget/create-transaction", mime_type="application/json")
+    def create_transaction_resource(
+        budget_id: str, request: CreateTransactionRequest
+    ) -> str:
+        """Create a new transaction."""
+        result = tools.create_transaction(budget_id, request)
+        return json.dumps(result)
+
+    @mcp.resource(uri="data://budget/check-health", mime_type="application/json")
+    def check_budget_health_resource(budget_id: str, month: str) -> str:
+        """Check overall budget health for a specific month."""
+        result = tools.check_budget_health(budget_id, month)
+        return result.model_dump_json()
+
+    @mcp.resource(uri="data://budget/spending-insights", mime_type="application/json")
+    def get_spending_insights_resource(
+        budget_id: str, month: str, category_id: Optional[str] = None
+    ) -> str:
+        """Get spending insights for a month and optional category."""
+        result = tools.get_spending_insights(budget_id, month, category_id)
+        return result.model_dump_json()
