@@ -1,5 +1,6 @@
 import asyncio
 from fastmcp import FastMCP
+from fastmcp.server.transforms import ResourcesAsTools
 import os
 from dotenv import load_dotenv
 from ynab_http_mcp.ynab_service import YnabService
@@ -27,6 +28,8 @@ transaction_tools.register(mcp, ynab_service)
 account_tools.register(mcp, ynab_service)
 payee_tools.register(mcp, ynab_service)
 budget_tools.register(mcp, ynab_service)
+# For compatibility as resources are under-adopted.
+mcp.add_transform(ResourcesAsTools(mcp))
 
 
 async def main():
