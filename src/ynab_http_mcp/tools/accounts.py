@@ -1,11 +1,9 @@
 from ynab_http_mcp.ynab_service import YnabService
 from ynab_http_mcp.schemas.accounts import AccountsResponse, CleanAccount
-from ynab_http_mcp.schemas.transactions import CleanTransaction, TransactionsResponse
+from ynab_http_mcp.schemas.transactions import TransactionsResponse
 from ynab_http_mcp.utils.schema_utils import clean_ynab_data
 from ynab_http_mcp.utils.schema_utils import simple_validate
 from typing import Annotated, Literal
-from datetime import datetime
-from ynab_http_mcp.debug import debug_exception
 import json
 
 

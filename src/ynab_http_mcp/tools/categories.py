@@ -2,7 +2,6 @@ from ynab_http_mcp.ynab_service import YnabService
 from ynab_http_mcp.schemas.categories import CategoriesResponse, CategoryResponse
 from ynab_http_mcp.schemas.transactions import TransactionsResponse
 from typing import Literal, Annotated
-from datetime import datetime
 import json
 
 

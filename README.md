@@ -35,6 +35,12 @@ I am reaching the end of my Eating Out money. Which money could I reassign confi
 - Categorize transactions in bulk
 - Identify and merge duplicate payees
 
+### Month Planning Resources
+
+- **Get all months**: `data://months` - Retrieve summary of all plan months
+- **Get specific month**: `data://months/{YYYY-MM-DD}` - Get detailed planning data for a specific month
+- **Get month category**: `data://months/{YYYY-MM-DD}/categories/{category_id}` - Get category details for a specific month
+
 ## Environment Variables
 
 - `YNAB_API_KEY`: Your YNAB API key (loaded from `.env`, and for docker, specified at runtime.)
@@ -94,6 +100,53 @@ Test using MCP Inspector:
 ```bash
 # Run the server and point MCP Inspector to it
 uv run ynab-http-mcp & npx @modelcontextprotocol/inspector --remote http://127.0.0.1:8000/mcp
+```
+
+## Migration Guide (v1.1.0)
+
+### Changes in this Version
+
+- **Planning tools converted to resources**: All planning endpoints have been converted from `@mcp.tool()` to `@mcp.resource()` decorators for consistency.
+- **New month-category endpoint**: Added `data://months/{month_date}/categories/{category_id}` for direct access to category details within a specific month.
+- **Improved date handling**: All month endpoints now accept both `YYYY-MM` and `YYYY-MM-DD` formats.
+
+### API Changes
+
+#### Old Tool Endpoints (Deprecated)
+```
+POST /mcp/tools/get_plan_month
+POST /mcp/tools/get_all_plan_months
+```
+
+#### New Resource Endpoints
+```
+GET /mcp/data://months
+GET /mcp/data://months/{month_date}
+GET /mcp/data://months/{month_date}/categories/{category_id}
+```
+
+### Migration Steps
+
+1. **Update endpoint URLs**: Replace tool endpoints with resource endpoints
+2. **Change HTTP method**: Use GET instead of POST for resource endpoints
+3. **Update date formats**: Use ISO format dates (`YYYY-MM-DD` or `YYYY-MM`)
+4. **Handle responses**: Resource endpoints return the same JSON structure as before
+
+### Example Migration
+
+**Before (Tool)**:
+```json
+{
+  "tool": "get_plan_month",
+  "parameters": {
+    "month_date": "2023-12-15"
+  }
+}
+```
+
+**After (Resource)**:
+```
+GET /mcp/data://months/2023-12-15
 ```
 
 ## To do

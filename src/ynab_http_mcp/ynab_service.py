@@ -2,9 +2,8 @@ import os
 import ynab
 from uuid import UUID
 from datetime import datetime
-from ynab_http_mcp.debug import debug_exception, debug_ynab_response, debug_string
-from typing import Any, Optional, Callable, TypeVar, cast
-from functools import wraps
+from ynab_http_mcp.debug import debug_exception, debug_ynab_response
+from typing import Optional, Callable, TypeVar
 
 T = TypeVar("T")
 
@@ -36,12 +35,70 @@ class YnabService:
             lambda api: api.get_category_by_id(str(self.plan_id), id),
         )
 
-    def get_plan_month(self, date: datetime | None = None) -> ynab.MonthDetail:
+    def get_month_category(self, month_date: datetime | str, category_id: str) -> ynab.CategoryResponse:
+        """
+        Returns a specific category's data for a given month.
+        
+        Args:
+            month_date: datetime object or ISO format string representing the month.
+                       Accepts both 'YYYY-MM-DD' and 'YYYY-MM' formats. Day is ignored.
+                       Examples: '2025-12-01', '2025-12-15', or '2025-12'
+            category_id: ID of the category to retrieve
+            
+        Returns:
+            CategoryResponse containing the category data for the specified month
+            
+        Raises:
+            ValueError: If category_id is empty or invalid, or if month_date format is invalid
+            RuntimeError: If there are issues with the YNAB API call
+        """
+        # Validate category_id
+        if not category_id or not isinstance(category_id, str):
+            raise ValueError("category_id must be a non-empty string")
+        
+        # Validate and convert month_date
+        if isinstance(month_date, str):
+            try:
+                # Handle both 'YYYY-MM' and 'YYYY-MM-DD' formats
+                if len(month_date) == 7 and month_date[4] == '-':  # YYYY-MM format
+                    # Append '-01' to make it a valid date string
+                    month_date = datetime.fromisoformat(month_date + '-01')
+                else:
+                    # Full date format YYYY-MM-DD
+                    month_date = datetime.fromisoformat(month_date)
+            except ValueError as e:
+                raise ValueError(f"Invalid month_date format: {str(e)}. Expected 'YYYY-MM' or 'YYYY-MM-DD' format") from e
+        elif not isinstance(month_date, datetime):
+            raise ValueError("month_date must be a datetime object or ISO format string ('YYYY-MM' or 'YYYY-MM-DD')")
+        
+        try:
+            # Format month as YYYY-MM-DD with day=01 (YNAB API expects full date format)
+            month_str = month_date.replace(day=1).strftime("%Y-%m-%d")
+            return self._call_api(
+                ynab.CategoriesApi,
+                lambda api: api.get_month_category_by_id(str(self.plan_id), month_str, category_id),
+            )
+        except Exception as e:
+            debug_exception(f"Error fetching month category: {str(e)}")
+            raise RuntimeError(f"Failed to retrieve month category data: {str(e)}") from e
+
+    def get_plan_month(self, date: datetime | str | None = None) -> ynab.MonthDetail:
         """
         Returns the plan for a specific month.
         If no date is passed, returns the current month's plan.
         """
         if date:
+            if isinstance(date, str):
+                try:
+                    # Handle both 'YYYY-MM' and 'YYYY-MM-DD' formats
+                    if len(date) == 7 and date[4] == '-':  # YYYY-MM format
+                        # Append '-01' to make it a valid date string
+                        date = datetime.fromisoformat(date + '-01')
+                    else:
+                        # Full date format YYYY-MM-DD
+                        date = datetime.fromisoformat(date)
+                except ValueError as e:
+                    raise ValueError(f"Invalid date format: {str(e)}") from e
             reformatted_date = date.replace(day=1).strftime(
                 "%Y-%m-%d"
             )  # Hardcode the day to be the first of the month

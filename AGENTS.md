@@ -83,6 +83,68 @@ Debug mode is enabled via `DEBUG_MODE=True` or `MY_MCP_DEBUG=1` environment vari
 3. **Type safety**: Run `mypy` before committing to catch type issues
 4. **Code quality**: Use `ruff check` and `ruff format` for linting and formatting
 
+## Server Control Procedures
+
+Use the `ynab-http-mcp-control` skill for server management:
+
+- **Start service**: `bash scripts/start-ynab-mcp.sh`
+- **Stop service**: `bash scripts/stop-ynab-mcp.sh`
+- **Check status**: `bash scripts/status-ynab-mcp.sh`
+- **Restart service**: `bash scripts/stop-ynab-mcp.sh && bash scripts/start-ynab-mcp.sh`
+
+Always check service status before testing and restart after code changes.
+
+## Testing Procedures
+
+Use the `ynab-http-mcp-testing` skill for comprehensive testing:
+
+### MCP Resource Testing
+
+1. **Discover resources**:
+   ```python
+   list_mcp_resources()  # List all available resources
+   list_mcp_resource_templates()  # List parameterized endpoints
+   ```
+
+2. **Test specific resources**:
+   ```python
+   read_mcp_resource(server="ynab-http-mcp", uri="data://months")
+   read_mcp_resource(server="ynab-http-mcp", uri="data://months/2024-01")
+   read_mcp_resource(server="ynab-http-mcp", uri="data://accounts")
+   ```
+
+3. **Debug issues**:
+   ```bash
+   tail -50 .ynab_http_mcp.log  # Check service logs
+   grep "Error" .ynab_http_mcp.log  # Search for errors
+   ```
+
+### Common Test Cases
+
+- **Plan Month Resources**:
+  - `data://months` - All plan months summary
+  - `data://months/2024-01` - Specific month (YYYY-MM format)
+  - `data://months/2024-01-15` - Specific month (YYYY-MM-DD format)
+  - `data://months/2024-01/categories/{category_id}` - Month category details
+
+- **Account Resources**:
+  - `data://accounts` - All accounts
+  - `data://accounts/{account_id}/transactions` - Account transactions
+
+- **Category Resources**:
+  - `data://categories` - All categories
+  - `data://categories/{category_id}` - Specific category
+  - `data://categories/{category_id}/transactions` - Category transactions
+
+- **Payee Resources**:
+  - `data://payees` - All payees
+  - `data://payees/{payee_id}` - Specific payee
+  - `data://payees/{payee_id}/transactions` - Payee transactions
+
+- **Transaction Resources**:
+  - `data://transactions` - All transactions
+  - `data://transactions/{transaction_id}` - Specific transaction
+
 ## Gotchas
 
 - The YNAB API key is sensitive - never commit it to version control

@@ -43,6 +43,8 @@ bash scripts/stop-ynab-mcp.sh || true
 bash scripts/start-ynab-mcp.sh
 ```
 
+
+
 ## Notes for OpenCode
 
 When asked to start the YNAB MCP service:

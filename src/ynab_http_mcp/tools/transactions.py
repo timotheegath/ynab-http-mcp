@@ -1,7 +1,6 @@
 # All transaction actions.
 from ynab_http_mcp.ynab_service import YnabService
 from typing import Annotated, Literal
-from datetime import datetime
 from ynab_http_mcp.schemas.transactions import (
     TransactionsResponse,
     TransactionResponse,

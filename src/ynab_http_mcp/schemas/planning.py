@@ -68,14 +68,20 @@ class PlanMonth(BaseModel):
         # Convert MonthDetail to dict
         data = ynab_response.to_dict()
 
+        # Extract the month data from the nested structure
+        if "data" in data and "month" in data["data"]:
+            month_data = data["data"]["month"]
+        else:
+            month_data = data.get("month", {})
+
         # Convert date object to YYYY-MM string format if needed
-        if "month" in data and isinstance(data["month"], date):
-            data["month"] = data["month"].strftime("%Y-%m")
+        if "month" in month_data and isinstance(month_data["month"], date):
+            month_data["month"] = month_data["month"].strftime("%Y-%m")
 
         # Transform categories to match our schema
-        if "categories" in data:
+        if "categories" in month_data:
             transformed_categories = []
-            for category in data["categories"]:
+            for category in month_data["categories"]:
                 transformed_category = {
                     "category_id": str(category.get("id", "")),
                     "category_name": category.get("name", ""),
@@ -96,9 +102,9 @@ class PlanMonth(BaseModel):
                     "deleted": category.get("deleted", False),
                 }
                 transformed_categories.append(transformed_category)
-            data["categories"] = transformed_categories
+            month_data["categories"] = transformed_categories
 
-        return PlanMonth(**data)
+        return PlanMonth(**month_data)
 
 
 class PlanMonthResponse(BaseModel):
@@ -111,9 +117,6 @@ class PlanMonthResponse(BaseModel):
     @staticmethod
     def from_ynab_response(ynab_response: ynabPlanMonthResponse) -> "PlanMonthResponse":
         """Transform YNAB API response to match our simplified schema."""
-        # Convert MonthDetail to dict - it contains the month data directly
-        month_data = ynab_response.to_dict()
-
         # Transform YNAB data to match our schema
         transformed_month = PlanMonth.from_ynab_response(ynab_response)
 
