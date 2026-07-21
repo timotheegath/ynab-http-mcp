@@ -200,7 +200,7 @@ class ClearCategoryGoalRequest(UpdateCategoryRequest):
         return UpdateCategoryRequest(
             category_id=self.category_id,
             note=self.note,
-            goal_target=None
+            goal_target=0
         ) # type: ignore
 
 

@@ -1,3 +1,8 @@
+---
+name: Ynah HTTP MCP Testing
+description: Use this skill when you need to test YNAB HTTP MCP resources and endpoints.
+---
+
 # ynab-http-mcp-testing
 
 Use this skill when you need to test YNAB HTTP MCP resources and endpoints.

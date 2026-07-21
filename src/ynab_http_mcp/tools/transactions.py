@@ -11,7 +11,7 @@ import json
 def register(mcp, ynab_service: YnabService):
 
     @mcp.resource(
-        uri="data://transactions{?since_date,until_date,type,limit,month}",
+        uri="data://transactions{?since_date,until_date,type,limit}",
         mime_type="application/json",
     )
     async def get_transactions_resource(
@@ -30,11 +30,7 @@ def register(mcp, ynab_service: YnabService):
         limit: Annotated[
             int | None,
             "Maximum number of transactions to return. Leave blank for no limit.",
-        ] = None,
-        month: Annotated[
-            str | None,
-            "Filter by month (YYYY-MM). Takes precedence over other filters when specified.",
-        ] = None,
+        ] = None
     ) -> str:
         """
         Get transactions with flexible filtering options as a resource.
@@ -53,8 +49,7 @@ def register(mcp, ynab_service: YnabService):
             raw_response = ynab_service.get_transactions(
                 since_date=since_date,
                 until_date=until_date,
-                type=type if type else "all",
-                month=month,
+                type=type if type else "all"
             )
         except ValueError as e:
             error_response = {"error": f"Invalid parameter format: {str(e)}"}

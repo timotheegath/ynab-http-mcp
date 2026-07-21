@@ -100,7 +100,7 @@ def register(mcp, ynab_service: YnabService):
         uri="data://months/{month_date}/transactions{?since_date,until_date,type}",
         mime_type="application/json",
     )
-    async def get_transactions_by_account(
+    async def get_transactions_by_month(
         month_date: Annotated[
             str,
             "ISO-format date within the month of choice. For instance, '2023-12-11' targets December 2023. Leave blank to select current month",

@@ -423,8 +423,6 @@ class YnabService:
         # Validate inputs
         if not category_id or not isinstance(category_id, str):
             raise ValueError("category_id must be a non-empty string")
-        if not isinstance(goal_target, int):
-            raise ValueError("target must be integer")
 
         # Build the update payload
         update_payload = ynab.ExistingCategory()
