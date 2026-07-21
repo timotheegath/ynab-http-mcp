@@ -5,8 +5,8 @@ This module defines Pydantic models for budget management tool
 requests and responses.
 """
 
-from typing import Optional, Dict, List, Any, Literal
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, Dict, Any, Literal
+from pydantic import BaseModel, Field
 
 
 class AssignBudgetCategoryRequest(BaseModel):
