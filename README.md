@@ -224,7 +224,10 @@ The budget management tools follow consistent error handling patterns:
 
 ## To do
 
-- Milliunits conversion into normal currency for the LLM
-- Add target-specific tools, and translate complex fields into LLM readable knowledge
-- Add transactions as resources with filtering.
-- Update Docker health check to work with proxy deployments, don't test localhost:8000
+- Harmonize the schemas
+  - Introduce a consistent MCPResponse schema and MCPRequest schema to streamline validation, cleanup and conversion to YNAB types
+  - Remove duplicate validation code and move it to common classes
+  - Have the YNAB service rely more on it's native classes rather than repacking from dict
+- Implement basic authentication now that tools have a write ability
+- 
+- Update Docker health check to work with proxy deployments, don't test localhost:8000, and modify to not rely on curl being included as a library by default
