@@ -220,7 +220,6 @@ def register(mcp, ynab_service: YnabService):
         Get spending insights for a month and optional category.
 
         Args:
-            budget_id: YNAB budget ID
             month: Month in YYYY-MM format
             category_id: Optional category ID to filter by
 

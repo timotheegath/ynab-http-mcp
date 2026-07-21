@@ -412,69 +412,46 @@ class YnabService:
             ValueError: If inputs are invalid
             RuntimeError: If there are issues with the YNAB API call
         """
-        category_id=request.category_id,
-        name=request.name,
-        note=request.note,
-        category_group_id=request.category_group_id,
-        goal_target=request.goal_target,
-        goal_target_date=request.goal_target_date,
-        goal_needs_whole_amount=request.goal_needs_whole_amount,
-        goal_frequency=request.goal_frequency,
+        category_id=request.category_id
+        name=request.name
+        note=request.note
+        category_group_id=request.category_group_id
+        goal_target=request.goal_target
+        goal_target_date=request.goal_target_date
+        goal_needs_whole_amount=request.goal_needs_whole_amount
+        goal_frequency=request.goal_frequency
         # Validate inputs
         if not category_id or not isinstance(category_id, str):
             raise ValueError("category_id must be a non-empty string")
+        if not isinstance(goal_target, int):
+            raise ValueError("target must be integer")
 
         # Build the update payload
-        update_payload: dict[str, Any] = {"category": {}}
+        update_payload = ynab.ExistingCategory()
 
         # Add optional fields if provided
         if name is not None:
-            update_payload["category"]["name"] = name
+            update_payload.name = name
 
         if note is not None:
-            update_payload["category"]["note"] = note
+            update_payload.note = note
 
         if category_group_id is not None:
-            update_payload["category"]["category_group_id"] = category_group_id
-
-        # Build goal object if any goal parameters are provided
-        goal_params_provided = any(
-            [
-                goal_target is not None,
-                goal_target_date is not None,
-                goal_needs_whole_amount is not None,
-                goal_frequency is not None,
-            ]
-        )
-
-        if goal_params_provided:
-            goal_payload: dict[str, Any] = {}
-
-            if goal_target is not None:
-                goal_payload["target"] = str(goal_target)
-
-            if goal_target_date is not None:
-                goal_payload["target_date"] = goal_target_date
-
-            if goal_needs_whole_amount is not None:
-                goal_payload["needs_whole_amount"] = goal_needs_whole_amount
-
-            if goal_frequency is not None:
-                goal_payload["frequency"] = goal_frequency
-
-            update_payload["category"]["goal"] = goal_payload
-
-        # If no parameters provided, raise an error
-        if not update_payload["category"]:
-            raise ValueError(
-                "At least one parameter must be provided to update the category"
-            )
+            update_payload.category_group_id = UUID(category_group_id)
+        if goal_target is not None:
+            update_payload.goal_target = goal_target
+        if goal_target_date is not None:
+            update_payload.goal_target_date = datetime.fromisoformat(goal_target_date).date()
+        if goal_needs_whole_amount is not None:
+            update_payload.goal_needs_whole_amount = goal_needs_whole_amount
+        if goal_frequency is not None:
+            update_payload.goal_frequency = goal_frequency
 
         try:
             return self._call_api(
                 ynab.CategoriesApi,
                 lambda api: api.update_category(
-                    str(self.plan_id), category_id, update_payload
+                    str(self.plan_id), category_id, ynab.PatchCategoryWrapper(category=update_payload)
                 ),
             )
         except Exception as e:
