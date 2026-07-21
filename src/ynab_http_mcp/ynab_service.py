@@ -3,8 +3,8 @@ import ynab
 from uuid import UUID
 from datetime import datetime
 from ynab_http_mcp.debug import debug_exception, debug_ynab_response
-from typing import Optional, Callable, TypeVar
-
+from typing import Optional, Callable, TypeVar, Any
+from ynab_http_mcp.schemas.budget_tools import UpdateCategoryRequest
 T = TypeVar("T")
 
 
@@ -331,7 +331,9 @@ class YnabService:
                 new_balance = current_balance + balance_adjustment
                 # For balance adjustments, we need to create a transaction
                 # This is a simplified approach - real implementation would need proper transaction handling
-                payload["balance"] = new_balance
+                if "category" not in payload:
+                    payload["category"] = {}
+                payload["category"]["balance"] = new_balance
 
             return self._call_api(
                 ynab.CategoriesApi,
@@ -385,6 +387,99 @@ class YnabService:
             raise RuntimeError(
                 f"Failed to assign money to month category: {str(e)}"
             ) from e
+
+    def update_category(
+        self,
+        request : UpdateCategoryRequest
+    ) -> ynab.SaveCategoryResponse:
+        """
+        Updates a category in YNAB with comprehensive goal settings.
+
+        Args:
+            category_id: ID of the category to update
+            name: Optional new name for the category
+            note: Optional note for the category
+            category_group_id: Optional ID of category group to move to
+            goal_target: Goal target amount in milliunits (creates monthly goal if not configured)
+            goal_target_date: Goal target date in ISO format (YYYY-MM-DD)
+            goal_needs_whole_amount: Whether goal requires full amount each period (for NEED goals)
+            goal_frequency: Frequency for recurring goals (e.g., 'monthly', 'weekly')
+
+        Returns:
+            SaveCategoryResponse containing the updated category data
+
+        Raises:
+            ValueError: If inputs are invalid
+            RuntimeError: If there are issues with the YNAB API call
+        """
+        category_id=request.category_id,
+        name=request.name,
+        note=request.note,
+        category_group_id=request.category_group_id,
+        goal_target=request.goal_target,
+        goal_target_date=request.goal_target_date,
+        goal_needs_whole_amount=request.goal_needs_whole_amount,
+        goal_frequency=request.goal_frequency,
+        # Validate inputs
+        if not category_id or not isinstance(category_id, str):
+            raise ValueError("category_id must be a non-empty string")
+
+        # Build the update payload
+        update_payload: dict[str, Any] = {"category": {}}
+
+        # Add optional fields if provided
+        if name is not None:
+            update_payload["category"]["name"] = name
+
+        if note is not None:
+            update_payload["category"]["note"] = note
+
+        if category_group_id is not None:
+            update_payload["category"]["category_group_id"] = category_group_id
+
+        # Build goal object if any goal parameters are provided
+        goal_params_provided = any(
+            [
+                goal_target is not None,
+                goal_target_date is not None,
+                goal_needs_whole_amount is not None,
+                goal_frequency is not None,
+            ]
+        )
+
+        if goal_params_provided:
+            goal_payload: dict[str, Any] = {}
+
+            if goal_target is not None:
+                goal_payload["target"] = str(goal_target)
+
+            if goal_target_date is not None:
+                goal_payload["target_date"] = goal_target_date
+
+            if goal_needs_whole_amount is not None:
+                goal_payload["needs_whole_amount"] = goal_needs_whole_amount
+
+            if goal_frequency is not None:
+                goal_payload["frequency"] = goal_frequency
+
+            update_payload["category"]["goal"] = goal_payload
+
+        # If no parameters provided, raise an error
+        if not update_payload["category"]:
+            raise ValueError(
+                "At least one parameter must be provided to update the category"
+            )
+
+        try:
+            return self._call_api(
+                ynab.CategoriesApi,
+                lambda api: api.update_category(
+                    str(self.plan_id), category_id, update_payload
+                ),
+            )
+        except Exception as e:
+            debug_exception(f"Error updating category: {str(e)}")
+            raise RuntimeError(f"Failed to update category: {str(e)}") from e
 
     def create_transaction(
         self,

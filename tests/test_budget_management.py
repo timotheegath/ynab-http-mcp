@@ -15,7 +15,7 @@ sys.path.insert(0, "/home/timo/projects/ynab-http-mcp/src")
 
 from ynab_http_mcp.tools.budget_management import BudgetManagementTools
 from ynab_http_mcp.schemas.budget_tools import (
-    UpdateMonthCategoryRequest,
+    AssignBudgetCategoryRequest,
     CreateTransactionRequest,
     BudgetHealthResponse,
     SpendingInsightsResponse,
@@ -33,11 +33,13 @@ def test_update_month_category_tool():
     # Create mock response
     mock_category_response = Mock()
     mock_category_data = Mock()
-    mock_category_data.category = {
+    mock_category_obj = Mock()
+    mock_category_obj.to_dict.return_value = {
         "id": "test-category-id",
         "name": "Test Category",
         "budgeted": 50000,
     }
+    mock_category_data.category = mock_category_obj
     mock_category_response.data = mock_category_data
 
     mock_service.update_month_category.return_value = mock_category_response
@@ -46,12 +48,12 @@ def test_update_month_category_tool():
     tools = BudgetManagementTools(mock_service)
 
     # Create test request
-    request = UpdateMonthCategoryRequest(budgeted_amount=50000)
+    request = AssignBudgetCategoryRequest(
+        month="2024-01", category_id="test-category", budgeted_amount=50000
+    )
 
     # Call the method
-    result = tools.update_month_category(
-        month="2024-01", category_id="test-category", request=request
-    )
+    result = tools.assign_budget_to_category(request=request)
 
     # Verify the result
     assert result["success"] is True
@@ -349,15 +351,13 @@ def test_error_handling():
 
     tools = BudgetManagementTools(mock_service)
 
-    request = UpdateMonthCategoryRequest(budgeted_amount=50000)
+    request = AssignBudgetCategoryRequest(
+        month="2024-01", category_id="invalid-category", budgeted_amount=50000
+    )
 
     # This should raise the error from the service
     with pytest.raises(ValueError, match="Invalid category ID"):
-        tools.update_month_category(
-            month="2024-01",
-            category_id="invalid-category",
-            request=request,
-        )
+        tools.assign_budget_to_category(request=request)
 
     print("✓ Error handling test passed")
 

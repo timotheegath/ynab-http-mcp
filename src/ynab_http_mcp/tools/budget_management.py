@@ -10,8 +10,12 @@ import json
 from ..ynab_service import YnabService
 from ..utils.schema_utils import clean_ynab_data
 from ..schemas.budget_tools import (
-    UpdateMonthCategoryRequest,
+    AssignBudgetCategoryRequest,
     CreateTransactionRequest,
+    UpdateCategoryDetailsRequest,
+    UpdateCategoryGoalRecurringRequest,
+    UpdateCategoryTargetDateRequest,
+    ClearCategoryGoalRequest,
     BudgetHealthResponse,
     SpendingInsightsResponse,
 )
@@ -29,36 +33,110 @@ class BudgetManagementTools:
         """Initialize with YNAB service instance."""
         self.ynab_service = ynab_service
 
-    def update_month_category(
-        self,
-        month: str,
-        category_id: str,
-        request: UpdateMonthCategoryRequest,
+    def assign_budget_to_category(
+        self, request: AssignBudgetCategoryRequest
     ) -> Dict[str, Any]:
         """
         Update a month category budget amount.
 
         Args:
-            month: Month in YYYY-MM format
-            category_id: YNAB category ID
-            request: Update request with new budgeted amount
+            request: Update request with month, category_id, and new budgeted amount
 
         Returns:
             Dictionary with success status and updated category data
         """
         result = self.ynab_service.update_month_category(
-            f"{month}-01", category_id, request.budgeted_amount
+            f"{request.month}-01", request.category_id, request.budgeted_amount
         )
         return {
             "success": True,
             "category": clean_ynab_data(result.data.category.to_dict()),
         }
 
-    def assign_money_to_category(
+    """ def assign_money_to_category(
         self, month: str, category_id: str, budget: int
     ) -> str:
         result = self.ynab_service.assign_money(month, category_id, budget)
         return "success"
+ """
+
+    def update_category_goal_to_recurring(
+        self, request: UpdateCategoryGoalRecurringRequest
+    ) -> Dict[str, Any]:
+        """
+        Update a category's goal to a recurring goal in YNAB.
+
+        Args:
+            request: Update request with category parameters and goal settings
+
+        Returns:
+            Dictionary with success status and updated category data
+        """
+        result = self.ynab_service.update_category(
+            request.to_update_category_request()
+        )
+        return {
+            "success": True,
+            "category": clean_ynab_data(result.data.category.to_dict()),
+        }
+    def update_category_goal_to_target_date(
+        self, request: UpdateCategoryTargetDateRequest
+    ) -> Dict[str, Any]:
+        """
+        Update a category's goal to set aside until a target date.
+
+        Args:
+            request: Update request with category parameters and goal settings
+
+        Returns:
+            Dictionary with success status and updated category data
+        """
+        result = self.ynab_service.update_category(
+            request.to_update_category_request()
+        )
+        return {
+            "success": True,
+            "category": clean_ynab_data(result.data.category.to_dict()),
+        }
+    def update_category_details(
+        self, request: UpdateCategoryDetailsRequest
+    ) -> Dict[str, Any]:
+        """
+        Update a category's details, and assignment to a category group ID.
+
+        Args:
+            request: Update request with category parameters and goal settings
+
+        Returns:
+            Dictionary with success status and updated category data
+        """
+        result = self.ynab_service.update_category(
+            request.to_update_category_request()
+        )
+        return {
+            "success": True,
+            "category": clean_ynab_data(result.data.category.to_dict()),
+        }
+    def clear_category_goals(
+        self, request: ClearCategoryGoalRequest
+    ) -> Dict[str, Any]:
+        """
+        Clear a category's goal
+
+        Args:
+            request: Update request with category parameters and goal settings
+
+        Returns:
+            Dictionary with success status and updated category data
+        """
+        result = self.ynab_service.update_category(
+            request.to_update_category_request()
+        )
+        return {
+            "success": True,
+            "category": clean_ynab_data(result.data.category.to_dict()),
+        }
+    
 
     def create_transaction(self, request: CreateTransactionRequest) -> Dict[str, Any]:
         """
@@ -219,23 +297,29 @@ def register(mcp, ynab_service: YnabService):
 
     @mcp.tool(name="update_month_category")
     def update_month_category_tool(
-        month: str,
-        category_id: str,
-        request: UpdateMonthCategoryRequest,
+        request: AssignBudgetCategoryRequest,
     ) -> str:
         """Update a month category's targets."""
-        result = tools.update_month_category(month, category_id, request)
+        result = tools.assign_budget_to_category(request)
         return json.dumps(result)
 
-    @mcp.tool(name="assign_budget_to_category")
-    def assign_budget_to_category_tool(
-        month: str,
-        category_id: str,
-        budget: int,
+    @mcp.tool(name="update_category_goal")
+    def update_category_goal_tool(
+        request: UpdateCategoryRequest,
     ) -> str:
-        """Assign budget to a month category. Pass an integer expressed in the correct currency."""
-        result = tools.assign_money_to_category(month, category_id, budget)
+        """Update a category's goal. Use natural language to describe the goal type and amount."""
+        result = tools.update_category(request)
         return json.dumps(result)
+
+    # @mcp.tool(name="assign_budget_to_category")
+    # def assign_budget_to_category_tool(
+    #     month: str,
+    #     category_id: str,
+    #     budget: int,
+    # ) -> str:
+    #     """Assign budget to a month category. Pass an integer expressed in the correct currency."""
+    #     result = tools.assign_money_to_category(month, category_id, budget)
+    #     return json.dumps(result)
 
     @mcp.tool(name="create_transaction")
     def create_transaction_tool(request: CreateTransactionRequest) -> str:
