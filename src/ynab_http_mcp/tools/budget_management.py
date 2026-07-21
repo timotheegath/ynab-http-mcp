@@ -21,20 +21,13 @@ from ..schemas.budget_tools import (
 )
 
 
-class BudgetManagementTools:
-    """
-    Budget management tools for YNAB operations.
 
-    Provides methods for updating categories, creating transactions,
-    checking budget health, and generating spending insights.
-    """
 
-    def __init__(self, ynab_service: YnabService):
-        """Initialize with YNAB service instance."""
-        self.ynab_service = ynab_service
-
+    
+def register(mcp, ynab_service: YnabService):
+    """Register budget management tools with MCP server."""
     def assign_budget_to_category(
-        self, request: AssignBudgetCategoryRequest
+         request: AssignBudgetCategoryRequest
     ) -> Dict[str, Any]:
         """
         Update a month category budget amount.
@@ -45,7 +38,7 @@ class BudgetManagementTools:
         Returns:
             Dictionary with success status and updated category data
         """
-        result = self.ynab_service.update_month_category(
+        result = ynab_service.update_month_category(
             f"{request.month}-01", request.category_id, request.budgeted_amount
         )
         return {
@@ -53,15 +46,8 @@ class BudgetManagementTools:
             "category": clean_ynab_data(result.data.category.to_dict()),
         }
 
-    """ def assign_money_to_category(
-        self, month: str, category_id: str, budget: int
-    ) -> str:
-        result = self.ynab_service.assign_money(month, category_id, budget)
-        return "success"
- """
-
     def update_category_goal_to_recurring(
-        self, request: UpdateCategoryGoalRecurringRequest
+         request: UpdateCategoryGoalRecurringRequest
     ) -> Dict[str, Any]:
         """
         Update a category's goal to a recurring goal in YNAB.
@@ -72,7 +58,7 @@ class BudgetManagementTools:
         Returns:
             Dictionary with success status and updated category data
         """
-        result = self.ynab_service.update_category(
+        result = ynab_service.update_category(
             request.to_update_category_request()
         )
         return {
@@ -80,7 +66,7 @@ class BudgetManagementTools:
             "category": clean_ynab_data(result.data.category.to_dict()),
         }
     def update_category_goal_to_target_date(
-        self, request: UpdateCategoryTargetDateRequest
+         request: UpdateCategoryTargetDateRequest
     ) -> Dict[str, Any]:
         """
         Update a category's goal to set aside until a target date.
@@ -91,7 +77,7 @@ class BudgetManagementTools:
         Returns:
             Dictionary with success status and updated category data
         """
-        result = self.ynab_service.update_category(
+        result = ynab_service.update_category(
             request.to_update_category_request()
         )
         return {
@@ -99,7 +85,7 @@ class BudgetManagementTools:
             "category": clean_ynab_data(result.data.category.to_dict()),
         }
     def update_category_details(
-        self, request: UpdateCategoryDetailsRequest
+         request: UpdateCategoryDetailsRequest
     ) -> Dict[str, Any]:
         """
         Update a category's details, and assignment to a category group ID.
@@ -110,7 +96,7 @@ class BudgetManagementTools:
         Returns:
             Dictionary with success status and updated category data
         """
-        result = self.ynab_service.update_category(
+        result = ynab_service.update_category(
             request.to_update_category_request()
         )
         return {
@@ -118,7 +104,7 @@ class BudgetManagementTools:
             "category": clean_ynab_data(result.data.category.to_dict()),
         }
     def clear_category_goals(
-        self, request: ClearCategoryGoalRequest
+         request: ClearCategoryGoalRequest
     ) -> Dict[str, Any]:
         """
         Clear a category's goal
@@ -129,7 +115,7 @@ class BudgetManagementTools:
         Returns:
             Dictionary with success status and updated category data
         """
-        result = self.ynab_service.update_category(
+        result = ynab_service.update_category(
             request.to_update_category_request()
         )
         return {
@@ -138,7 +124,7 @@ class BudgetManagementTools:
         }
     
 
-    def create_transaction(self, request: CreateTransactionRequest) -> Dict[str, Any]:
+    def create_transaction( request: CreateTransactionRequest) -> Dict[str, Any]:
         """
         Create a new transaction.
 
@@ -148,7 +134,7 @@ class BudgetManagementTools:
         Returns:
             Dictionary with success status and created transaction data
         """
-        result = self.ynab_service.create_transaction(
+        result = ynab_service.create_transaction(
             request.account_id,
             request.date,
             request.amount,
@@ -165,7 +151,7 @@ class BudgetManagementTools:
             "transaction": clean_ynab_data(result.data.transaction.to_dict()),
         }
 
-    def check_budget_health(self, month: str) -> BudgetHealthResponse:
+    def check_budget_health( month: str) -> BudgetHealthResponse:
         """
         Check overall budget health for a specific month.
 
@@ -176,7 +162,7 @@ class BudgetManagementTools:
             BudgetHealthResponse with health metrics
         """
         # Get month data
-        month_detail = self.ynab_service.get_plan_month(month).data.month
+        month_detail = ynab_service.get_plan_month(month).data.month
 
         # Calculate health metrics from month detail
         total_budgeted = month_detail.budgeted
@@ -232,7 +218,7 @@ class BudgetManagementTools:
         )
 
     def get_spending_insights(
-        self, month: str, category_id: Optional[str] = None
+         month: str, category_id: Optional[str] = None
     ) -> SpendingInsightsResponse:
         """
         Get spending insights for a month and optional category.
@@ -249,7 +235,7 @@ class BudgetManagementTools:
         from datetime import datetime
 
         month_datetime = datetime.strptime(f"{month}-01", "%Y-%m-%d")
-        transactions_response = self.ynab_service.get_transactions(
+        transactions_response = ynab_service.get_transactions(
             since_date=f"{month}-01",
             until_date=None,
             type="outflow",
@@ -291,58 +277,3 @@ class BudgetManagementTools:
         )
 
 
-def register(mcp, ynab_service: YnabService):
-    """Register budget management tools with MCP server."""
-    tools = BudgetManagementTools(ynab_service)
-
-    @mcp.tool(name="update_month_category")
-    def update_month_category_tool(
-        request: AssignBudgetCategoryRequest,
-    ) -> str:
-        """Update a month category's targets."""
-        result = tools.assign_budget_to_category(request)
-        return json.dumps(result)
-
-    @mcp.tool(name="update_category_goal")
-    def update_category_goal_tool(
-        request: UpdateCategoryRequest,
-    ) -> str:
-        """Update a category's goal. Use natural language to describe the goal type and amount."""
-        result = tools.update_category(request)
-        return json.dumps(result)
-
-    # @mcp.tool(name="assign_budget_to_category")
-    # def assign_budget_to_category_tool(
-    #     month: str,
-    #     category_id: str,
-    #     budget: int,
-    # ) -> str:
-    #     """Assign budget to a month category. Pass an integer expressed in the correct currency."""
-    #     result = tools.assign_money_to_category(month, category_id, budget)
-    #     return json.dumps(result)
-
-    @mcp.tool(name="create_transaction")
-    def create_transaction_tool(request: CreateTransactionRequest) -> str:
-        """Create a new transaction."""
-        result = tools.create_transaction(request)
-        return json.dumps(result)
-
-    @mcp.resource(
-        uri="data://budget/check-health/{month}",
-        mime_type="application/json",
-    )
-    def check_budget_health_resource(month: str) -> str:
-        """Check overall budget health for a specific month."""
-        result = tools.check_budget_health(month)
-        return result.model_dump_json()
-
-    @mcp.resource(
-        uri="data://budget/spending-insights/{month}",
-        mime_type="application/json",
-    )
-    def get_spending_insights_resource(
-        month: str, category_id: Optional[str] = None
-    ) -> str:
-        """Get spending insights for a month and optional category."""
-        result = tools.get_spending_insights(month, category_id)
-        return result.model_dump_json()
