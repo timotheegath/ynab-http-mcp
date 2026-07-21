@@ -7,6 +7,7 @@ YNAB category data using basic data types suitable for agents.
 
 from typing import Optional, List
 from pydantic import BaseModel, Field
+from uuid import UUID
 from ynab import (
     CategoriesResponse as ynabCategoriesResponse,
     CategoryResponse as ynabCategoryResponse,
@@ -15,6 +16,14 @@ from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
 
 
 class CleanCategory(BaseModel):
+    def to_dict(self):
+        data = self.model_dump()
+        # Convert UUID fields to strings
+        for field, value in data.items():
+            if isinstance(value, UUID):
+                data[field] = str(value)
+        return data
+
     """
     Simplified category model using basic data types.
 

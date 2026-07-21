@@ -316,7 +316,7 @@ class YnabService:
         # Build the update payload
         payload = {}
         if budgeted_amount is not None:
-            payload["budgeted"] = budgeted_amount
+            payload["category"] = {"budgeted": budgeted_amount}
 
         try:
             # Format month as YYYY-MM-DD with day=01 (YNAB API expects full date format)
@@ -342,12 +342,15 @@ class YnabService:
         except Exception as e:
             debug_exception(f"Error updating month category: {str(e)}")
             raise RuntimeError(f"Failed to update month category data: {str(e)}") from e
-    def assign_money(self, month_date: datetime | str, category_id: str, assigned_money: int) -> ynab.SaveCategoryResponse:
+
+    def assign_money(
+        self, month_date: datetime | str, category_id: str, assigned_money: int
+    ) -> ynab.SaveCategoryResponse:
         # Validate inputs
         if not category_id or not isinstance(category_id, str):
             raise ValueError("category_id must be a non-empty string")
-        
-         # Validate and convert month_date
+
+        # Validate and convert month_date
         if isinstance(month_date, str):
             try:
                 # Handle both 'YYYY-MM' and 'YYYY-MM-DD' formats
@@ -364,13 +367,13 @@ class YnabService:
         elif not isinstance(month_date, datetime):
             raise ValueError(
                 "month_date must be a datetime object or ISO format string ('YYYY-MM' or 'YYYY-MM-DD')"
-            )    
+            )
 
         try:
             # Format month as YYYY-MM-DD with day=01 (YNAB API expects full date format)
             month_str = month_date.replace(day=1).strftime("%Y-%m-%d")
-            
-            payload = ynab.PatchMonthCategoryWrapper.from_dict({"category":{"budgeted":assigned_money*1000}})
+
+            payload = {"category": {"budgeted": assigned_money * 1000}}
             return self._call_api(
                 ynab.CategoriesApi,
                 lambda api: api.update_month_category(
@@ -379,7 +382,9 @@ class YnabService:
             )
         except Exception as e:
             debug_exception(f"Error assigning money to month category: {str(e)}")
-            raise RuntimeError(f"Failed to assign money to month category: {str(e)}") from e
+            raise RuntimeError(
+                f"Failed to assign money to month category: {str(e)}"
+            ) from e
 
     def create_transaction(
         self,

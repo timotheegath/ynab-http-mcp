@@ -8,6 +8,7 @@ money reassignment, budget health checking, and spending insights.
 from typing import Optional, Dict, Any
 import json
 from ..ynab_service import YnabService
+from ..utils.schema_utils import clean_ynab_data
 from ..schemas.budget_tools import (
     UpdateMonthCategoryRequest,
     CreateTransactionRequest,
@@ -48,13 +49,13 @@ class BudgetManagementTools:
         result = self.ynab_service.update_month_category(
             f"{month}-01", category_id, request.budgeted_amount
         )
-        return {"success": True, "category": result.data.category}
-    
+        return {
+            "success": True,
+            "category": clean_ynab_data(result.data.category.to_dict()),
+        }
+
     def assign_money_to_category(
-            self,
-            month: str,
-            category_id: str,
-            budget: int
+        self, month: str, category_id: str, budget: int
     ) -> str:
         result = self.ynab_service.assign_money(month, category_id, budget)
         return "success"
@@ -81,7 +82,10 @@ class BudgetManagementTools:
             request.approved,
             request.flag_color,
         )
-        return {"success": True, "transaction": result.data.transaction}
+        return {
+            "success": True,
+            "transaction": clean_ynab_data(result.data.transaction.to_dict()),
+        }
 
     def check_budget_health(self, month: str) -> BudgetHealthResponse:
         """
@@ -222,6 +226,7 @@ def register(mcp, ynab_service: YnabService):
         """Update a month category's targets."""
         result = tools.update_month_category(month, category_id, request)
         return json.dumps(result)
+
     @mcp.tool(name="assign_budget_to_category")
     def assign_budget_to_category_tool(
         month: str,
