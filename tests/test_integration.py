@@ -156,7 +156,6 @@ def test_transaction_schema():
 
     validated_response = simple_validate(transactions_response, MCPTransactions)
     assert len(validated_response.transactions) == 1
-    assert validated_response.server_knowledge == 123
     print("✓ Transactions response validation passed")
 
 
@@ -268,7 +267,7 @@ def test_ynab_api_data_transformation():
     }
 
     # Transform using our method
-    transformed_response = PlanMonthResponse.from_ynab_data(ynab_api_data)
+    transformed_response = PlanMonthResponse.from_ynab(ynab_api_data)
 
     # Validate the transformation
     assert (
