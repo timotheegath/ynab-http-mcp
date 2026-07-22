@@ -19,6 +19,7 @@ from ynab_http_mcp.schemas.categories import (
     MCPCategories,
     MCPCategory,
     MCPCategoryGoal,
+    MCPCategoryGroup,
     _explain_goal_funding_status,
     _explain_goal_type,
 )
@@ -434,12 +435,34 @@ class TestMCPCategoryFromYnab:
 
 
 # ---------------------------------------------------------------------------
-# MCPCategories.from_ynab
+# MCPCategoryGroup.from_ynab
 # ---------------------------------------------------------------------------
 
 
-class TestMCPCategoriesFromYnab:
-    def test_default_hides_deleted(self) -> None:
+class TestMCPCategoryGroupFromYnab:
+    def test_copies_group_metadata_and_nests_categories(self) -> None:
+        a = _make_category(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
+            name="A",
+        )
+        b = _make_category(
+            id=UUID("00000000-0000-0000-0000-000000000002"),
+            name="B",
+        )
+        group = _make_group_with_categories(a, b, group_name="Bills")
+
+        result = MCPCategoryGroup.from_ynab(group)
+
+        assert result.id == GRP_UUID
+        assert result.name == "Bills"
+        assert result.hidden is False
+        assert result.internal is False
+        assert result.deleted is False
+        assert [c.name for c in result.categories] == ["A", "B"]
+        # Each nested category is a full MCPCategory, not a dict
+        assert all(isinstance(c, MCPCategory) for c in result.categories)
+
+    def test_default_hides_deleted_categories_inside_group(self) -> None:
         active = _make_category(
             id=UUID("00000000-0000-0000-0000-000000000001"),
             name="Active",
@@ -450,50 +473,113 @@ class TestMCPCategoriesFromYnab:
             deleted=True,
         )
         group = _make_group_with_categories(active, deleted)
-        response = _make_categories_response(group)
 
-        result = MCPCategories.from_ynab(response)
+        result = MCPCategoryGroup.from_ynab(group)
 
-        assert len(result.categories) == 1
-        assert result.categories[0].name == "Active"
+        assert [c.name for c in result.categories] == ["Active"]
 
-    def test_flattens_across_groups(self) -> None:
-        a = _make_category(
-            id=UUID("00000000-0000-0000-0000-000000000001"),
-            name="A",
-        )
-        b = _make_category(
-            id=UUID("00000000-0000-0000-0000-000000000002"),
-            name="B",
-        )
-        c = _make_category(
-            id=UUID("00000000-0000-0000-0000-000000000003"),
-            name="C",
-        )
-        g1 = _make_group_with_categories(a, b)
-        g2 = _make_group_with_categories(
-            c, group_id=UUID("22222222-2222-2222-2222-222222222222")
-        )
-        response = _make_categories_response(g1, g2)
-
-        result = MCPCategories.from_ynab(response)
-
-        names = [cat.name for cat in result.categories]
-        assert names == ["A", "B", "C"]
-
-    def test_hide_disabled_subclass_includes_deleted(self) -> None:
-        class ShowAll(MCPCategories):
+    def test_hide_disabled_subclass_keeps_deleted_categories(self) -> None:
+        class ShowAll(MCPCategoryGroup):
             HIDE_DELETED = False
 
         active = _make_category(name="Active")
         deleted = _make_category(name="Deleted", deleted=True)
         group = _make_group_with_categories(active, deleted)
-        response = _make_categories_response(group)
+
+        result = ShowAll.from_ynab(group)
+
+        assert [c.name for c in result.categories] == ["Active", "Deleted"]
+
+
+# ---------------------------------------------------------------------------
+# MCPCategories.from_ynab
+# ---------------------------------------------------------------------------
+
+
+class TestMCPCategoriesFromYnab:
+    def test_default_hides_deleted_groups_and_inner_categories(self) -> None:
+        active_cat = _make_category(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
+            name="Keep",
+        )
+        deleted_inner = _make_category(
+            id=UUID("00000000-0000-0000-0000-000000000002"),
+            name="Dropped",
+            deleted=True,
+        )
+        deleted_group_cat = _make_category(
+            id=UUID("00000000-0000-0000-0000-000000000003"),
+            name="InDeletedGroup",
+        )
+        active_group = _make_group_with_categories(
+            active_cat, deleted_inner, group_name="Active"
+        )
+        deleted_group = _make_group_with_categories(
+            deleted_group_cat,
+            group_name="DeletedGroup",
+            group_id=UUID("22222222-2222-2222-2222-222222222222"),
+            deleted=True,
+        )
+        response = _make_categories_response(active_group, deleted_group)
+
+        result = MCPCategories.from_ynab(response)
+
+        # Deleted group is gone; the surviving group has filtered its inner list.
+        assert [g.name for g in result.category_groups] == ["Active"]
+        assert [c.name for c in result.category_groups[0].categories] == ["Keep"]
+
+    def test_preserves_group_order(self) -> None:
+        a = _make_group_with_categories(
+            _make_category(
+                id=UUID("00000000-0000-0000-0000-000000000001"),
+                name="A",
+            ),
+            group_name="First",
+        )
+        b = _make_group_with_categories(
+            _make_category(
+                id=UUID("00000000-0000-0000-0000-000000000002"),
+                name="B",
+            ),
+            group_name="Second",
+            group_id=UUID("22222222-2222-2222-2222-222222222222"),
+        )
+        c = _make_group_with_categories(
+            _make_category(
+                id=UUID("00000000-0000-0000-0000-000000000003"),
+                name="C",
+            ),
+            group_name="Third",
+            group_id=UUID("33333333-3333-3333-3333-333333333333"),
+        )
+        response = _make_categories_response(a, b, c)
+
+        result = MCPCategories.from_ynab(response)
+
+        assert [g.name for g in result.category_groups] == ["First", "Second", "Third"]
+
+    def test_hide_disabled_subclass_keeps_deleted_groups(self) -> None:
+        class ShowAll(MCPCategories):
+            HIDE_DELETED = False
+
+        active_group = _make_group_with_categories(
+            _make_category(name="InActive"),
+            group_name="Active",
+        )
+        deleted_group = _make_group_with_categories(
+            _make_category(name="InDeleted"),
+            group_name="Deleted",
+            group_id=UUID("22222222-2222-2222-2222-222222222222"),
+            deleted=True,
+        )
+        response = _make_categories_response(active_group, deleted_group)
 
         result = ShowAll.from_ynab(response)
 
-        names = [cat.name for cat in result.categories]
-        assert names == ["Active", "Deleted"]
+        # Deleted group is included, but its own HIDE_DELETED (True by default)
+        # still applies to its inner categories.
+        assert [g.name for g in result.category_groups] == ["Active", "Deleted"]
+        assert [c.name for c in result.category_groups[1].categories] == ["InDeleted"]
 
 
 # ---------------------------------------------------------------------------
@@ -510,9 +596,15 @@ class TestPublicSchemaSurface:
                 f"{name} should have been deleted from schemas.categories"
             )
 
+    def test_mcpcategorygroup_is_exported(self) -> None:
+        from ynab_http_mcp.schemas.categories import MCPCategoryGroup
+
+        assert MCPCategoryGroup is not None
+
     def test_package_init_exports(self) -> None:
         from ynab_http_mcp.schemas import (  # noqa: F401
             MCPCategory,
-            MCPCategories,
             MCPCategoryGoal,
+            MCPCategoryGroup,
+            MCPCategories,
         )

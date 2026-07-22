@@ -358,25 +358,63 @@ class MCPCategory(MCPResponse[ynab.Category]):
         )
 
 
-class MCPCategories(MCPResponse[ynab.CategoriesResponse]):
+class MCPCategoryGroup(MCPResponse[ynab.CategoryGroupWithCategories]):
     """
-    Flat-list wrapper for a YNAB categories response.
+    Simplified category-group model.
 
-    Iterates the raw ``category_groups`` envelope and emits a single flat
-    list of ``MCPCategory``. Mirrors the ``MCPAccounts`` shape exactly.
+    Represents a YNAB category group and the categories that live under it.
+    Mirrors ``MCPAccount`` / ``MCPAccounts``: typed, ``MCPResponse``-backed,
+    exposes a ``HIDE_DELETED`` class constant and a ``from_ynab`` classmethod.
     """
 
     HIDE_DELETED: ClassVar[bool] = True
+
+    id: uuid_type = Field(..., description="Unique category group identifier")
+    name: str = Field(..., description="Category group name")
+    hidden: bool = Field(..., description="Whether the group is hidden")
+    internal: bool = Field(..., description="Whether the group is internal to YNAB")
+    deleted: bool = Field(..., description="Whether the group is deleted")
     categories: List[MCPCategory] = Field(
-        default_factory=list, description="List of categories"
+        default_factory=list,
+        description="Categories that live under this group",
+    )
+
+    @classmethod
+    def from_ynab(cls, raw: ynab.CategoryGroupWithCategories) -> Self:
+        categories: List[MCPCategory] = []
+        for ynab_category in raw.categories or []:
+            if cls.HIDE_DELETED and ynab_category.deleted:
+                continue
+            categories.append(MCPCategory.from_ynab(ynab_category))
+        return cls(
+            id=raw.id,
+            name=raw.name,
+            hidden=raw.hidden,
+            internal=raw.internal,
+            deleted=raw.deleted,
+            categories=categories,
+        )
+
+
+class MCPCategories(MCPResponse[ynab.CategoriesResponse]):
+    """
+    Grouped-list wrapper for a YNAB categories response.
+
+    Iterates the raw ``category_groups`` envelope and emits a list of
+    ``MCPCategoryGroup``, each carrying its own filtered ``categories`` list.
+    Wire shape matches the YNAB-native ``{"category_groups": [...]}`` form.
+    """
+
+    HIDE_DELETED: ClassVar[bool] = True
+    category_groups: List[MCPCategoryGroup] = Field(
+        default_factory=list, description="List of category groups"
     )
 
     @classmethod
     def from_ynab(cls, raw: ynab.CategoriesResponse) -> Self:
-        categories: List[MCPCategory] = []
-        for group in raw.data.category_groups or []:
-            for ynab_category in group.categories or []:
-                if cls.HIDE_DELETED and ynab_category.deleted:
-                    continue
-                categories.append(MCPCategory.from_ynab(ynab_category))
-        return cls(categories=categories)
+        groups: List[MCPCategoryGroup] = []
+        for ynab_group in raw.data.category_groups or []:
+            if cls.HIDE_DELETED and ynab_group.deleted:
+                continue
+            groups.append(MCPCategoryGroup.from_ynab(ynab_group))
+        return cls(category_groups=groups)
