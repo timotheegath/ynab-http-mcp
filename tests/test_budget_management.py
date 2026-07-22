@@ -5,10 +5,8 @@ This module tests the budget management tools including update operations,
 budget health checking, and spending insights.
 """
 
-import os
 import sys
-import json
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 import pytest
 
 sys.path.insert(0, "/home/timo/projects/ynab-http-mcp/src")

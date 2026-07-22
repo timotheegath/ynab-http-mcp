@@ -5,8 +5,6 @@ Test script for the new update_category_goal functionality.
 
 import os
 import sys
-import json
-from datetime import datetime
 
 # Add the src directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))

@@ -3,7 +3,6 @@
 Integration test to verify all MCP tools work with real YNAB data structures.
 """
 
-import os
 import sys
 from datetime import date
 from uuid import uuid4

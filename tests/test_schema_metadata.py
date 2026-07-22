@@ -3,24 +3,23 @@
 Test script to verify schema metadata is accessible.
 """
 
-import os
 import sys
 import json
 
 # Add project root to path
 sys.path.insert(0, "/home/timo/projects/ynab-http-mcp/src")
 
-from ynab_http_mcp.schemas.transactions import MCPTransactions
-from ynab_http_mcp.schemas.categories import CategoriesResponse
-from ynab_http_mcp.schemas.planning import PlanMonthResponse, AllPlanMonthsResponse
 from ynab_http_mcp.schemas import (
     MCPTransaction,
+    MCPTransactions,
+    CategoriesResponse,
     CleanCategory,
     CategoryGroup,
     MonthCategory,
     PlanMonth,
     PlanMonthSummary,
     AllPlanMonthsResponse,
+    PlanMonthResponse,
 )
 
 
