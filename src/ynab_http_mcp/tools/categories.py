@@ -29,5 +29,3 @@ def register(mcp, ynab_service: YnabService):
 
         # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json()
-
-  
