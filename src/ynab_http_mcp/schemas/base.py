@@ -5,8 +5,10 @@ This module provides core utilities for schema management and metadata.
 """
 
 from typing import Any, Dict, Type, TypeVar, Generic, Self
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import logging
+from datetime import date as date_type, datetime as datetime_type
+from uuid import UUID as uuid_type
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +23,21 @@ def get_json_schema(model: Type[BaseModel]) -> Dict[str, Any]:
     """
     return model.model_json_schema()
 
+
 YNABNative = TypeVar("YNABNative")
 
+
 class MCPResponse(BaseModel, Generic[YNABNative]):
+    model_config = ConfigDict(
+        json_encoders={date_type: str, datetime_type: str, uuid_type: str}
+    )
+
     @classmethod
     def from_ynab(cls, raw: YNABNative) -> Self:
         raise NotImplementedError
 
     def to_ynab(self) -> YNABNative:
         raise NotImplementedError  # for write tools
-    
 
 
 class MCPRequest(BaseModel):

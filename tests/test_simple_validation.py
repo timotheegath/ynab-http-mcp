@@ -5,8 +5,7 @@ Tests for the simplified validation approach.
 import pytest
 from datetime import date
 from uuid import UUID
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data
-from ynab_http_mcp.utils.simple_validation import simple_validate
+from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
 from ynab_http_mcp.schemas.transactions import MCPTransaction
 
 

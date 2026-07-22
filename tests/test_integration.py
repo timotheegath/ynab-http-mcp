@@ -23,8 +23,7 @@ from ynab_http_mcp.schemas.planning import (
     PlanMonthSummary,
     AllPlanMonthsResponse,
 )
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data
-from ynab_http_mcp.utils.simple_validation import simple_validate
+from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
 
 
 def create_sample_transaction():

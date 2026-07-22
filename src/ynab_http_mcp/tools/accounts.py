@@ -1,11 +1,6 @@
 from ynab_http_mcp.ynab_service import YnabService
 from ynab_http_mcp.schemas.accounts import MCPAccounts, MCPAccount
-from ynab_http_mcp.schemas.transactions import TransactionsResponse
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data
-from ynab_http_mcp.utils.schema_utils import simple_validate
 from uuid import UUID
-from typing import Annotated, Literal
-import json
 
 
 def register(mcp, ynab_service: YnabService):
@@ -25,5 +20,3 @@ def register(mcp, ynab_service: YnabService):
         raw_response = ynab_service.get_account(UUID(account_id))
         cleaned_response = MCPAccount.from_ynab(raw_response)
         return cleaned_response.model_dump_json()
-    
-    

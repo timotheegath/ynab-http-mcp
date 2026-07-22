@@ -5,11 +5,14 @@ This module defines simplified Pydantic models for validating
 YNAB account data using basic data types suitable for agents.
 """
 
-from typing import Optional, List, Self, Literal
-from pydantic import BaseModel, Field
+from typing import Optional, List, Self
+from pydantic import Field
 from .base import MCPResponse
 import ynab
-from ..utils.schema_utils import simple_validate, clean_ynab_data,clean_date_for_MCP_output, clean_datetime_for_MCP_output, clean_UUID_for_MCP_output, clean_enum_for_MCP_output
+from ..utils.schema_utils import (
+    clean_enum_for_MCP_output,
+)
+from .base import uuid_type, date_type
 
 
 class MCPAccount(MCPResponse[ynab.Account]):
@@ -20,9 +23,8 @@ class MCPAccount(MCPResponse[ynab.Account]):
     using simple types that are easily consumable by AI agents.
     """
 
-
     # Required fields
-    id: str = Field(..., description="Unique account identifier")
+    id: uuid_type = Field(..., description="Unique account identifier")
     name: str = Field(..., description="Account name")
     type: str = Field(
         ..., description="Account type (checking, savings, creditCard, etc.)"
@@ -34,7 +36,7 @@ class MCPAccount(MCPResponse[ynab.Account]):
     # Balance fields
     # YNAB_BUG ? balance_formatted is said to be an optional return, with possible None ?
     # I have to mark it as optional here as well therefore.
-    balance : Optional[str] = Field(None, description="Formatted balance string")
+    balance: Optional[str] = Field(None, description="Formatted balance string")
 
     # Optional fields
     cleared_balance: Optional[str] = Field(
@@ -45,10 +47,11 @@ class MCPAccount(MCPResponse[ynab.Account]):
     )
 
     # Additional metadata
-    transfer_payee_id: str = Field(
-        ..., 
-        description="The payee id which should be used when transferring to this account")
-    last_reconciled_at: Optional[str] = Field(
+    transfer_payee_id: uuid_type = Field(
+        ...,
+        description="The payee id which should be used when transferring to this account",
+    )
+    last_reconciled_at: Optional[date_type] = Field(
         None, description="Last reconciliation timestamp"
     )
     direct_import_linked: Optional[bool] = Field(
@@ -72,17 +75,17 @@ class MCPAccount(MCPResponse[ynab.Account]):
             raw = raw.data.account
 
         return cls(
-            id=clean_UUID_for_MCP_output(raw.id),
+            id=raw.id,
             name=raw.name,
             type=clean_enum_for_MCP_output(raw.type),
             on_budget=raw.on_budget,
             closed=raw.closed,
             deleted=raw.deleted,
-            balance=raw.balance_formatted if raw.balance_formatted is not None else None,
+            balance=raw.balance_formatted,
             cleared_balance=raw.cleared_balance_formatted,
             uncleared_balance=raw.uncleared_balance_formatted,
-            transfer_payee_id=clean_UUID_for_MCP_output(raw.transfer_payee_id),
-            last_reconciled_at=clean_datetime_for_MCP_output(raw.last_reconciled_at) if raw.last_reconciled_at is not None else None,
+            transfer_payee_id=raw.transfer_payee_id,
+            last_reconciled_at=raw.last_reconciled_at,
             direct_import_linked=raw.direct_import_linked,
             direct_import_in_error=raw.direct_import_in_error,
         )
@@ -94,6 +97,7 @@ class MCPAccounts(MCPResponse[ynab.AccountsResponse]):
 
     Wraps the list of accounts.
     """
+
     HIDE_DELETED = True
     accounts: List[MCPAccount] = Field(..., description="List of accounts")
 
@@ -104,6 +108,4 @@ class MCPAccounts(MCPResponse[ynab.AccountsResponse]):
             if cls.HIDE_DELETED and ynab_account.deleted:
                 continue
             accounts.append(MCPAccount.from_ynab(ynab_account))
-        return cls(
-            accounts=accounts
-        )
+        return cls(accounts=accounts)

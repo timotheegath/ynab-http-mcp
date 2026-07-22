@@ -90,12 +90,15 @@ class UpdateCategoryRequest(BaseModel):
         - Requires goal_target to be set
         - Use null to leave an existing target's cadence unchanged""",
     )
+
+
 class UpdateCategoryGoalRecurringRequest(UpdateCategoryRequest):
     """
     Request schema for updating a category goal to a recurring goal in YNAB.
     Usage examples:
     - To set a monthly funding goal: provide goal_target with goal_frequency='monthly'
     """
+
     # Excluded fields:
     name: Optional[str] = Field(default=None, exclude=True)
     category_group_id: Optional[str] = Field(default=None, exclude=True)
@@ -116,9 +119,8 @@ class UpdateCategoryGoalRecurringRequest(UpdateCategoryRequest):
     goal_frequency: Literal["monthly", "weekly", "daily", "yearly"] = Field(
         ...,
         description="""Frequency for recurring goals. When specified with goal_target, configures a recurring 'NEED' target. 
-        Supported values: 'monthly', 'weekly', 'daily', 'yearly'"""
+        Supported values: 'monthly', 'weekly', 'daily', 'yearly'""",
     )
-
 
     def to_update_category_request(self) -> UpdateCategoryRequest:
         return UpdateCategoryRequest(
@@ -126,31 +128,34 @@ class UpdateCategoryGoalRecurringRequest(UpdateCategoryRequest):
             note=self.note,
             goal_target=self.goal_target,
             goal_needs_whole_amount=self.goal_needs_whole_amount,
-            goal_frequency=self.goal_frequency
-        ) # type: ignore
+            goal_frequency=self.goal_frequency,
+        )  # type: ignore
+
+
 class UpdateCategoryDetailsRequest(UpdateCategoryRequest):
     """
     Request schema for updating a category's basic fields.
-    
+
     """
+
     # Excluded fields:
     goal_target_date: Optional[str] = Field(default=None, exclude=True)
     goal_target: Optional[int] = Field(default=None, exclude=True)
-    goal_frequency: Optional[Literal["monthly", "weekly", "daily", "yearly"]] = Field(default=None, exclude=True)
+    goal_frequency: Optional[Literal["monthly", "weekly", "daily", "yearly"]] = Field(
+        default=None, exclude=True
+    )
     goal_needs_whole_amount: Optional[bool] = Field(default=None, exclude=True)
 
-
     # Fields with updated parameters
-
-
 
     def to_update_category_request(self) -> UpdateCategoryRequest:
         return UpdateCategoryRequest(
             category_id=self.category_id,
             note=self.note,
             name=self.name,
-            category_group_id=self.category_group_id
-        ) # type: ignore
+            category_group_id=self.category_group_id,
+        )  # type: ignore
+
 
 class UpdateCategoryTargetDateRequest(UpdateCategoryRequest):
     """
@@ -158,10 +163,13 @@ class UpdateCategoryTargetDateRequest(UpdateCategoryRequest):
     Usage examples:
     - To set a target date goal: provide goal_target with goal_target_date
     """
+
     # Excluded fields:
     name: Optional[str] = Field(default=None, exclude=True)
     category_group_id: Optional[str] = Field(default=None, exclude=True)
-    goal_frequency: Optional[Literal["monthly", "weekly", "daily", "yearly"]] = Field(default=None, exclude=True)
+    goal_frequency: Optional[Literal["monthly", "weekly", "daily", "yearly"]] = Field(
+        default=None, exclude=True
+    )
     goal_needs_whole_amount: Optional[bool] = Field(default=None, exclude=True)
 
     goal_target: int = Field(
@@ -176,33 +184,35 @@ class UpdateCategoryTargetDateRequest(UpdateCategoryRequest):
         description="Goal target date in ISO format (YYYY-MM-DD).",
         pattern=r"^\d{4}-\d{2}-\d{2}$",
     )
+
     def to_update_category_request(self) -> UpdateCategoryRequest:
         return UpdateCategoryRequest(
             category_id=self.category_id,
             note=self.note,
             goal_target=self.goal_target,
-            goal_target_date=self.goal_target_date
-        ) # type: ignore
-    
+            goal_target_date=self.goal_target_date,
+        )  # type: ignore
+
+
 class ClearCategoryGoalRequest(UpdateCategoryRequest):
     """
     Request schema for clearing a category goal.
     """
+
     # Excluded fields:
     name: Optional[str] = Field(default=None, exclude=True)
     category_group_id: Optional[str] = Field(default=None, exclude=True)
-    goal_frequency: Optional[Literal["monthly", "weekly", "daily", "yearly"]] = Field(default=None, exclude=True)
+    goal_frequency: Optional[Literal["monthly", "weekly", "daily", "yearly"]] = Field(
+        default=None, exclude=True
+    )
     goal_needs_whole_amount: Optional[bool] = Field(default=None, exclude=True)
     goal_target: Optional[int] = Field(default=None, exclude=True)
     goal_target_date: Optional[str] = Field(default=None, exclude=True)
-    
+
     def to_update_category_request(self) -> UpdateCategoryRequest:
         return UpdateCategoryRequest(
-            category_id=self.category_id,
-            note=self.note,
-            goal_target=0
-        ) # type: ignore
-
+            category_id=self.category_id, note=self.note, goal_target=0
+        )  # type: ignore
 
 
 class CreateTransactionRequest(BaseModel):
