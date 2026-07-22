@@ -6,7 +6,7 @@ YNAB API response processing and make data agent-friendly.
 """
 
 from typing import Any, Dict, Type, TypeVar, Optional
-from datetime import date as datetime_date, datetime as datetime_datetime
+from datetime import date as datetime_date, datetime as datetime_datetime, datetime as datetime
 from uuid import UUID
 import logging
 from pydantic import BaseModel, ValidationError
@@ -16,6 +16,25 @@ import locale
 logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
+
+def clean_UUID_for_MCP_output(uuid: UUID) -> str:
+
+    return str(uuid)
+
+def clean_datetime_for_MCP_output(timestamp: datetime) -> str:
+
+    return timestamp.isoformat()
+
+def clean_date_for_MCP_output(timestamp: datetime | datetime_date) -> str:
+
+    if isinstance(timestamp, datetime_date):
+        return timestamp.isoformat()
+    elif isinstance(timestamp, datetime):
+        return timestamp.date().isoformat()
+    
+def clean_enum_for_MCP_output(enum: Any) -> str:
+
+    return str(enum)
 
 def clean_ynab_data(data: Any) -> Any:
     """

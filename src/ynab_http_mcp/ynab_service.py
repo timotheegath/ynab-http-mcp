@@ -101,6 +101,10 @@ class YnabService:
         return self._call_api(
             ynab.AccountsApi, lambda api: api.get_accounts(str(self.plan_id))
         )
+    def get_account(self, id: UUID) -> ynab.AccountResponse:
+        return self._call_api(
+            ynab.AccountsApi, lambda api: api.get_account_by_id(str(self.plan_id), account_id=id)
+        )
 
     def get_transactions(
         self,
