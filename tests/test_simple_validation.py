@@ -82,7 +82,9 @@ def test_simple_validate_with_valid_data():
     data = {
         "id": "123e4567-e89b-12d3-a456-426614174000",
         "date": "2023-01-15",
-        "amount": -50000,
+        # Lean: amount is a formatted string; integer milliunit twin is dropped
+        # from the lean layer (lives on full_details for the Full layer).
+        "amount": "-$50.00",
         "memo": "Grocery shopping",
         "cleared": "cleared",
         "approved": True,
@@ -95,9 +97,9 @@ def test_simple_validate_with_valid_data():
     # This should not raise an exception
     validated = simple_validate(data, MCPTransaction)
 
-    assert validated.id == "123e4567-e89b-12d3-a456-426614174000"
+    assert str(validated.id) == "123e4567-e89b-12d3-a456-426614174000"
     assert validated.date == date(2023, 1, 15)
-    assert validated.amount == -50000
+    assert validated.amount == "-$50.00"
 
 
 def test_simple_validate_with_invalid_data():
@@ -105,7 +107,7 @@ def test_simple_validate_with_invalid_data():
     data = {
         "id": "valid-id",
         "date": "2023-01-15",
-        "amount": -50000,
+        "amount": "-$50.00",
         # Missing required fields: memo, cleared, approved, account_id, account_name
     }
 
@@ -119,7 +121,9 @@ def test_integration_clean_then_validate():
     raw_ynab_data = {
         "id": UUID("123e4567-e89b-12d3-a456-426614174000"),
         "date": date(2023, 1, 15),
-        "amount": -50000,
+        # Lean: amount is the formatted string; integer milliunit twin is dropped
+        # from the lean layer (lives on full_details for the Full layer).
+        "amount": "-$50.00",
         "memo": "Grocery shopping",
         "cleared": "cleared",
         "approved": True,
@@ -147,6 +151,6 @@ def test_integration_clean_then_validate():
     validated = simple_validate(cleaned_data, MCPTransaction)
 
     # Verify the validation worked
-    assert validated.id == "123e4567-e89b-12d3-a456-426614174000"
+    assert str(validated.id) == "123e4567-e89b-12d3-a456-426614174000"
     assert validated.date == date(2023, 1, 15)
-    assert validated.account_id == "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    assert str(validated.account_id) == "a1b2c3d4-e5f6-7890-abcd-ef1234567890"

@@ -5,17 +5,18 @@ This module defines simplified Pydantic models for validating
 YNAB payee data using basic data types suitable for agents.
 """
 
-from typing import Optional, List, Dict
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, Self
 from pydantic import BaseModel, Field
-from ynab import (
-    PayeesResponse as ynabPayeesResponse,
-    PayeeResponse as ynabPayeeResponse,
-)
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
+import ynab
+from ynab_http_mcp.utils.schema_utils import clean_ynab_data
 from ynab_http_mcp.debug import debug_exception
 
+from .base import MCPResponse
 
-class CleanPayee(BaseModel):
+
+class CleanPayee(MCPResponse[ynab.Payee]):
     """
     Simplified payee model using basic data types.
 
@@ -46,6 +47,45 @@ class CleanPayee(BaseModel):
         description="If a transfer payee, the `account_id` to which this payee transfers to",
     )
 
+    @classmethod
+    def from_ynab(cls, raw: ynab.Payee) -> Self:
+        """Build a ``CleanPayee`` from a raw ``ynab.Payee``."""
+        return cls(
+            id=str(raw.id),
+            name=raw.name,
+            deleted=raw.deleted,
+            transfer_account_id=(
+                str(raw.transfer_account_id) if raw.transfer_account_id else None
+            ),
+        )
+
+
+class CleanPayeeFull(CleanPayee):
+    """Full sibling of ``CleanPayee`` — same lean fields plus ``full_details``.
+
+    ``full_details`` is the cleaned raw ``ynab.Payee`` as a dict and contains
+    every field the YNAB SDK exposes for a payee that the Lean layer dropped.
+    Use this when SDK-fidelity access is required.
+    """
+
+    full_details: Dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Cleaned raw ``ynab.Payee`` as a dict. Contains every field the "
+            "YNAB SDK exposes for a payee, including fields the Lean layer "
+            "dropped. UUIDs are strings, datetimes are ISO dates, and "
+            "YNAB-specific import fields are removed."
+        ),
+    )
+
+    @classmethod
+    def from_ynab(cls, raw: ynab.Payee) -> Self:
+        lean = CleanPayee.from_ynab(raw)
+        return cls(
+            **lean.model_dump(),
+            full_details=clean_ynab_data(raw.to_dict()),
+        )
+
 
 class PayeesResponse(BaseModel):
     """
@@ -60,38 +100,19 @@ class PayeesResponse(BaseModel):
     )
 
     @staticmethod
-    def from_ynab_response(ynab_response: ynabPayeesResponse) -> "PayeesResponse":
-        raw_data = ynab_response.to_dict()
-
-        # Clean each transaction using unified data cleaning
-        cleaned_payees = []
-        for payee_data in raw_data.get("data", {}).get("payees", []):
-            # Clean data using unified function (handles UUID→string, import field filtering, etc.)
-            cleaned_data = clean_ynab_data(payee_data)
-
-            # Validate using simplified approach
+    def from_ynab_response(ynab_response: ynab.PayeesResponse) -> "PayeesResponse":
+        cleaned_payees: List[CleanPayee] = []
+        for payee in ynab_response.data.payees or []:
             try:
-                validated_payee = simple_validate(cleaned_data, CleanPayee)
-                cleaned_payees.append(validated_payee.model_dump())
+                cleaned_payees.append(CleanPayee.from_ynab(payee))
             except Exception:
                 debug_exception(
-                    f"Failed to validate payee {payee_data.get('id', 'unknown')}"
+                    f"Failed to validate payee {getattr(payee, 'id', 'unknown')}"
                 )
-                # Skip invalid transactions but continue processing others
                 continue
 
-        # Create final response with contextual hints extracted from schema
         hints = CleanPayee._extract_hints()
-
-        final_response = {
-            "payees": cleaned_payees,
-            "server_knowledge": raw_data.get("data", {}).get("server_knowledge", 0),
-            "hints": hints,
-        }
-
-        # Validate the complete response structure using simplified approach
-        validated_response = simple_validate(final_response, PayeesResponse)
-        return validated_response
+        return PayeesResponse(payees=cleaned_payees, hints=hints)
 
 
 class PayeeResponse(BaseModel):
@@ -107,35 +128,49 @@ class PayeeResponse(BaseModel):
     )
 
     @staticmethod
-    def from_ynab_response(ynab_reponse: ynabPayeeResponse) -> "PayeeResponse":
-        # Convert to dict and clean data using unified function
-        raw_data = ynab_reponse.to_dict()
-        payee_data = raw_data.get("data", {})["payee"]
-
-        # Clean each transaction using unified data cleaning
-        cleaned_payee = {}
-
-        # Clean data using unified function (handles UUID→string, import field filtering, etc.)
-        cleaned_data = clean_ynab_data(payee_data)
-
-        # Validate using simplified approach
+    def from_ynab_response(ynab_reponse: ynab.PayeeResponse) -> "PayeeResponse":
         try:
-            validated_payee = simple_validate(cleaned_data, CleanPayee)
-            cleaned_payee = validated_payee.model_dump()
+            validated_payee = CleanPayee.from_ynab(ynab_reponse.data.payee)
         except Exception:
             debug_exception(
-                f"Failed to validate transaction {payee_data.get('id', 'unknown')}"
+                f"Failed to validate payee {getattr(ynab_reponse.data.payee, 'id', 'unknown')}"
+            )
+            validated_payee = CleanPayee(
+                id="", name="", deleted=False, transfer_account_id=None
             )
 
-        # Create final response with contextual hints extracted from schema
         hints = CleanPayee._extract_hints()
+        return PayeeResponse(payee=validated_payee, hints=hints)
 
-        final_response = {
-            "payee": cleaned_payee,
-            "server_knowledge": raw_data.get("data", {}).get("server_knowledge", 0),
-            "hints": hints,
-        }
 
-        # Validate the complete response structure using simplified approach
-        validated_response = simple_validate(final_response, PayeeResponse)
-        return validated_response
+class PayeeResponseFull(BaseModel):
+    """
+    Drill-in response shape for a single payee, including the cleaned raw
+    ``ynab.Payee`` under ``full_details``. Sibling to ``PayeeResponse``;
+    chosen as the minimum-churn option (no changes to ``PayeeResponse`` /
+    ``PayeesResponse`` wiring).
+    """
+
+    payee: CleanPayeeFull = Field(..., description="Payee (Full layer)")
+    hints: Optional[Dict[str, str]] = Field(
+        None, description="Contextual hints for complex fields"
+    )
+
+    @staticmethod
+    def from_ynab_response(ynab_reponse: ynab.PayeeResponse) -> "PayeeResponseFull":
+        try:
+            validated_payee = CleanPayeeFull.from_ynab(ynab_reponse.data.payee)
+        except Exception:
+            debug_exception(
+                f"Failed to validate payee (full) {getattr(ynab_reponse.data.payee, 'id', 'unknown')}"
+            )
+            validated_payee = CleanPayeeFull(
+                id="",
+                name="",
+                deleted=False,
+                transfer_account_id=None,
+                full_details={},
+            )
+
+        hints = CleanPayee._extract_hints()
+        return PayeeResponseFull(payee=validated_payee, hints=hints)

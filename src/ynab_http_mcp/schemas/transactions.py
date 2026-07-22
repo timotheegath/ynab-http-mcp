@@ -5,11 +5,12 @@ This module defines simplified Pydantic models for validating
 YNAB transaction data using basic data types suitable for agents.
 """
 
-from typing import ClassVar, Optional, List, Self
+from typing import Any, ClassVar, Dict, Optional, List, Self
 from pydantic import Field
 import ynab
 from ynab_http_mcp.utils.schema_utils import (
     clean_enum_for_MCP_output,
+    clean_ynab_data,
 )
 from .base import MCPResponse, date_type, uuid_type
 
@@ -17,6 +18,16 @@ from .base import MCPResponse, date_type, uuid_type
 class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
     """
     A transaction indicates a movement of money between accounts, or between an account and a payee.
+
+    Lean layer (per the Lean / Full / Aggregate convention):
+
+    - ``amount`` is a formatted currency string (e.g. ``"-$45.00"``).
+    - ``milli_amount`` (integer milliunit twin) is **dropped** from the lean
+      layer; the integer value lives in
+      ``data://transactions/{id}/full`` under ``full_details.amount``.
+    - Sub-transactions follow the same rule — ``MCPSubTransaction.amount`` is
+      a formatted string, and the integer value is reachable only via the
+      Full layer (``full_details.subtransactions[i].amount``).
     """
 
     class MCPSubTransaction(MCPResponse[ynab.SubTransaction]):
@@ -31,7 +42,6 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
             ..., description="Unique identifier of the parent transaction"
         )
         amount: Optional[str] = Field(None, description="Formatted amount string")
-        milli_amount: int = Field(..., description="Amount in milliunits")
 
         memo: Optional[str] = Field(None, description="Subtransaction memo/note")
 
@@ -62,7 +72,6 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
                 id=uuid_type(raw.id),
                 parent_transaction_id=uuid_type(raw.transaction_id),
                 amount=raw.amount_formatted,
-                milli_amount=raw.amount,
                 memo=raw.memo,
                 payee_id=raw.payee_id,
                 payee_name=raw.payee_name,
@@ -75,32 +84,10 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
                 deleted=raw.deleted,
             )
 
-    # @staticmethod
-    # def _extract_hints() -> Dict[str, str]:
-    #     """
-    #     Extract contextual hints for complex fields from the schema.
-    #     """
-    #     hints = {}
-    #     for field_name, field_info in MCPTransaction.model_fields.items():
-    #         if field_info.description and any(
-    #             keyword in field_info.description
-    #             for keyword in [
-    #                 "transfer",
-    #                 "matched",
-    #                 "flag",
-    #                 "debt",
-    #                 "amount",
-    #                 "cleared",
-    #             ]
-    #         ):
-    #             hints[field_name] = field_info.description
-    #     return hints
-
     # Required fields
     id: uuid_type = Field(..., description="Unique transaction identifier")
     date: date_type = Field(..., description="Transaction date")
     amount: Optional[str] = Field(None, description="Formatted amount string")
-    milli_amount: int = Field(..., description="Amount in milliunits")
     memo: Optional[str] = Field(None, description="Transaction memo/note")
     cleared: str = Field(
         ...,
@@ -155,7 +142,6 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
             id=uuid_type(raw.id),
             date=raw.var_date,
             amount=raw.amount_formatted,
-            milli_amount=raw.amount,
             memo=raw.memo,
             cleared=clean_enum_for_MCP_output(raw.cleared),
             approved=raw.approved,
@@ -175,6 +161,41 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
             subtransactions=[
                 cls.MCPSubTransaction.from_ynab(sub) for sub in raw.subtransactions
             ],
+        )
+
+
+class MCPTransactionFull(MCPTransaction):
+    """Full sibling of ``MCPTransaction`` — same lean fields plus ``full_details``.
+
+    ``full_details`` is the cleaned raw ``ynab.TransactionDetail`` as a dict
+    and contains the integer ``amount`` (milliunits), integer ``subtransactions[i].amount``,
+    and every other field the Lean layer dropped (e.g. ``import_payee_name``,
+    ``matched_transaction_id``). Use this when arithmetic or SDK-fidelity
+    access is required.
+    """
+
+    full_details: Dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Cleaned raw ``ynab.TransactionDetail`` as a dict. Contains every "
+            "field the YNAB SDK exposes for a transaction, including the "
+            "integer ``amount`` in milliunits and every other field the Lean "
+            "layer dropped. UUIDs are strings, datetimes are ISO dates, and "
+            "YNAB-specific import fields are removed."
+        ),
+    )
+
+    @classmethod
+    def from_ynab(cls, raw: ynab.TransactionDetail | ynab.TransactionResponse) -> Self:
+        if isinstance(raw, ynab.TransactionResponse):
+            raw_txn: ynab.TransactionDetail = raw.data.transaction
+        else:
+            raw_txn = raw
+
+        lean = MCPTransaction.from_ynab(raw_txn)
+        return cls(
+            **lean.model_dump(),
+            full_details=clean_ynab_data(raw_txn.to_dict()),
         )
 
 

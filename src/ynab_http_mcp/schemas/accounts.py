@@ -5,12 +5,13 @@ This module defines simplified Pydantic models for validating
 YNAB account data using basic data types suitable for agents.
 """
 
-from typing import ClassVar, Optional, List, Self
+from typing import Any, ClassVar, Dict, Optional, List, Self
 from pydantic import Field
 from .base import MCPResponse
 import ynab
 from ..utils.schema_utils import (
     clean_enum_for_MCP_output,
+    clean_ynab_data,
 )
 from .base import uuid_type, date_type
 
@@ -109,3 +110,40 @@ class MCPAccounts(MCPResponse[ynab.AccountsResponse]):
                 continue
             accounts.append(MCPAccount.from_ynab(ynab_account))
         return cls(accounts=accounts)
+
+
+class MCPAccountFull(MCPAccount):
+    """Full sibling of ``MCPAccount`` — same lean fields plus ``full_details``.
+
+    ``full_details`` is the cleaned raw ``ynab.Account`` as a dict and
+    contains the integer ``balance`` in milliunits, the integer
+    ``cleared_balance`` / ``uncleared_balance``, and every other field the
+    Lean layer dropped (``note``, ``interest_rate``, ``available_balance``,
+    ``debt_escrow_amounts``, etc.). Use this when arithmetic or
+    SDK-fidelity access is required.
+    """
+
+    full_details: Dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Cleaned raw ``ynab.Account`` as a dict. Contains every field the "
+            "YNAB SDK exposes for an account, including fields the Lean layer "
+            "dropped (``note``, integer milliunit balances, ``interest_rate``, "
+            "``available_balance``, ``debt_escrow_amounts``, etc.). UUIDs are "
+            "strings, datetimes are ISO dates, and YNAB-specific import fields "
+            "are removed."
+        ),
+    )
+
+    @classmethod
+    def from_ynab(cls, raw: ynab.Account | ynab.AccountResponse) -> Self:
+        if isinstance(raw, ynab.AccountResponse):
+            raw_acct: ynab.Account = raw.data.account
+        else:
+            raw_acct = raw
+
+        lean = MCPAccount.from_ynab(raw_acct)
+        return cls(
+            **lean.model_dump(),
+            full_details=clean_ynab_data(raw_acct.to_dict()),
+        )

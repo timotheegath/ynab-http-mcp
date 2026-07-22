@@ -163,6 +163,9 @@ class TestExplainGoalType:
             _explain_goal_type(raw)
 
     def test_mf_cadence_2_weekly(self) -> None:
+        # Per the spec convention, cadence 2 = "Weekly" (1 week) and
+        # goal_cadence_frequency is the multiplier. So cadence 2, freq 1
+        # is "every 1 week" / "weekly", NOT "every 2 weeks".
         raw = _make_category(
             goal_type="MF",
             goal_cadence=2,
@@ -173,7 +176,24 @@ class TestExplainGoalType:
         )
         result = _explain_goal_type(raw)
         assert "Refill" in result
+        assert "1 week" in result
+
+    def test_mf_cadence_2_biweekly(self) -> None:
+        # Regression: cadence 2 (weekly) with frequency 2 should be
+        # "every 2 weeks" (biweekly). The math is the frequency value,
+        # not cadence * frequency (which would give 4).
+        raw = _make_category(
+            goal_type="MF",
+            goal_cadence=2,
+            goal_cadence_frequency=2,
+            goal_needs_whole_amount=False,
+            goal_target=4000,
+            goal_target_formatted="$4.00",
+        )
+        result = _explain_goal_type(raw)
+        assert "Refill" in result
         assert "2 week" in result
+        assert "4 week" not in result
 
     def test_mf_cadence_2_missing_frequency_raises(self) -> None:
         raw = _make_category(
@@ -195,6 +215,9 @@ class TestExplainGoalType:
         assert f"every {cadence - 1} months" in result
 
     def test_mf_cadence_13_yearly(self) -> None:
+        # Per the spec convention, cadence 13 = "Yearly" (1 year) and
+        # goal_cadence_frequency is the multiplier. So cadence 13, freq 1
+        # is "every 1 year" / "yearly", NOT "every 13 years".
         raw = _make_category(
             goal_type="MF",
             goal_cadence=13,
@@ -204,10 +227,26 @@ class TestExplainGoalType:
             goal_target_formatted="$50.00",
         )
         result = _explain_goal_type(raw)
-        # cadence 13 is "Yearly"; period = cadence * cadence_frequency (preserved
-        # from the original YNAB SDK cadence formula).
         assert "Refill" in result
-        assert "13 year" in result
+        assert "1 year" in result
+        assert "13 year" not in result
+
+    def test_mf_cadence_13_every_two_years(self) -> None:
+        # Regression: cadence 13 (yearly) with frequency 2 should be
+        # "every 2 years". The math is the frequency value, not
+        # cadence * frequency (which would give 26).
+        raw = _make_category(
+            goal_type="MF",
+            goal_cadence=13,
+            goal_cadence_frequency=2,
+            goal_needs_whole_amount=False,
+            goal_target=50000,
+            goal_target_formatted="$50.00",
+        )
+        result = _explain_goal_type(raw)
+        assert "Refill" in result
+        assert "2 year" in result
+        assert "26 year" not in result
 
     def test_mf_cadence_13_missing_frequency_raises(self) -> None:
         raw = _make_category(
@@ -327,7 +366,7 @@ class TestMCPCategoryGoalFromYnab:
         assert result.goal_type is None
         assert result.goal_summary is None
         assert result.goal_status is None
-        assert result.goal_target is None
+        assert result.goal_target_date is None
         # Pydantic model fields are all defaults
         dumped = result.model_dump()
         assert all(v is None for v in dumped.values())
@@ -347,12 +386,11 @@ class TestMCPCategoryGoalFromYnab:
         )
         result = MCPCategoryGoal.from_ynab(raw)
         assert result.goal_type == "TB"
-        assert result.goal_target == 100000
-        assert result.goal_target_formatted == "$100.00"
-        assert result.goal_summary is not None
-        assert "Target Category Balance" in result.goal_summary
-        assert result.goal_status is not None
-        assert "50% complete" in result.goal_status
+        # Lean layer does NOT expose goal_target / *_formatted fields;
+        # they're reachable only via the Full layer.
+        assert not hasattr(result, "goal_target")
+        assert "Target Category Balance" in (result.goal_summary or "")
+        assert "50% complete" in (result.goal_status or "")
 
     def test_mf_monthly_goal(self) -> None:
         raw = _make_category(
@@ -375,6 +413,39 @@ class TestMCPCategoryGoalFromYnab:
         result = MCPCategoryGoal.from_ynab(raw)
         assert result.goal_type == "DEBT"
         assert result.goal_summary == "Unknown goal type: DEBT"
+
+    def test_lean_goal_exposes_exactly_five_fields(self) -> None:
+        # Lean layer MUST keep only the 5 fields the spec requires.
+        # All other goal attributes are reachable only via full_details.
+        field_names = set(MCPCategoryGoal.model_fields.keys())
+        assert field_names == {
+            "goal_type",
+            "goal_target_date",
+            "goal_percentage_complete",
+            "goal_summary",
+            "goal_status",
+        }
+        # Defensive: no dropped field snuck back in.
+        for dropped in (
+            "goal_needs_whole_amount",
+            "goal_day",
+            "goal_cadence",
+            "goal_cadence_frequency",
+            "goal_creation_month",
+            "goal_target",
+            "goal_under_funded",
+            "goal_overall_funded",
+            "goal_overall_left",
+            "goal_snoozed_at",
+            "goal_target_formatted",
+            "goal_under_funded_formatted",
+            "goal_overall_funded_formatted",
+            "goal_overall_left_formatted",
+            "goal_months_to_budget",
+        ):
+            assert dropped not in field_names, (
+                f"{dropped} must not be on the lean MCPCategoryGoal"
+            )
 
 
 # ---------------------------------------------------------------------------

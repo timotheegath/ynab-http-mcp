@@ -1,8 +1,14 @@
 # All planning actions.
+import ynab
 from ynab_http_mcp.ynab_service import YnabService
 from typing import Annotated
-from ynab_http_mcp.schemas.planning import PlanMonthResponse, AllPlanMonthsResponse
-from ynab_http_mcp.schemas.categories import MCPCategory
+from ynab_http_mcp.schemas.planning import (
+    PlanMonthResponse,
+    AllPlanMonthsResponse,
+    PlanMonthFull,
+    PlanMonthFullResponse,
+)
+from ynab_http_mcp.schemas.categories import MCPCategory, MCPCategoryFull
 
 
 def register(mcp, ynab_service: YnabService):
@@ -33,7 +39,7 @@ def register(mcp, ynab_service: YnabService):
         validated_response = PlanMonthResponse.from_ynab_response(raw_response)
 
         # Return as JSON string for MCP resource compatibility
-        return validated_response.model_dump_json()
+        return validated_response.model_dump_json(exclude_none=True)
 
     @mcp.resource(
         uri="data://months",
@@ -54,7 +60,7 @@ def register(mcp, ynab_service: YnabService):
         validated_response = AllPlanMonthsResponse.from_ynab_response(raw_response)
 
         # Return as JSON string for MCP resource compatibility
-        return validated_response.model_dump_json()
+        return validated_response.model_dump_json(exclude_none=True)
 
     @mcp.resource(
         uri="data://months/{month_date}/categories/{category_id}",
@@ -80,14 +86,74 @@ def register(mcp, ynab_service: YnabService):
 
         Accepts month_date in 'YYYY-MM-DD' or 'YYYY-MM' format. Day is ignored.
         """
-        # Get raw YNAB response using the new service method
-        # Validation is now handled by the service method
         raw_response = ynab_service.get_month_category(
             month_date=month_date, category_id=category_id
         )
-
-        # Transform and validate with schema
         cleaned_response = MCPCategory.from_ynab(raw_response)
+        return cleaned_response.model_dump_json(exclude_none=True)
 
-        # Return as JSON string for MCP resource compatibility
-        return cleaned_response.model_dump_json()
+    @mcp.resource(
+        uri="data://months/{month_date}/full",
+        mime_type="application/json",
+        annotations={
+            "title": "Get the plan for a specific month, including the cleaned raw YNAB SDK payload under full_details.",
+            "destructiveHint": False,
+            "readOnlyHint": True,
+            "idempotentHint": True,
+        },
+    )
+    async def get_plan_month_full(
+        month_date: Annotated[
+            str,
+            "ISO-format date within the month of choice. Accepts 'YYYY-MM-DD' or 'YYYY-MM' format.",
+        ],
+    ) -> str:
+        """Get a single plan month, including the cleaned raw ``ynab.MonthDetail``
+        under ``full_details``.
+
+        The Lean endpoint (``data://months/{month_date}``) returns the
+        formatted budget/activity/balance strings per category and a lean
+        nested ``MCPCategoryGoal``. This drill-in endpoint adds a single
+        ``full_details`` dict carrying the integer milliunit
+        budget/activity/balance, the full raw goal field set, and every
+        other field the Lean layer dropped. Use this when arithmetic or
+        SDK-fidelity access is required.
+        """
+        raw_response = ynab_service.get_plan_month(date=month_date)
+        plan_full = PlanMonthFull.from_ynab_response(raw_response)
+        wrapped = PlanMonthFullResponse(month=plan_full)
+        return wrapped.model_dump_json(exclude_none=True)
+
+    @mcp.resource(
+        uri="data://months/{month_date}/categories/{category_id}/full",
+        mime_type="application/json",
+        annotations={
+            "title": "Get a specific category's data for a given month, including the cleaned raw YNAB SDK payload under full_details.",
+            "destructiveHint": False,
+            "readOnlyHint": True,
+            "idempotentHint": True,
+        },
+    )
+    async def get_month_category_full(
+        month_date: Annotated[
+            str,
+            "ISO-format date within the month of choice. Accepts 'YYYY-MM-DD' or 'YYYY-MM' format.",
+        ],
+        category_id: Annotated[
+            str,
+            "ID of the category to retrieve",
+        ],
+    ) -> str:
+        """Get a specific category's data for a given month, including the
+        cleaned raw YNAB SDK payload under ``full_details``."""
+        raw_response = ynab_service.get_month_category(
+            month_date=month_date, category_id=category_id
+        )
+        # The service returns a CategoryResponse; extract the raw Category
+        raw_cat = (
+            raw_response.data.category
+            if isinstance(raw_response, ynab.CategoryResponse)
+            else raw_response
+        )
+        full = MCPCategoryFull.from_ynab(raw_cat)
+        return full.model_dump_json(exclude_none=True)
