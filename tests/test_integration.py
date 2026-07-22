@@ -11,7 +11,7 @@ from uuid import uuid4
 # Add project root to path
 sys.path.insert(0, "/home/timo/projects/ynab-http-mcp/src")
 
-from ynab_http_mcp.schemas.transactions import CleanTransaction, TransactionsResponse
+from ynab_http_mcp.schemas.transactions import MCPTransaction, MCPTransactions
 from ynab_http_mcp.schemas.categories import (
     CleanCategory,
     CategoryGroup,
@@ -148,7 +148,7 @@ def test_transaction_schema():
     assert "import_payee_name_original" not in cleaned_data
 
     # Validate using simplified approach
-    validated_transaction = simple_validate(cleaned_data, CleanTransaction)
+    validated_transaction = simple_validate(cleaned_data, MCPTransaction)
     assert validated_transaction.id == transaction_data["id"]
     assert validated_transaction.amount == -50000
     print("✓ Individual transaction validation passed")
@@ -156,7 +156,7 @@ def test_transaction_schema():
     # Test transactions response
     transactions_response = {"transactions": [cleaned_data], "server_knowledge": 123}
 
-    validated_response = simple_validate(transactions_response, TransactionsResponse)
+    validated_response = simple_validate(transactions_response, MCPTransactions)
     assert len(validated_response.transactions) == 1
     assert validated_response.server_knowledge == 123
     print("✓ Transactions response validation passed")

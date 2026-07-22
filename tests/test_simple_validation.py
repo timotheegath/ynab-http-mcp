@@ -7,7 +7,7 @@ from datetime import date
 from uuid import UUID
 from ynab_http_mcp.utils.schema_utils import clean_ynab_data
 from ynab_http_mcp.utils.simple_validation import simple_validate
-from ynab_http_mcp.schemas.transactions import CleanTransaction
+from ynab_http_mcp.schemas.transactions import MCPTransaction
 
 
 def test_clean_ynab_data_with_uuid_conversion():
@@ -94,7 +94,7 @@ def test_simple_validate_with_valid_data():
     }
 
     # This should not raise an exception
-    validated = simple_validate(data, CleanTransaction)
+    validated = simple_validate(data, MCPTransaction)
 
     assert validated.id == "123e4567-e89b-12d3-a456-426614174000"
     assert validated.date == date(2023, 1, 15)
@@ -111,7 +111,7 @@ def test_simple_validate_with_invalid_data():
     }
 
     with pytest.raises(Exception):  # Should raise ValidationError
-        simple_validate(data, CleanTransaction)
+        simple_validate(data, MCPTransaction)
 
 
 def test_integration_clean_then_validate():
@@ -145,7 +145,7 @@ def test_integration_clean_then_validate():
     assert isinstance(cleaned_data["account_id"], str)
 
     # Step 2: Validate the cleaned data
-    validated = simple_validate(cleaned_data, CleanTransaction)
+    validated = simple_validate(cleaned_data, MCPTransaction)
 
     # Verify the validation worked
     assert validated.id == "123e4567-e89b-12d3-a456-426614174000"
