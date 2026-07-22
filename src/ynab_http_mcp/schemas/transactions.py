@@ -31,6 +31,8 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
             ..., description="Unique identifier of the parent transaction"
         )
         amount: Optional[str] = Field(None, description="Formatted amount string")
+        milli_amount: int = Field(..., description="Amount in milliunits")
+
         memo: Optional[str] = Field(None, description="Subtransaction memo/note")
 
         payee_id: Optional[uuid_type] = Field(
@@ -60,6 +62,7 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
                 id=uuid_type(raw.id),
                 parent_transaction_id=uuid_type(raw.transaction_id),
                 amount=raw.amount_formatted,
+                milli_amount=raw.amount,
                 memo=raw.memo,
                 payee_id=raw.payee_id,
                 payee_name=raw.payee_name,
@@ -97,6 +100,7 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
     id: uuid_type = Field(..., description="Unique transaction identifier")
     date: date_type = Field(..., description="Transaction date")
     amount: Optional[str] = Field(None, description="Formatted amount string")
+    milli_amount: int = Field(..., description="Amount in milliunits")
     memo: Optional[str] = Field(None, description="Transaction memo/note")
     cleared: str = Field(
         ...,
@@ -151,6 +155,7 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
             id=uuid_type(raw.id),
             date=raw.var_date,
             amount=raw.amount_formatted,
+            milli_amount=raw.amount,
             memo=raw.memo,
             cleared=clean_enum_for_MCP_output(raw.cleared),
             approved=raw.approved,
