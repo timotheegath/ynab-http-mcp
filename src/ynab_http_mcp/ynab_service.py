@@ -3,7 +3,7 @@ import ynab
 from uuid import UUID
 from datetime import datetime
 from ynab_http_mcp.debug import debug_exception, debug_ynab_response
-from typing import Optional, Callable, TypeVar, Any
+from typing import Optional, Callable, TypeVar
 from ynab_http_mcp.schemas.budget_tools import UpdateCategoryRequest
 from ynab_http_mcp.utils.dates import parse_month_date, parse_date, month_str
 
@@ -101,9 +101,11 @@ class YnabService:
         return self._call_api(
             ynab.AccountsApi, lambda api: api.get_accounts(str(self.plan_id))
         )
+
     def get_account(self, id: UUID) -> ynab.AccountResponse:
         return self._call_api(
-            ynab.AccountsApi, lambda api: api.get_account_by_id(str(self.plan_id), account_id=id)
+            ynab.AccountsApi,
+            lambda api: api.get_account_by_id(str(self.plan_id), account_id=id),
         )
 
     def get_transactions(
@@ -256,9 +258,7 @@ class YnabService:
             raise
         except Exception as e:
             debug_exception(f"Error updating month category: {str(e)}")
-            raise RuntimeError(
-                f"Failed to update month category data: {str(e)}"
-            ) from e
+            raise RuntimeError(f"Failed to update month category data: {str(e)}") from e
 
     def assign_money(
         self, month_date: datetime | str, category_id: str, assigned_money: int
@@ -322,9 +322,9 @@ class YnabService:
         if request.goal_target is not None:
             update_payload.goal_target = request.goal_target
         if request.goal_target_date is not None:
-            update_payload.goal_target_date = (
-                parse_date(request.goal_target_date).date()
-            )
+            update_payload.goal_target_date = parse_date(
+                request.goal_target_date
+            ).date()
         if request.goal_needs_whole_amount is not None:
             update_payload.goal_needs_whole_amount = request.goal_needs_whole_amount
         if request.goal_frequency is not None:
@@ -399,7 +399,13 @@ class YnabService:
         if not isinstance(approved, bool):
             raise ValueError("approved must be a boolean")
         if flag_color and flag_color not in [
-            "red", "orange", "yellow", "green", "blue", "purple", None,
+            "red",
+            "orange",
+            "yellow",
+            "green",
+            "blue",
+            "purple",
+            None,
         ]:
             raise ValueError(
                 "flag_color must be one of: red, orange, yellow, green, blue, purple, or None"

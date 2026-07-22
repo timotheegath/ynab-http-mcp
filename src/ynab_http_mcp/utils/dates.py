@@ -36,8 +36,7 @@ def parse_month_date(value: datetime | str) -> datetime:
         return datetime.fromisoformat(value)
     except ValueError as exc:
         raise ValueError(
-            f"Invalid month_date format: '{value}'. "
-            "Expected 'YYYY-MM' or 'YYYY-MM-DD'."
+            f"Invalid month_date format: '{value}'. Expected 'YYYY-MM' or 'YYYY-MM-DD'."
         ) from exc
 
 

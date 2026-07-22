@@ -1,6 +1,6 @@
 from ynab_http_mcp.ynab_service import YnabService
 from ynab_http_mcp.schemas.categories import CategoriesResponse, CategoryResponse
-from ynab_http_mcp.schemas.transactions import TransactionsResponse
+from ynab_http_mcp.schemas.transactions import MCPTransactions
 from typing import Literal, Annotated
 import json
 
@@ -75,6 +75,6 @@ def register(mcp, ynab_service: YnabService):
             error_response = {"error": f"Invalid parameter format: {str(e)}"}
             return json.dumps(error_response)
 
-        validated_response = TransactionsResponse.from_ynab_response(raw_response)
+        validated_response = MCPTransactions.from_ynab_response(raw_response)
         # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json()
