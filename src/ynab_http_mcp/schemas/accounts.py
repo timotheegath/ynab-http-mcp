@@ -5,7 +5,7 @@ This module defines simplified Pydantic models for validating
 YNAB account data using basic data types suitable for agents.
 """
 
-from typing import Optional, List, Self
+from typing import ClassVar, Optional, List, Self
 from pydantic import Field
 from .base import MCPResponse
 import ynab
@@ -98,7 +98,7 @@ class MCPAccounts(MCPResponse[ynab.AccountsResponse]):
     Wraps the list of accounts.
     """
 
-    HIDE_DELETED = True
+    HIDE_DELETED: ClassVar[bool] = True
     accounts: List[MCPAccount] = Field(..., description="List of accounts")
 
     @classmethod

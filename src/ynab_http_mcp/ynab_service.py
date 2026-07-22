@@ -31,10 +31,10 @@ class YnabService:
             lambda api: api.get_categories(str(self.plan_id)),
         )
 
-    def get_category(self, id: str) -> ynab.CategoryResponse:
+    def get_category(self, id: UUID) -> ynab.CategoryResponse:
         return self._call_api(
             ynab.CategoriesApi,
-            lambda api: api.get_category_by_id(str(self.plan_id), id),
+            lambda api: api.get_category_by_id(str(self.plan_id), str(id)),
         )
 
     def get_month_category(

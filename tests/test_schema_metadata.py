@@ -12,9 +12,9 @@ sys.path.insert(0, "/home/timo/projects/ynab-http-mcp/src")
 from ynab_http_mcp.schemas import (
     MCPTransaction,
     MCPTransactions,
-    CategoriesResponse,
-    CleanCategory,
-    CategoryGroup,
+    MCPCategory,
+    MCPCategoryGoal,
+    MCPCategories,
     MonthCategory,
     PlanMonth,
     PlanMonthSummary,
@@ -31,9 +31,9 @@ def test_schema_registry():
     expected_schemas = [
         MCPTransaction,
         MCPTransactions,
-        CleanCategory,
-        CategoryGroup,
-        CategoriesResponse,
+        MCPCategory,
+        MCPCategoryGoal,
+        MCPCategories,
         MonthCategory,
         PlanMonth,
         PlanMonthResponse,
@@ -54,7 +54,7 @@ def test_json_schema_generation():
 
     schemas_to_test = [
         MCPTransactions,
-        CategoriesResponse,
+        MCPCategories,
         PlanMonthResponse,
         AllPlanMonthsResponse,
     ]
@@ -105,9 +105,9 @@ def test_registry_json_schemas():
     expected_schemas = [
         MCPTransaction,
         MCPTransactions,
-        CleanCategory,
-        CategoryGroup,
-        CategoriesResponse,
+        MCPCategory,
+        MCPCategoryGoal,
+        MCPCategories,
         MonthCategory,
         PlanMonth,
         PlanMonthResponse,

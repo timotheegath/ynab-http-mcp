@@ -4,7 +4,7 @@ Public API for YNAB HTTP MCP schemas.
 
 from .base import get_json_schema
 from .transactions import MCPTransaction, MCPTransactions
-from .categories import MCPCategory, CategoryGroup, CategoriesResponse
+from .categories import MCPCategory, MCPCategoryGoal, MCPCategories
 from .planning import (
     MonthCategory,
     PlanMonth,
@@ -18,8 +18,8 @@ __all__ = [
     "MCPTransaction",
     "MCPTransactions",
     "MCPCategory",
-    "CategoryGroup",
-    "CategoriesResponse",
+    "MCPCategoryGoal",
+    "MCPCategories",
     "MonthCategory",
     "PlanMonth",
     "PlanMonthResponse",

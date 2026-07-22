@@ -5,7 +5,7 @@ This module defines simplified Pydantic models for validating
 YNAB transaction data using basic data types suitable for agents.
 """
 
-from typing import Optional, List, Self
+from typing import ClassVar, Optional, List, Self
 from pydantic import Field
 import ynab
 from ynab_http_mcp.utils.schema_utils import (
@@ -185,7 +185,7 @@ class MCPTransactions(MCPResponse[ynab.TransactionsResponse]):
     Wraps the list of simplified transactions with metadata.
     """
 
-    HIDE_DELETED = True
+    HIDE_DELETED: ClassVar[bool] = True
     transactions: List[MCPTransaction] = Field(
         ..., description="List of simplified transactions"
     )

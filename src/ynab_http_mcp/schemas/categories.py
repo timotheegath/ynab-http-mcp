@@ -5,342 +5,378 @@ This module defines simplified Pydantic models for validating
 YNAB category data using basic data types suitable for agents.
 """
 
-from typing import Optional, List, Self
-from unittest import case
-from pydantic import BaseModel, Field
-from uuid import UUID
-from ynab import (
-    CategoriesResponse as ynabCategoriesResponse,
-    CategoryResponse as ynabCategoryResponse,
-)
+from __future__ import annotations
+
+from typing import ClassVar, Optional, List, Self
+
+from pydantic import Field
+
 import ynab
-from .base import MCPResponse, uuid_type, date_type
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
+
+from .base import MCPResponse, uuid_type, date_type, datetime_type
+
+
+# ---------------------------------------------------------------------------
+# Goal explanation helpers (module-level so they can be unit-tested and
+# reused without re-binding cls). Both helpers take a raw ``ynab.Category``
+# and return a single human-readable sentence.
+# ---------------------------------------------------------------------------
+
+
+def _explain_goal_type(raw: ynab.Category) -> str:
+    """Produce a one-sentence explanation of the category's goal type.
+
+    Covers TB (Target Category Balance), TBD (Target Category Balance by
+    Date), MF (Monthly Funding) with cadence values 0/1/2/3-12/13/14, NEED
+    (Plan Your Spending), and an unknown fallback so the function is total.
+    """
+    goal_type = raw.goal_type
+    target = raw.goal_target_formatted
+
+    if goal_type == "TB":
+        return (
+            f"Target Category Balance: The goal is to reach a balance of "
+            f"{target} in the category."
+        )
+
+    if goal_type == "TBD":
+        return (
+            f"Target Category Balance by Date: The goal is to reach a "
+            f"balance of {target} in the category by {raw.goal_target_date}."
+        )
+
+    if goal_type == "MF":
+        whole_amount = bool(raw.goal_needs_whole_amount)
+        verb = "Set aside" if whole_amount else "Refill"
+        cadence = raw.goal_cadence
+
+        # Cadence 0 = one-time (no repetition)
+        if cadence is None or cadence == 0:
+            return (
+                f"{verb}: The goal is to {verb.lower()} {target} for the "
+                f"category by {raw.goal_target_date}."
+            )
+
+        # Cadence 1 = Monthly, multiplied by goal_cadence_frequency
+        if cadence == 1:
+            if raw.goal_cadence_frequency is None:
+                raise ValueError(
+                    "goal_cadence_frequency cannot be null for a standard "
+                    "monthly goal for category "
+                    f"{raw.name}"
+                )
+            return (
+                f"{verb}: The goal is to {verb.lower()} {target} for the "
+                f"category every "
+                f"{cadence * raw.goal_cadence_frequency} month(s)."
+            )
+
+        # Cadence 2 = Weekly, multiplied by goal_cadence_frequency
+        if cadence == 2:
+            if raw.goal_cadence_frequency is None:
+                raise ValueError(
+                    "goal_cadence_frequency cannot be null for a standard "
+                    "weekly goal for category "
+                    f"{raw.name}"
+                )
+            return (
+                f"{verb}: The goal is to {verb.lower()} {target} for the "
+                f"category every "
+                f"{cadence * raw.goal_cadence_frequency} week(s)."
+            )
+
+        # Cadences 3-12 = Every N months (cadence_frequency is ignored)
+        if 3 <= cadence <= 12:
+            return (
+                f"{verb}: The goal is to {verb.lower()} {target} for the "
+                f"category every {cadence - 1} months."
+            )
+
+        # Cadence 13 = Yearly, multiplied by goal_cadence_frequency
+        if cadence == 13:
+            if raw.goal_cadence_frequency is None:
+                raise ValueError(
+                    "goal_cadence_frequency cannot be null for a standard "
+                    "yearly goal for category "
+                    f"{raw.name}"
+                )
+            return (
+                f"{verb}: The goal is to {verb.lower()} {target} for the "
+                f"category every "
+                f"{cadence * raw.goal_cadence_frequency} year(s)."
+            )
+
+        # Cadence 14 = Every 2 years (cadence_frequency is ignored)
+        if cadence == 14:
+            return (
+                f"{verb}: The goal is to {verb.lower()} {target} for the "
+                f"category every 2 years."
+            )
+
+        raise ValueError(
+            f"Unrecognized goal cadence in category {raw.name}: goal_cadence {cadence}"
+        )
+
+    if goal_type == "NEED":
+        return (
+            "Plan Your Spending: The goal is to plan your spending for the "
+            "category, ensuring you have enough funds available."
+        )
+
+    return f"Unknown goal type: {goal_type}"
+
+
+def _explain_goal_funding_status(raw: ynab.Category) -> str:
+    """Produce a one-sentence progress report for the category's goal.
+
+    Reads ``goal_snoozed_at``, ``goal_percentage_complete``, ``goal_under_funded``,
+    ``goal_overall_left``, ``goal_overall_funded``, ``goal_months_to_budget``,
+    and ``goal_target`` so the LLM can summarise progress without raw integers.
+    """
+    if raw.goal_snoozed_at is not None:
+        return f"Snoozed at {raw.goal_snoozed_at}."
+
+    if raw.goal_target in (None, 0):
+        return "No target set."
+
+    percentage = raw.goal_percentage_complete or 0
+    under_funded = raw.goal_under_funded_formatted
+    overall_left = raw.goal_overall_left_formatted
+
+    if percentage >= 100 or (
+        raw.goal_overall_left is not None and raw.goal_overall_left <= 0
+    ):
+        return f"Fully funded ({percentage}% complete)."
+
+    if raw.goal_under_funded is None or raw.goal_under_funded == 0:
+        suffix = ""
+        if raw.goal_months_to_budget and raw.goal_months_to_budget > 1:
+            suffix = f" — {raw.goal_months_to_budget} months remaining in period."
+        return f"On track this period ({percentage}% complete overall).{suffix}"
+
+    months = raw.goal_months_to_budget or 1
+    return (
+        f"Underfunded by {under_funded} ({percentage}% complete overall, "
+        f"{overall_left} left over {months} month(s))."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Pydantic models
+# ---------------------------------------------------------------------------
+
 
 class MCPCategoryGoal(MCPResponse[ynab.Category]):
+    """Goal sub-model for a YNAB category, with LLM-friendly summary strings."""
 
-    goal_type: Optional[StrictStr] = Field(default=None, description="The type of goal, if the category has a goal (TB='Target Category Balance', TBD='Target Category Balance by Date', MF='Monthly Funding', NEED='Plan Your Spending')")
-    goal_needs_whole_amount: Optional[StrictBool] = Field(default=None, description="Indicates the monthly rollover behavior for \"NEED\"-type goals. When \"true\", the goal will always ask for the target amount in the new month (\"Set Aside\"). When \"false\", previous month category funding is used (\"Refill\"). For other goal types, this field will be null.")
-    goal_day: Optional[StrictInt] = Field(default=None, description="A day offset modifier for the goal's due date. When goal_cadence is 2 (Weekly), this value specifies which day of the week the goal is due (0 = Sunday, 6 = Saturday). Otherwise, this value specifies which day of the month the goal is due (1 = 1st, 31 = 31st, null = Last day of Month).")
-    goal_cadence: Optional[StrictInt] = Field(default=None, description="The goal cadence. Value in range 0-14. There are two subsets of these values which behave differently. For values 0, 1, 2, and 13, the goal's due date repeats every goal_cadence * goal_cadence_frequency, where 0 = None, 1 = Monthly, 2 = Weekly, and 13 = Yearly. For example, goal_cadence 1 with goal_cadence_frequency 2 means the goal is due every other month. For values 3-12 and 14, goal_cadence_frequency is ignored and the goal's due date repeats every goal_cadence, where 3 = Every 2 Months, 4 = Every 3 Months, ..., 12 = Every 11 Months, and 14 = Every 2 Years.")
-    goal_cadence_frequency: Optional[StrictInt] = Field(default=None, description="The goal cadence frequency. When goal_cadence is 0, 1, 2, or 13, a goal's due date repeats every goal_cadence * goal_cadence_frequency. For example, goal_cadence 1 with goal_cadence_frequency 2 means the goal is due every other month.  When goal_cadence is 3-12 or 14, goal_cadence_frequency is ignored.")
-    goal_creation_month: Optional[date] = Field(default=None, description="The month a goal was created")
-    goal_target: Optional[StrictInt] = Field(default=None, description="The goal target amount in milliunits")
-    goal_target_date: Optional[date] = Field(default=None, description="The target date for the goal to be completed.  Only some goal types specify this date.")
-    goal_percentage_complete: Optional[StrictInt] = Field(default=None, description="The percentage completion of the goal")
-    goal_months_to_budget: Optional[StrictInt] = Field(default=None, description="The number of months, including the current month, left in the current goal period.")
-    goal_under_funded: Optional[StrictInt] = Field(default=None, description="The amount of funding still needed in the current month to stay on track towards completing the goal within the current goal period. This amount will generally correspond to the 'Underfunded' amount in the web and mobile clients except when viewing a category with a Needed for Spending Goal in a future month.  The web and mobile clients will ignore any funding from a prior goal period when viewing category with a Needed for Spending Goal in a future month.")
-    goal_overall_funded: Optional[StrictInt] = Field(default=None, description="The total amount funded towards the goal within the current goal period.")
-    goal_overall_left: Optional[StrictInt] = Field(default=None, description="The amount of funding still needed to complete the goal within the current goal period.")
-    goal_snoozed_at: Optional[datetime] = Field(default=None, description="The date/time the goal was snoozed.  If the goal is not snoozed, this will be null.")
-    goal_target_formatted: Optional[StrictStr] = Field(default=None, description="The goal target amount formatted in the plan's currency format")
-    goal_target_currency: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, description="The goal target amount as a decimal currency amount")
-    goal_under_funded_formatted: Optional[StrictStr] = Field(default=None, description="The goal underfunded amount formatted in the plan's currency format")
-    goal_under_funded_currency: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, description="The goal underfunded amount as a decimal currency amount")
-    goal_overall_funded_formatted: Optional[StrictStr] = Field(default=None, description="The total amount funded towards the goal formatted in the plan's currency format")
-    goal_overall_funded_currency: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, description="The total amount funded towards the goal as a decimal currency amount")
-    goal_overall_left_formatted: Optional[StrictStr] = Field(default=None, description="The amount of funding still needed to complete the goal formatted in the plan's currency format")
-    goal_overall_left_currency: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, description="The amount of funding still needed to complete the goal as a decimal currency amount")
+    goal_type: Optional[str] = Field(
+        default=None,
+        description=(
+            "The type of goal, if the category has a goal (TB='Target "
+            "Category Balance', TBD='Target Category Balance by Date', "
+            "MF='Monthly Funding', NEED='Plan Your Spending')."
+        ),
+    )
+    goal_needs_whole_amount: Optional[bool] = Field(
+        default=None,
+        description=(
+            "Indicates the monthly rollover behavior for 'NEED'-type goals. "
+            "When true, the goal asks for the target amount each month "
+            "('Set Aside'); when false, previous funding is used ('Refill'). "
+            "Null for other goal types."
+        ),
+    )
+    goal_day: Optional[int] = Field(
+        default=None,
+        description=("Day-of-month or day-of-week modifier for the goal's due date."),
+    )
+    goal_cadence: Optional[int] = Field(
+        default=None,
+        description=(
+            "Goal cadence in range 0-14. See ynab-sdk-python docs for the "
+            "exact mapping of values."
+        ),
+    )
+    goal_cadence_frequency: Optional[int] = Field(
+        default=None,
+        description="Multiplier applied to goal_cadence for values 0/1/2/13.",
+    )
+    goal_creation_month: Optional[date_type] = Field(
+        default=None, description="The month a goal was created."
+    )
+    goal_target: Optional[int] = Field(
+        default=None, description="The goal target amount in milliunits."
+    )
+    goal_target_date: Optional[date_type] = Field(
+        default=None,
+        description="The target date for the goal to be completed.",
+    )
+    goal_percentage_complete: Optional[int] = Field(
+        default=None, description="The percentage completion of the goal."
+    )
+    goal_months_to_budget: Optional[int] = Field(
+        default=None,
+        description=(
+            "Number of months, including the current month, left in the "
+            "current goal period."
+        ),
+    )
+    goal_under_funded: Optional[int] = Field(
+        default=None,
+        description="Funding still needed this month to stay on track.",
+    )
+    goal_overall_funded: Optional[int] = Field(
+        default=None,
+        description="Total amount funded towards the goal this period.",
+    )
+    goal_overall_left: Optional[int] = Field(
+        default=None,
+        description="Amount still needed to complete the goal this period.",
+    )
+    goal_snoozed_at: Optional[datetime_type] = Field(
+        default=None,
+        description="When the goal was snoozed; null if not snoozed.",
+    )
+    goal_target_formatted: Optional[str] = Field(
+        default=None,
+        description="The goal target amount formatted in the plan's currency.",
+    )
+    goal_under_funded_formatted: Optional[str] = Field(
+        default=None,
+        description="The underfunded amount formatted in the plan's currency.",
+    )
+    goal_overall_funded_formatted: Optional[str] = Field(
+        default=None,
+        description="Total funded amount formatted in the plan's currency.",
+    )
+    goal_overall_left_formatted: Optional[str] = Field(
+        default=None,
+        description="Amount still needed formatted in the plan's currency.",
+    )
+
+    goal_summary: Optional[str] = Field(
+        default=None,
+        description=(
+            "Plain-English summary of what the goal is (goal type, target, cadence)."
+        ),
+    )
+    goal_status: Optional[str] = Field(
+        default=None,
+        description=(
+            "Plain-English progress sentence (underfunded, on track, fully "
+            "funded, snoozed)."
+        ),
+    )
 
     @classmethod
     def from_ynab(cls, raw: ynab.Category) -> Self:
-        if not raw.goal_type:
-            return cls(goal_type=None)
-        def explain_goal_type() -> str:
-            # First, branch out depending on goal type
-            match raw.goal_type:
-                # TB and TBD have no frequency to take into account, and no other special handling needed, so we can just return a simple explanation
-                case "TB":
-                    output = f"Target Category Balance: The goal is to reach a balance of {raw.goal_target_formatted} in the category."
-                case "TBD":
-                    output = f"Target Category Balance by Date: The goal is to reach a balance of {raw.goal_target_formatted} in the category by {raw.goal_target_date}."
-                case "MF":
-                    # When the goal does not repeat. None shouldn't be a thing here since we established the type as MF
-                    if not raw.goal_cadence or raw.goal_cadence == 0:
-                        if raw.goal_needs_whole_amount:
-                            output = f"Set aside: The goal is to set aside {raw.goal_target_formatted} for the category by {raw.goal_target_date}."
-                        else:
-                            output = f"Refill: The goal is to refill the category to {raw.goal_target_formatted} by {raw.goal_target_date}."
-                    # Monthly
-                    elif raw.goal_cadence == 1:
-                        if not raw.goal_cadence_frequency:
-                            raise ValueError("goal_cadence_frequency cannot be null for a standard monthly goal")
-                        if raw.goal_needs_whole_amount:
-                            output = f"Set aside: The goal is to set aside {raw.goal_target_formatted} for the category every {raw.goal_cadence * raw.goal_cadence_frequency} month(s)."
-                        else:
-                            output = f"Refill: The goal is to refill the category to {raw.goal_target_formatted} every {raw.goal_cadence * raw.goal_cadence_frequency} month(s)."
-                    # Weekly
-                    elif raw.goal_cadence == 2:
-                        if not raw.goal_cadence_frequency:
-                            raise ValueError(f"Error while converting YNAB response to MCP-friendly object. goal_cadence_frequency cannot be null for a standard weekly goal fo category {raw.name}")
-                        if raw.goal_needs_whole_amount:
-                            output = f"Set aside: The goal is to set aside {raw.goal_target_formatted} for the category every {raw.goal_cadence * raw.goal_cadence_frequency} week(s)."
-                        else:
-                            output = f"Refill: The goal is to refill the category to {raw.goal_target_formatted} every {raw.goal_cadence * raw.goal_cadence_frequency} week(s)."
-                    # Every x months
-                    elif 3 <= raw.goal_cadence <= 12:
-                        if raw.goal_needs_whole_amount:
-                            output = f"Set aside: The goal is to set aside {raw.goal_target_formatted} for the category every {raw.goal_cadence - 1} months."
-                        else:
-                            output = f"Refill: The goal is to refill the category to {raw.goal_target_formatted} every {raw.goal_cadence - 1} months."
-                    # Yearly
-                    elif raw.goal_cadence == 13:
-                        if not raw.goal_cadence_frequency:
-                            raise ValueError(f"Error while converting YNAB response to MCP-friendly object. goal_cadence_frequency cannot be null for a standard yearly goal for category {raw.name}")
-                        if raw.goal_needs_whole_amount:
-                            output = f"Set aside: The goal is to set aside {raw.goal_target_formatted} for the category every {raw.goal_cadence * raw.goal_cadence_frequency} year(s)."
-                        else:
-                            output = f"Refill: The goal is to refill the category to {raw.goal_target_formatted} every {raw.goal_cadence * raw.goal_cadence_frequency} year(s)."
-                    # Special every 2 years
-                    elif raw.goal_cadence == 14:
-                        if raw.goal_needs_whole_amount:
-                            output = f"Set aside: The goal is to set aside {raw.goal_target_formatted} for the category every 2 years."
-                        else:
-                            output = f"Refill: The goal is to refill the category to {raw.goal_target_formatted} every 2 years."
-                    else:
-                        raise ValueError(f"Error while converting YNAB response to MCP-friendly object. Unrecognized goal cadence in category {raw.name}: goal_cadence {raw.goal_cadence}")
-                case "NEED":
-                    output = "Plan Your Spending: The goal is to plan your spending for the category, ensuring you have enough funds available."
-                case _:
-                    output = f"Unknown goal type: {raw.goal_type}"
-            return output
-            }
+        """Build an ``MCPCategoryGoal`` from a raw ``ynab.Category``.
 
-            output="### Goal type: \n {}"
+        Returns an empty instance (every field ``None``, including the
+        summary strings) when the raw category has no goal.
+        """
+        if raw.goal_type is None:
+            return cls()
 
-            return output
+        return cls(
+            goal_type=raw.goal_type,
+            goal_needs_whole_amount=raw.goal_needs_whole_amount,
+            goal_day=raw.goal_day,
+            goal_cadence=raw.goal_cadence,
+            goal_cadence_frequency=raw.goal_cadence_frequency,
+            goal_creation_month=raw.goal_creation_month,
+            goal_target=raw.goal_target,
+            goal_target_date=raw.goal_target_date,
+            goal_percentage_complete=raw.goal_percentage_complete,
+            goal_months_to_budget=raw.goal_months_to_budget,
+            goal_under_funded=raw.goal_under_funded,
+            goal_overall_funded=raw.goal_overall_funded,
+            goal_overall_left=raw.goal_overall_left,
+            goal_snoozed_at=raw.goal_snoozed_at,
+            goal_target_formatted=raw.goal_target_formatted,
+            goal_under_funded_formatted=raw.goal_under_funded_formatted,
+            goal_overall_funded_formatted=raw.goal_overall_funded_formatted,
+            goal_overall_left_formatted=raw.goal_overall_left_formatted,
+            goal_summary=_explain_goal_type(raw),
+            goal_status=_explain_goal_funding_status(raw),
+        )
 
-        def explain_goal_funding_status():
 
-        return cls()
 class MCPCategory(MCPResponse[ynab.Category]):
-
     """
     Simplified category model using basic data types.
 
-    Represents a YNAB category with all essential fields
-    using simple types that are easily consumable by AI agents.
+    Represents a YNAB category with all essential fields using simple
+    types that are easily consumable by AI agents.
     """
 
-    # Required fields
+    # Required identity / state fields
     id: uuid_type = Field(..., description="Unique category identifier")
-    category_group_id: uuid_type = Field(..., description="ID of the parent category group")
+    category_group_id: uuid_type = Field(
+        ..., description="ID of the parent category group"
+    )
     name: str = Field(..., description="Category name")
-    hidden: bool = Field(..., description="Whether category is hidden")
-    deleted: bool = Field(..., description="Whether category is deleted")
+    hidden: bool = Field(..., description="Whether the category is hidden")
+    internal: bool = Field(..., description="Whether the category is internal to YNAB")
+    deleted: bool = Field(..., description="Whether the category is deleted")
 
-    # Budget fields (using formatted currency from YNAB)
+    # Currency fields — YNAB already formats these for the plan's locale.
     budgeted_formatted: Optional[str] = Field(
-        None, description="Budgeted amount with currency formatting"
+        default=None, description="Budgeted amount with currency formatting"
     )
     activity_formatted: Optional[str] = Field(
-        None, description="Activity amount with currency formatting"
+        default=None, description="Activity amount with currency formatting"
     )
     balance_formatted: Optional[str] = Field(
-        None, description="Balance with currency formatting"
+        default=None, description="Balance with currency formatting"
     )
 
-    # Optional fields
-    original_category_group_id: Optional[str] = Field(
-        None, description="Original category group ID if moved"
-    )
-    note: Optional[str] = Field(None, description="Category note")
-    goal_type: Optional[str] = Field(None, description="Type of goal if set")
-    goal_day: Optional[int] = Field(None, description="Day of month for goal")
-    goal_cadence: Optional[int] = Field(None, description="Goal cadence")
-    goal_cadence_frequency: Optional[int] = Field(
-        None, description="Goal cadence frequency"
-    )
-    goal_creation_month: Optional[str] = Field(
-        None, description="Month when goal was created"
-    )
-    goal_target: Optional[int] = Field(None, description="Goal target amount")
-    goal_target_month: Optional[str] = Field(None, description="Target month for goal")
-    goal_percentage_complete: Optional[int] = Field(
-        None, description="Percentage of goal completed"
+    # Nested goal sub-model
+    goal: Optional[MCPCategoryGoal] = Field(
+        default=None, description="Goal attached to this category, if any"
     )
 
-    # Goal summary fields (human-readable)
-    goal_summary: Optional[str] = Field(None, description="Human-readable goal summary")
-    goal_status: Optional[str] = Field(None, description="Human-readable goal status")
-    goal_technical_details: Optional[str] = Field(
-        None, description="Technical goal details for advanced use"
-    )
+    @classmethod
+    def from_ynab(cls, raw: ynab.Category | ynab.CategoryResponse) -> Self:
+        """Build an ``MCPCategory`` from a raw ``ynab.Category`` or wrapped
+        ``ynab.CategoryResponse``.
+        """
+        if isinstance(raw, ynab.CategoryResponse):
+            raw = raw.data.category
+
+        return cls(
+            id=raw.id,
+            category_group_id=raw.category_group_id,
+            name=raw.name,
+            hidden=raw.hidden,
+            internal=raw.internal,
+            deleted=raw.deleted,
+            budgeted_formatted=raw.budgeted_formatted,
+            activity_formatted=raw.activity_formatted,
+            balance_formatted=raw.balance_formatted,
+            goal=MCPCategoryGoal.from_ynab(raw),
+        )
 
 
-class CategoryGroup(BaseModel):
+class MCPCategories(MCPResponse[ynab.CategoriesResponse]):
     """
-    Simplified category group model using basic data types.
+    Flat-list wrapper for a YNAB categories response.
 
-    Represents a group of related categories.
+    Iterates the raw ``category_groups`` envelope and emits a single flat
+    list of ``MCPCategory``. Mirrors the ``MCPAccounts`` shape exactly.
     """
 
-    id: str = Field(..., description="Unique category group identifier")
-    name: str = Field(..., description="Category group name")
-    hidden: bool = Field(..., description="Whether category group is hidden")
-    deleted: bool = Field(..., description="Whether category group is deleted")
+    HIDE_DELETED: ClassVar[bool] = True
     categories: List[MCPCategory] = Field(
-        default_factory=list, description="List of categories in this group"
+        default_factory=list, description="List of categories"
     )
 
-
-class CategoriesResponse(BaseModel):
-    """
-    Simplified response structure for categories endpoint.
-
-    Wraps the list of category groups.
-    """
-
-    category_groups: List[CategoryGroup] = Field(
-        ..., description="List of category groups"
-    )
-
-    @staticmethod
-    def from_ynab_response(
-        ynab_response: ynabCategoriesResponse,
-    ) -> "CategoriesResponse":
-        """Transform YNAB API response to match our simplified schema."""
-        # Convert to dict
-        raw_data = ynab_response.to_dict()
-
-        # Clean and validate category groups and categories using simplified approach
-        cleaned_category_groups = []
-
-        for group_data in raw_data.get("data", {}).get("category_groups", []):
-            # Clean categories within the group using unified cleaning
-            cleaned_categories = []
-            for category_data in group_data.get("categories", []):
-                try:
-                    # Clean data using unified function
-                    cleaned_data = clean_ynab_data(category_data)
-
-                    # Validate using simplified approach
-                    validated_category = simple_validate(cleaned_data, MCPCategory)
-                    cleaned_categories.append(validated_category.model_dump())
-                except Exception:
-                    from ynab_http_mcp.debug import debug_exception
-
-                    debug_exception(
-                        f"Failed to validate category {category_data.get('id', 'unknown')}"
-                    )
+    @classmethod
+    def from_ynab(cls, raw: ynab.CategoriesResponse) -> Self:
+        categories: List[MCPCategory] = []
+        for group in raw.data.category_groups or []:
+            for ynab_category in group.categories or []:
+                if cls.HIDE_DELETED and ynab_category.deleted:
                     continue
-
-            # Clean group data using unified cleaning
-            cleaned_group_data = clean_ynab_data(group_data)
-            cleaned_group_data["categories"] = cleaned_categories
-
-            try:
-                cleaned_group = simple_validate(cleaned_group_data, CategoryGroup)
-                cleaned_category_groups.append(cleaned_group.model_dump())
-            except Exception:
-                from ynab_http_mcp.debug import debug_exception
-
-                debug_exception(
-                    f"Failed to validate category group {group_data.get('id', 'unknown')}"
-                )
-                continue
-
-        # Create final response
-        final_response = {"category_groups": cleaned_category_groups}
-
-        # Validate complete response structure using simplified approach
-        try:
-            validated_response = simple_validate(final_response, CategoriesResponse)
-            return validated_response
-        except Exception:
-            from ynab_http_mcp.debug import debug_exception
-
-            debug_exception("Failed to validate final categories response")
-            # Return a fallback response if validation fails
-            # Convert dicts back to CategoryGroup objects for type safety
-            fallback_groups = []
-            for group_dict in cleaned_category_groups:
-                try:
-                    # Convert categories back to CleanCategory objects
-                    categories = []
-                    for cat_dict in group_dict.get("categories", []):
-                        categories.append(MCPCategory(**cat_dict))
-
-                    # Create CategoryGroup object
-                    group_obj = CategoryGroup(
-                        id=group_dict["id"],
-                        name=group_dict["name"],
-                        hidden=group_dict.get("hidden", False),
-                        deleted=group_dict.get("deleted", False),
-                        categories=categories,
-                    )
-                    fallback_groups.append(group_obj)
-                except Exception:
-                    # If conversion fails, skip this group
-                    continue
-
-            fallback_response = CategoriesResponse(category_groups=fallback_groups)
-            return fallback_response
-
-
-class CategoryResponse(BaseModel):
-    """
-    Simplified response structure for single category endpoint.
-
-    Wraps a single category with its group information.
-    """
-
-    category: MCPCategory = Field(..., description="Single category details")
-    category_group: CategoryGroup = Field(..., description="Parent category group")
-
-    @staticmethod
-    def from_ynab_response(ynab_response: ynabCategoryResponse) -> "CategoryResponse":
-        """Transform YNAB API response to match our simplified schema."""
-        # Convert to dict
-        raw_data = ynab_response.to_dict()
-
-        # Extract category and group data from YNAB response structure
-        category_data = raw_data.get("data", {}).get("category", {})
-        group_data = raw_data.get("data", {}).get("category_group", {})
-
-        try:
-            # Clean and validate category data
-            cleaned_category_data = clean_ynab_data(category_data)
-            validated_category = simple_validate(cleaned_category_data, MCPCategory)
-
-            # Clean and validate group data
-            cleaned_group_data = clean_ynab_data(group_data)
-            # Add the cleaned category to the group
-            cleaned_group_data["categories"] = [validated_category.model_dump()]
-            validated_group = simple_validate(cleaned_group_data, CategoryGroup)
-
-            # Create final response
-            final_response = {
-                "category": validated_category.model_dump(),
-                "category_group": validated_group.model_dump(),
-            }
-
-            # Validate complete response structure
-            validated_response = simple_validate(final_response, CategoryResponse)
-            return validated_response
-
-        except Exception:
-            from ynab_http_mcp.debug import debug_exception
-
-            debug_exception(
-                f"Failed to validate category response for category {category_data.get('id', 'unknown')}"
-            )
-
-            # Return a fallback response if validation fails
-            try:
-                # Try to create basic objects even if validation failed
-                basic_category = MCPCategory(**clean_ynab_data(category_data))
-                basic_group = CategoryGroup(
-                    id=group_data.get("id", ""),
-                    name=group_data.get("name", ""),
-                    hidden=group_data.get("hidden", False),
-                    deleted=group_data.get("deleted", False),
-                    categories=[basic_category],
-                )
-                fallback_response = CategoryResponse(
-                    category=basic_category, category_group=basic_group
-                )
-                return fallback_response
-            except Exception:
-                # If all else fails, raise the original exception
-                raise
+                categories.append(MCPCategory.from_ynab(ynab_category))
+        return cls(categories=categories)

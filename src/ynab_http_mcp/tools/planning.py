@@ -2,6 +2,7 @@
 from ynab_http_mcp.ynab_service import YnabService
 from typing import Annotated
 from ynab_http_mcp.schemas.planning import PlanMonthResponse, AllPlanMonthsResponse
+from ynab_http_mcp.schemas.categories import MCPCategory
 
 
 def register(mcp, ynab_service: YnabService):
@@ -86,10 +87,7 @@ def register(mcp, ynab_service: YnabService):
         )
 
         # Transform and validate with schema
-        # We'll reuse the existing CategoryResponse schema for now
-        from ynab_http_mcp.schemas.categories import CategoryResponse
-
-        validated_response = CategoryResponse.from_ynab_response(raw_response)
+        cleaned_response = MCPCategory.from_ynab(raw_response)
 
         # Return as JSON string for MCP resource compatibility
-        return validated_response.model_dump_json()
+        return cleaned_response.model_dump_json()

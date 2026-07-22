@@ -11,11 +11,7 @@ from uuid import uuid4
 sys.path.insert(0, "/home/timo/projects/ynab-http-mcp/src")
 
 from ynab_http_mcp.schemas.transactions import MCPTransaction, MCPTransactions
-from ynab_http_mcp.schemas.categories import (
-    CleanCategory,
-    CategoryGroup,
-    CategoriesResponse,
-)
+from ynab_http_mcp.schemas.categories import MCPCategory
 from ynab_http_mcp.schemas.planning import (
     MonthCategory,
     PlanMonth,
@@ -54,38 +50,6 @@ def create_sample_transaction():
         "import_id": "import-123",
         "import_payee_name": "Imported Payee",
         "import_payee_name_original": "Original Payee",
-    }
-
-
-def create_sample_category():
-    """Create a sample category that mimics real YNAB data."""
-    return {
-        "id": str(uuid4()),
-        "category_group_id": str(uuid4()),
-        "name": "Groceries",
-        "hidden": False,
-        "deleted": False,
-        "original_category_group_id": None,
-        "note": "Monthly grocery budget",
-        "goal_type": "TB",
-        "goal_day": None,
-        "goal_cadence": None,
-        "goal_cadence_frequency": None,
-        "goal_creation_month": "2023-01",
-        "goal_target": 500000,  # $500.00 in milliunits
-        "goal_target_month": "2023-12",
-        "goal_percentage_complete": 60,
-    }
-
-
-def create_sample_category_group():
-    """Create a sample category group that mimics real YNAB data."""
-    return {
-        "id": str(uuid4()),
-        "name": "Everyday Expenses",
-        "hidden": False,
-        "deleted": False,
-        "categories": [create_sample_category()],
     }
 
 
@@ -160,31 +124,34 @@ def test_transaction_schema():
 
 
 def test_category_schema():
-    """Test category schema with real-like data."""
+    """Test MCPCategory schema with real-like YNAB data."""
     print("Testing category schema...")
 
-    # Test individual category
-    category_data = create_sample_category()
+    category_data = {
+        "id": str(uuid4()),
+        "category_group_id": str(uuid4()),
+        "name": "Groceries",
+        "hidden": False,
+        "internal": False,
+        "deleted": False,
+        "budgeted_formatted": "$500.00",
+        "activity_formatted": "-$300.00",
+        "balance_formatted": "$200.00",
+        "goal_type": "TB",
+        "goal_target": 500000,
+        "goal_target_formatted": "$500.00",
+        "goal_percentage_complete": 60,
+    }
     cleaned_data = clean_ynab_data(category_data)
-    validated_category = simple_validate(cleaned_data, CleanCategory)
-    assert validated_category.id == category_data["id"]
+    validated_category = simple_validate(cleaned_data, MCPCategory)
+    assert str(validated_category.id) == category_data["id"]
     assert validated_category.name == "Groceries"
+    # simple_validate constructs the model from the dict directly without
+    # going through MCPCategory.from_ynab, so the nested ``goal`` slot
+    # stays None unless explicitly provided. The from_ynab path is
+    # covered by tests/test_categories_schema.py.
+    assert validated_category.goal is None
     print("✓ Individual category validation passed")
-
-    # Test category group
-    group_data = create_sample_category_group()
-    cleaned_group_data = clean_ynab_data(group_data)
-    validated_group = simple_validate(cleaned_group_data, CategoryGroup)
-    assert validated_group.id == group_data["id"]
-    assert len(validated_group.categories) == 1
-    print("✓ Category group validation passed")
-
-    # Test categories response
-    categories_response = {"category_groups": [cleaned_group_data]}
-
-    validated_response = simple_validate(categories_response, CategoriesResponse)
-    assert len(validated_response.category_groups) == 1
-    print("✓ Categories response validation passed")
 
 
 def test_planning_schema():
