@@ -311,26 +311,64 @@ class YnabService:
         if not request.category_id or not isinstance(request.category_id, str):
             raise ValueError("category_id must be a non-empty string")
 
-        update_payload = ynab.ExistingCategory()
-
-        if request.name is not None:
-            update_payload.name = request.name
-        if request.note is not None:
-            update_payload.note = request.note
-        if request.category_group_id is not None:
-            update_payload.category_group_id = UUID(request.category_group_id)
-        if request.goal_target is not None:
-            update_payload.goal_target = request.goal_target
-        if request.goal_target_date is not None:
-            update_payload.goal_target_date = parse_date(
-                request.goal_target_date
-            ).date()
-        if request.goal_needs_whole_amount is not None:
-            update_payload.goal_needs_whole_amount = request.goal_needs_whole_amount
-        if request.goal_frequency is not None:
-            update_payload.goal_frequency = request.goal_frequency
+        # Detect clear-goal: goal_target=0 with no other goal fields present.
+        # This combination signals that the caller wants to fully remove the
+        # goal, not just zero the target.
+        is_clearing = (
+            request.goal_target is not None
+            and request.goal_target == 0
+            and request.goal_target_date is None
+            and request.goal_needs_whole_amount is None
+            and request.goal_frequency is None
+        )
 
         try:
+            if is_clearing:
+                # The SDK's ExistingCategory.to_dict() uses exclude_none=True,
+                # which strips None values from serialization.  To send
+                # explicit JSON null for every goal_* field (required by the
+                # YNAB API to fully remove a goal) we build a raw dict instead.
+                cat_dict: dict = {}
+                if request.name is not None:
+                    cat_dict["name"] = request.name
+                if request.note is not None:
+                    cat_dict["note"] = request.note
+                if request.category_group_id is not None:
+                    cat_dict["category_group_id"] = request.category_group_id
+                # Goal-clearing fields — explicit nulls for every goal_* field
+                cat_dict["goal_target"] = 0
+                cat_dict["goal_target_date"] = None
+                cat_dict["goal_needs_whole_amount"] = None
+                cat_dict["goal_frequency"] = None
+
+                return self._call_api(
+                    ynab.CategoriesApi,
+                    lambda api: api.update_category(
+                        str(self.plan_id),
+                        request.category_id,
+                        {"category": cat_dict},
+                    ),
+                )
+
+            update_payload = ynab.ExistingCategory()
+
+            if request.name is not None:
+                update_payload.name = request.name
+            if request.note is not None:
+                update_payload.note = request.note
+            if request.category_group_id is not None:
+                update_payload.category_group_id = UUID(request.category_group_id)
+            if request.goal_target is not None:
+                update_payload.goal_target = request.goal_target
+            if request.goal_target_date is not None:
+                update_payload.goal_target_date = parse_date(
+                    request.goal_target_date
+                ).date()
+            if request.goal_needs_whole_amount is not None:
+                update_payload.goal_needs_whole_amount = request.goal_needs_whole_amount
+            if request.goal_frequency is not None:
+                update_payload.goal_frequency = request.goal_frequency
+
             return self._call_api(
                 ynab.CategoriesApi,
                 lambda api: api.update_category(
