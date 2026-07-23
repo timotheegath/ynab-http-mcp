@@ -17,9 +17,9 @@ from .categories import (
 )
 from .accounts import MCPAccount, MCPAccountFull, MCPAccounts
 from .payees import (
-    CleanPayee,
-    CleanPayeeFull,
-    PayeesResponse,
+    MCPPayee,
+    MCPPayeeFull,
+    MCPPayees,
 )
 from .planning import (
     MonthCategory,
@@ -52,9 +52,9 @@ __all__ = [
     "MCPAccount",
     "MCPAccountFull",
     "MCPAccounts",
-    "CleanPayee",
-    "CleanPayeeFull",
-    "PayeesResponse",
+    "MCPPayee",
+    "MCPPayeeFull",
+    "MCPPayees",
     "MonthCategory",
     "MonthCategoryFull",
     "PlanMonth",

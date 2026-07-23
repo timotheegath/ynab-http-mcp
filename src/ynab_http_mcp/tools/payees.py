@@ -1,9 +1,9 @@
 from ynab_http_mcp.ynab_service import YnabService
 from typing import Annotated
 from ynab_http_mcp.schemas.payees import (
-    PayeesResponse,
-    CleanPayee,
-    CleanPayeeFull,
+    MCPPayees,
+    MCPPayee,
+    MCPPayeeFull,
 )
 from ynab_http_mcp.debug import debug_exception
 
@@ -18,7 +18,7 @@ def register(mcp, ynab_service: YnabService):
         # Get raw YNAB response
         raw_response = ynab_service.get_payees()
 
-        validated_response = PayeesResponse.from_ynab_response(raw_response)
+        validated_response = MCPPayees.from_ynab_response(raw_response)
         # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json(exclude_none=True)
 
@@ -37,14 +37,12 @@ def register(mcp, ynab_service: YnabService):
         """
         raw_response = ynab_service.get_payee(id)
         try:
-            cleaned = CleanPayee.from_ynab(raw_response.data.payee)
+            cleaned = MCPPayee.from_ynab(raw_response.data.payee)
         except Exception:
             debug_exception(
                 f"Failed to validate payee {getattr(raw_response.data.payee, 'id', 'unknown')}"
             )
-            cleaned = CleanPayee(
-                id="", name="", deleted=False, transfer_account_id=None
-            )
+            cleaned = MCPPayee(id="", name="", deleted=False, transfer_account_id=None)
         return cleaned.model_dump_json(exclude_none=True)
 
     @mcp.resource(uri="data://payees/{id}/full", mime_type="application/json")
@@ -66,12 +64,12 @@ def register(mcp, ynab_service: YnabService):
         """
         raw_response = ynab_service.get_payee(id)
         try:
-            cleaned = CleanPayeeFull.from_ynab(raw_response.data.payee)
+            cleaned = MCPPayeeFull.from_ynab(raw_response.data.payee)
         except Exception:
             debug_exception(
                 f"Failed to validate payee (full) {getattr(raw_response.data.payee, 'id', 'unknown')}"
             )
-            cleaned = CleanPayeeFull(
+            cleaned = MCPPayeeFull(
                 id="",
                 name="",
                 deleted=False,

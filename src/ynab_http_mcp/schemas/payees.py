@@ -16,7 +16,7 @@ from ynab_http_mcp.debug import debug_exception
 from .base import MCPResponse
 
 
-class CleanPayee(MCPResponse[ynab.Payee]):
+class MCPPayee(MCPResponse[ynab.Payee]):
     """
     Simplified payee model using basic data types.
 
@@ -33,7 +33,7 @@ class CleanPayee(MCPResponse[ynab.Payee]):
         Extract contextual hints for complex fields from the schema.
         """
         hints = {}
-        for field_name, field_info in CleanPayee.model_fields.items():
+        for field_name, field_info in MCPPayee.model_fields.items():
             if field_info.description:
                 hints[field_name] = field_info.description
         return hints
@@ -49,7 +49,7 @@ class CleanPayee(MCPResponse[ynab.Payee]):
 
     @classmethod
     def from_ynab(cls, raw: ynab.Payee) -> Self:
-        """Build a ``CleanPayee`` from a raw ``ynab.Payee``."""
+        """Build a ``MCPPayee`` from a raw ``ynab.Payee``."""
         return cls(
             id=str(raw.id),
             name=raw.name,
@@ -60,8 +60,8 @@ class CleanPayee(MCPResponse[ynab.Payee]):
         )
 
 
-class CleanPayeeFull(CleanPayee):
-    """Full sibling of ``CleanPayee`` — same lean fields plus ``full_details``.
+class MCPPayeeFull(MCPPayee):
+    """Full sibling of ``MCPPayee`` — same lean fields plus ``full_details``.
 
     ``full_details`` is the cleaned raw ``ynab.Payee`` as a dict and contains
     every field the YNAB SDK exposes for a payee that the Lean layer dropped.
@@ -80,36 +80,36 @@ class CleanPayeeFull(CleanPayee):
 
     @classmethod
     def from_ynab(cls, raw: ynab.Payee) -> Self:
-        lean = CleanPayee.from_ynab(raw)
+        lean = MCPPayee.from_ynab(raw)
         return cls(
             **lean.model_dump(),
             full_details=clean_ynab_data(raw.to_dict()),
         )
 
 
-class PayeesResponse(BaseModel):
+class MCPPayees(BaseModel):
     """
-    Simplified response structure for payees endpoint.
+    Overarching list response for the payees endpoint.
 
-    Wraps the list of payee groups.
+    Wraps the list of payees for LLM consumption.
     """
 
-    payees: List[CleanPayee] = Field(..., description="List of payees")
+    payees: List[MCPPayee] = Field(..., description="List of payees")
     hints: Optional[Dict[str, str]] = Field(
         None, description="Contextual hints for complex fields"
     )
 
     @staticmethod
-    def from_ynab_response(ynab_response: ynab.PayeesResponse) -> "PayeesResponse":
-        cleaned_payees: List[CleanPayee] = []
+    def from_ynab_response(ynab_response: ynab.PayeesResponse) -> "MCPPayees":
+        cleaned_payees: List[MCPPayee] = []
         for payee in ynab_response.data.payees or []:
             try:
-                cleaned_payees.append(CleanPayee.from_ynab(payee))
+                cleaned_payees.append(MCPPayee.from_ynab(payee))
             except Exception:
                 debug_exception(
                     f"Failed to validate payee {getattr(payee, 'id', 'unknown')}"
                 )
                 continue
 
-        hints = CleanPayee._extract_hints()
-        return PayeesResponse(payees=cleaned_payees, hints=hints)
+        hints = MCPPayee._extract_hints()
+        return MCPPayees(payees=cleaned_payees, hints=hints)

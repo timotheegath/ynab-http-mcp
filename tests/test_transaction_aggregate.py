@@ -379,8 +379,8 @@ class TestLeanFullShape:
         from ynab_http_mcp.schemas.accounts import MCPAccount, MCPAccounts
         from ynab_http_mcp.schemas.categories import MCPCategory, MCPCategories
         from ynab_http_mcp.schemas.payees import (
-            CleanPayee,
-            PayeesResponse,
+            MCPPayee,
+            MCPPayees,
         )
         from ynab_http_mcp.schemas.planning import MonthCategory, PlanMonth
 
@@ -391,8 +391,8 @@ class TestLeanFullShape:
             MCPAccounts,
             MCPCategory,
             MCPCategories,
-            CleanPayee,
-            PayeesResponse,
+            MCPPayee,
+            MCPPayees,
             MonthCategory,
             PlanMonth,
         ):

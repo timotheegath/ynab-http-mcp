@@ -16,7 +16,7 @@ Lean
 ----
 The default response shape for every read entity
 (``MCPCategory``, ``MCPAccount``, ``MCPTransaction``, ``MCPSubTransaction``,
-``CleanPayee``, ``PlanMonth``, ``MonthCategory``, etc.).
+``MCPPayee``, ``PlanMonth``, ``MonthCategory``, etc.).
 
 Lean models expose:
 

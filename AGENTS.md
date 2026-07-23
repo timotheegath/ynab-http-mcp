@@ -39,7 +39,7 @@ src/
     │   ├── base.py                 # Lean / Full / Aggregate convention docs
     │   ├── accounts.py             # MCPAccount, MCPAccountFull
     │   ├── categories.py           # MCPCategory, MCPCategoryGoal, MCPCategoryFull
-    │   ├── payees.py               # CleanPayee, CleanPayeeFull
+    │   ├── payees.py               # MCPPayee, MCPPayeeFull
     │   ├── transactions.py         # MCPTransaction, MCPTransactionFull
     │   ├── planning.py             # PlanMonth, PlanMonthFull, MonthCategory
     │   └── transaction_aggregate.py # TransactionInsightsResponse (Aggregate)

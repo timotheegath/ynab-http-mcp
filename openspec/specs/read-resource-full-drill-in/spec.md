@@ -5,7 +5,7 @@ TBD - created by archiving change apply-lean-full-aggregate-read-convention. Upd
 ## Requirements
 ### Requirement: Every read entity exposes a `*Full` drill-in resource
 
-The system SHALL define a `*Full` Pydantic model for each read entity — `MCPCategoryFull`, `MCPAccountFull`, `MCPTransactionFull`, `CleanPayeeFull`, `PlanMonthFull`, `MonthCategoryFull` — that inherits from the corresponding lean model and adds exactly one new field, `full_details: dict`. The `*Full` model SHALL NOT introduce any other new typed fields. The `full_details` value SHALL be the result of `clean_ynab_data(raw_sdk_object.to_dict())` with the documented transformations: UUID objects become strings; datetime values are truncated to ISO 8601 date strings (the time component is discarded); money values are integer milliunits; YNAB-specific import fields (`import_id`, `import_payee_name`, `import_payee_name_original`) are removed. `full_details` is therefore a *cleaned* dump, not a byte-identical SDK payload — it is suitable for the LLM to read every field the SDK exposes for normal use, but it is not suitable for code that needs SDK-fidelity timestamps or import-pipeline metadata.
+The system SHALL define a `*Full` Pydantic model for each read entity — `MCPCategoryFull`, `MCPAccountFull`, `MCPTransactionFull`, `MCPPayeeFull`, `PlanMonthFull`, `MonthCategoryFull` — that inherits from the corresponding lean model and adds exactly one new field, `full_details: dict`. The `*Full` model SHALL NOT introduce any other new typed fields. The `full_details` value SHALL be the result of `clean_ynab_data(raw_sdk_object.to_dict())` with the documented transformations: UUID objects become strings; datetime values are truncated to ISO 8601 date strings (the time component is discarded); money values are integer milliunits; YNAB-specific import fields (`import_id`, `import_payee_name`, `import_payee_name_original`) are removed. `full_details` is therefore a *cleaned* dump, not a byte-identical SDK payload — it is suitable for the LLM to read every field the SDK exposes for normal use, but it is not suitable for code that needs SDK-fidelity timestamps or import-pipeline metadata.
 
 #### Scenario: MCPCategoryFull inherits lean fields and adds full_details
 - **WHEN** `MCPCategoryFull` is instantiated
@@ -58,7 +58,7 @@ The system SHALL register a FastMCP resource template at `data://{entity}/{id}/f
 
 ### Requirement: The lean layer never embeds `full_details`
 
-The system SHALL NOT include `full_details` in any lean model (`MCPCategory`, `MCPAccount`, `MCPTransaction`, `CleanPayee`, `PlanMonth`, `MonthCategory`). The lean layer is the LLM's primary read path; the Full layer is the drill-in. A single MCP response SHALL never carry both shapes inline.
+The system SHALL NOT include `full_details` in any lean model (`MCPCategory`, `MCPAccount`, `MCPTransaction`, `MCPPayee`, `PlanMonth`, `MonthCategory`). The lean layer is the LLM's primary read path; the Full layer is the drill-in. A single MCP response SHALL never carry both shapes inline.
 
 #### Scenario: Lean list response has no full_details field
 - **WHEN** the LLM reads `data://categories` (the list)
