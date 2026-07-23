@@ -5,9 +5,8 @@ Tests for the simplified validation approach.
 import pytest
 from datetime import date
 from uuid import UUID
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data
-from ynab_http_mcp.utils.simple_validation import simple_validate
-from ynab_http_mcp.schemas.transactions import CleanTransaction
+from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
+from ynab_http_mcp.schemas.transactions import MCPTransaction
 
 
 def test_clean_ynab_data_with_uuid_conversion():
@@ -83,7 +82,9 @@ def test_simple_validate_with_valid_data():
     data = {
         "id": "123e4567-e89b-12d3-a456-426614174000",
         "date": "2023-01-15",
-        "amount": -50000,
+        # Lean: amount is a formatted string; integer milliunit twin is dropped
+        # from the lean layer (lives on full_details for the Full layer).
+        "amount": "-$50.00",
         "memo": "Grocery shopping",
         "cleared": "cleared",
         "approved": True,
@@ -94,11 +95,11 @@ def test_simple_validate_with_valid_data():
     }
 
     # This should not raise an exception
-    validated = simple_validate(data, CleanTransaction)
+    validated = simple_validate(data, MCPTransaction)
 
-    assert validated.id == "123e4567-e89b-12d3-a456-426614174000"
+    assert str(validated.id) == "123e4567-e89b-12d3-a456-426614174000"
     assert validated.date == date(2023, 1, 15)
-    assert validated.amount == -50000
+    assert validated.amount == "-$50.00"
 
 
 def test_simple_validate_with_invalid_data():
@@ -106,12 +107,12 @@ def test_simple_validate_with_invalid_data():
     data = {
         "id": "valid-id",
         "date": "2023-01-15",
-        "amount": -50000,
+        "amount": "-$50.00",
         # Missing required fields: memo, cleared, approved, account_id, account_name
     }
 
     with pytest.raises(Exception):  # Should raise ValidationError
-        simple_validate(data, CleanTransaction)
+        simple_validate(data, MCPTransaction)
 
 
 def test_integration_clean_then_validate():
@@ -120,7 +121,9 @@ def test_integration_clean_then_validate():
     raw_ynab_data = {
         "id": UUID("123e4567-e89b-12d3-a456-426614174000"),
         "date": date(2023, 1, 15),
-        "amount": -50000,
+        # Lean: amount is the formatted string; integer milliunit twin is dropped
+        # from the lean layer (lives on full_details for the Full layer).
+        "amount": "-$50.00",
         "memo": "Grocery shopping",
         "cleared": "cleared",
         "approved": True,
@@ -145,9 +148,9 @@ def test_integration_clean_then_validate():
     assert isinstance(cleaned_data["account_id"], str)
 
     # Step 2: Validate the cleaned data
-    validated = simple_validate(cleaned_data, CleanTransaction)
+    validated = simple_validate(cleaned_data, MCPTransaction)
 
     # Verify the validation worked
-    assert validated.id == "123e4567-e89b-12d3-a456-426614174000"
+    assert str(validated.id) == "123e4567-e89b-12d3-a456-426614174000"
     assert validated.date == date(2023, 1, 15)
-    assert validated.account_id == "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    assert str(validated.account_id) == "a1b2c3d4-e5f6-7890-abcd-ef1234567890"

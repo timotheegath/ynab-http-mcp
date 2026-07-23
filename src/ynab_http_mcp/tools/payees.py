@@ -1,9 +1,11 @@
-# All transaction actions.
 from ynab_http_mcp.ynab_service import YnabService
-from typing import Annotated, Literal
-from ynab_http_mcp.schemas.payees import PayeesResponse, PayeeResponse
-from ynab_http_mcp.schemas.transactions import TransactionsResponse
-import json
+from typing import Annotated
+from ynab_http_mcp.schemas.payees import (
+    MCPPayees,
+    MCPPayee,
+    MCPPayeeFull,
+)
+from ynab_http_mcp.debug import debug_exception
 
 
 def register(mcp, ynab_service: YnabService):
@@ -16,9 +18,9 @@ def register(mcp, ynab_service: YnabService):
         # Get raw YNAB response
         raw_response = ynab_service.get_payees()
 
-        validated_response = PayeesResponse.from_ynab_response(raw_response)
+        validated_response = MCPPayees.from_ynab_response(raw_response)
         # Return as JSON string for MCP resource compatibility
-        return validated_response.model_dump_json()
+        return validated_response.model_dump_json(exclude_none=True)
 
     @mcp.resource(uri="data://payees/{id}", mime_type="application/json")
     async def get_single_payee(
@@ -33,61 +35,45 @@ def register(mcp, ynab_service: YnabService):
         Example:
         - data://payees/fd6bb67d-b77f-4dee-a2f5-47ef2bd8613c
         """
-        # Parse filter parameters from the path
-
-        # Get raw YNAB response
         raw_response = ynab_service.get_payee(id)
+        try:
+            cleaned = MCPPayee.from_ynab(raw_response.data.payee)
+        except Exception:
+            debug_exception(
+                f"Failed to validate payee {getattr(raw_response.data.payee, 'id', 'unknown')}"
+            )
+            cleaned = MCPPayee(id="", name="", deleted=False, transfer_account_id=None)
+        return cleaned.model_dump_json(exclude_none=True)
 
-        validated_response = PayeeResponse.from_ynab_response(raw_response)
-
-        # Return as JSON string for MCP resource compatibility
-        return validated_response.model_dump_json()
-
-    @mcp.resource(
-        uri="data://payees/{payee_id}/transactions{?since_date,until_date,type}",
-        mime_type="application/json",
-    )
-    async def get_transactions_by_payee(
-        payee_id: Annotated[
+    @mcp.resource(uri="data://payees/{id}/full", mime_type="application/json")
+    async def get_single_payee_full(
+        id: Annotated[
             str,
-            "Payee ID to filter transactions by specific payee.",
+            "UUID of the payee to retrieve.",
         ],
-        since_date: Annotated[
-            str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions starting from this date. Leave blank for no start date filter.",
-        ] = None,
-        until_date: Annotated[
-            str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions up to this date. Leave blank for no end date filter.",
-        ] = None,
-        type: Annotated[
-            Literal["all", "uncleared", "cleared", "reconciled"] | None,
-            "Transaction type filter. Must be one of: 'all', 'uncleared', 'cleared', 'reconciled'.",
-        ] = "all",
     ) -> str:
         """
-        Get transactions related a specific payee.
+        Get a single payee by its UUID, including the cleaned raw YNAB SDK
+        payload under ``full_details``.
 
-        Filtering is specified via filter_params in the format:
-        since_date=YYYY-MM-DD&until_date=YYYY-MM-DD&type=cleared
-
-        Examples:
-        - data://payees/2211a810-42bf-435d-974b-35fc8cdfdf8a/transactions/since_date=2024-01-01&until_date=2024-01-31
+        The Lean endpoint (``data://payees/{id}``) returns the 4 LLM-friendly
+        payee fields. This drill-in endpoint adds a single ``full_details``
+        dict carrying every field the YNAB SDK exposes for the payee,
+        including fields the Lean layer dropped. Use this when SDK-fidelity
+        access is required.
         """
-        # Parse filter parameters from the path
-
-        # Get raw YNAB response - validation is now handled by the service method
+        raw_response = ynab_service.get_payee(id)
         try:
-            raw_response = ynab_service.get_transactions(
-                since_date=since_date,
-                until_date=until_date,
-                type=type if type else "all",
-                payee_id=payee_id,
+            cleaned = MCPPayeeFull.from_ynab(raw_response.data.payee)
+        except Exception:
+            debug_exception(
+                f"Failed to validate payee (full) {getattr(raw_response.data.payee, 'id', 'unknown')}"
             )
-        except ValueError as e:
-            error_response = {"error": f"Invalid parameter format: {str(e)}"}
-            return json.dumps(error_response)
-
-        validated_response = TransactionsResponse.from_ynab_response(raw_response)
-        # Return as JSON string for MCP resource compatibility
-        return validated_response.model_dump_json()
+            cleaned = MCPPayeeFull(
+                id="",
+                name="",
+                deleted=False,
+                transfer_account_id=None,
+                full_details={},
+            )
+        return cleaned.model_dump_json(exclude_none=True)

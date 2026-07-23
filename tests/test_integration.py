@@ -3,7 +3,6 @@
 Integration test to verify all MCP tools work with real YNAB data structures.
 """
 
-import os
 import sys
 from datetime import date
 from uuid import uuid4
@@ -11,12 +10,8 @@ from uuid import uuid4
 # Add project root to path
 sys.path.insert(0, "/home/timo/projects/ynab-http-mcp/src")
 
-from ynab_http_mcp.schemas.transactions import CleanTransaction, TransactionsResponse
-from ynab_http_mcp.schemas.categories import (
-    CleanCategory,
-    CategoryGroup,
-    CategoriesResponse,
-)
+from ynab_http_mcp.schemas.transactions import MCPTransaction, MCPTransactions
+from ynab_http_mcp.schemas.categories import MCPCategory
 from ynab_http_mcp.schemas.planning import (
     MonthCategory,
     PlanMonth,
@@ -24,8 +19,7 @@ from ynab_http_mcp.schemas.planning import (
     PlanMonthSummary,
     AllPlanMonthsResponse,
 )
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data
-from ynab_http_mcp.utils.simple_validation import simple_validate
+from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
 
 
 def create_sample_transaction():
@@ -33,7 +27,7 @@ def create_sample_transaction():
     return {
         "id": str(uuid4()),
         "date": date(2023, 1, 15),
-        "amount": -50000,  # -$500.00 in milliunits
+        "amount": "-$500.00",  # Lean: formatted string only (no milli_amount twin)
         "memo": "Grocery shopping",
         "cleared": "cleared",
         "approved": True,
@@ -49,8 +43,6 @@ def create_sample_transaction():
         "flag_color": None,
         "flag_name": None,
         "debt_transaction_type": None,
-        "amount_formatted": "-$500.00",
-        "amount_currency": -500.00,
         "subtransactions": [],
         # Import fields that should be filtered
         "import_id": "import-123",
@@ -59,51 +51,24 @@ def create_sample_transaction():
     }
 
 
-def create_sample_category():
-    """Create a sample category that mimics real YNAB data."""
-    return {
-        "id": str(uuid4()),
-        "category_group_id": str(uuid4()),
-        "name": "Groceries",
-        "hidden": False,
-        "deleted": False,
-        "original_category_group_id": None,
-        "note": "Monthly grocery budget",
-        "goal_type": "TB",
-        "goal_day": None,
-        "goal_cadence": None,
-        "goal_cadence_frequency": None,
-        "goal_creation_month": "2023-01",
-        "goal_target": 500000,  # $500.00 in milliunits
-        "goal_target_month": "2023-12",
-        "goal_percentage_complete": 60,
-    }
-
-
-def create_sample_category_group():
-    """Create a sample category group that mimics real YNAB data."""
-    return {
-        "id": str(uuid4()),
-        "name": "Everyday Expenses",
-        "hidden": False,
-        "deleted": False,
-        "categories": [create_sample_category()],
-    }
-
-
 def create_sample_month_category():
     """Create a sample month category that mimics real YNAB data."""
     return {
         "category_id": str(uuid4()),
         "category_name": "Groceries",
-        "budgeted": 500000,  # $500.00 in milliunits
-        "activity": -300000,  # -$300.00 spent
-        "balance": 200000,  # $200.00 remaining
-        "goal_type": "TB",
-        "goal_creation_month": "2023-01",
-        "goal_target": 500000,
-        "goal_target_month": "2023-12",
-        "goal_percentage_complete": 60,
+        # Lean: integer milliunit budget/activity/balance are dropped; only
+        # formatted strings remain on the lean MonthCategory. The integer
+        # twins live on the Full layer's full_details dict.
+        "budgeted_formatted": "$500.00",
+        "activity_formatted": "-$300.00",
+        "balance_formatted": "$200.00",
+        "goal": {
+            "goal_type": "TB",
+            "goal_target_date": None,
+            "goal_percentage_complete": 60,
+            "goal_summary": "Target Category Balance: $500.00",
+            "goal_status": "60% complete",
+        },
         "deleted": False,
     }
 
@@ -148,53 +113,56 @@ def test_transaction_schema():
     assert "import_payee_name_original" not in cleaned_data
 
     # Validate using simplified approach
-    validated_transaction = simple_validate(cleaned_data, CleanTransaction)
-    assert validated_transaction.id == transaction_data["id"]
-    assert validated_transaction.amount == -50000
+    validated_transaction = simple_validate(cleaned_data, MCPTransaction)
+    assert str(validated_transaction.id) == transaction_data["id"]
+    assert validated_transaction.amount == "-$500.00"
     print("✓ Individual transaction validation passed")
 
     # Test transactions response
     transactions_response = {"transactions": [cleaned_data], "server_knowledge": 123}
 
-    validated_response = simple_validate(transactions_response, TransactionsResponse)
+    validated_response = simple_validate(transactions_response, MCPTransactions)
     assert len(validated_response.transactions) == 1
-    assert validated_response.server_knowledge == 123
     print("✓ Transactions response validation passed")
 
 
 def test_category_schema():
-    """Test category schema with real-like data."""
+    """Test MCPCategory schema with real-like YNAB data."""
     print("Testing category schema...")
 
-    # Test individual category
-    category_data = create_sample_category()
+    category_data = {
+        "id": str(uuid4()),
+        "category_group_id": str(uuid4()),
+        "name": "Groceries",
+        "hidden": False,
+        "internal": False,
+        "deleted": False,
+        "budgeted_formatted": "$500.00",
+        "activity_formatted": "-$300.00",
+        "balance_formatted": "$200.00",
+        "goal_type": "TB",
+        "goal_target_date": None,
+        "goal_percentage_complete": 60,
+        "goal_summary": "Target Category Balance: $500.00",
+        "goal_status": "60% complete",
+    }
     cleaned_data = clean_ynab_data(category_data)
-    validated_category = simple_validate(cleaned_data, CleanCategory)
-    assert validated_category.id == category_data["id"]
+    validated_category = simple_validate(cleaned_data, MCPCategory)
+    assert str(validated_category.id) == category_data["id"]
     assert validated_category.name == "Groceries"
+    # simple_validate constructs the model from the dict directly without
+    # going through MCPCategory.from_ynab, so the nested ``goal`` slot
+    # stays None unless explicitly provided. The from_ynab path is
+    # covered by tests/test_categories_schema.py.
+    assert validated_category.goal is None
     print("✓ Individual category validation passed")
-
-    # Test category group
-    group_data = create_sample_category_group()
-    cleaned_group_data = clean_ynab_data(group_data)
-    validated_group = simple_validate(cleaned_group_data, CategoryGroup)
-    assert validated_group.id == group_data["id"]
-    assert len(validated_group.categories) == 1
-    print("✓ Category group validation passed")
-
-    # Test categories response
-    categories_response = {"category_groups": [cleaned_group_data]}
-
-    validated_response = simple_validate(categories_response, CategoriesResponse)
-    assert len(validated_response.category_groups) == 1
-    print("✓ Categories response validation passed")
 
 
 def test_planning_schema():
     """Test planning schema with real-like data."""
     print("Testing planning schema...")
 
-    # Test month category
+    # Test month category (lean layer — formatted strings + nested lean goal)
     month_category_data = create_sample_month_category()
     cleaned_data = clean_ynab_data(month_category_data)
     validated_category = simple_validate(cleaned_data, MonthCategory)
@@ -231,62 +199,63 @@ def test_planning_schema():
     assert len(validated_all_months.months) == 1
     print("✓ All plan months response validation passed")
 
-    # Test YNAB API data transformation
-    test_ynab_api_data_transformation()
-
 
 def test_ynab_api_data_transformation():
     """Test that YNAB API data is properly transformed to match our schema."""
     print("Testing YNAB API data transformation...")
 
-    from datetime import date
-    from uuid import uuid4
-
-    # Simulate actual YNAB API response structure
+    # Simulate actual YNAB API response structure (month detail with categories)
     ynab_api_data = {
-        "month": {
-            "month": date(2026, 7, 1),  # YNAB returns date object
-            "income": 5000000,
-            "budgeted": 4000000,
-            "activity": -3000000,
-            "to_be_budgeted": 1000000,
-            "age_of_money": 30,
-            "categories": [
-                {
-                    "id": str(uuid4()),  # YNAB uses 'id' not 'category_id'
-                    "name": "Groceries",  # YNAB uses 'name' not 'category_name'
-                    "budgeted": 500000,
-                    "activity": -300000,
-                    "balance": 200000,
-                    "goal_type": "TB",
-                    "goal_creation_month": "2023-01",
-                    "goal_target": 500000,
-                    "goal_target_month": "2023-12",
-                    "goal_percentage_complete": 60,
-                    "deleted": False,
-                }
-            ],
+        "data": {
+            "month": {
+                "month": date(2026, 7, 1),  # YNAB returns date object
+                "income": 5000000,
+                "budgeted": 4000000,
+                "activity": -3000000,
+                "to_be_budgeted": 1000000,
+                "age_of_money": 30,
+                "deleted": False,
+                "categories": [
+                    {
+                        "id": str(uuid4()),
+                        "category_group_id": str(uuid4()),
+                        "name": "Groceries",
+                        "hidden": False,
+                        "internal": False,
+                        "deleted": False,
+                        "budgeted": 500000,
+                        "activity": -300000,
+                        "balance": 200000,
+                        "budgeted_formatted": "$500.00",
+                        "activity_formatted": "-$300.00",
+                        "balance_formatted": "$200.00",
+                        "goal_type": "TB",
+                        "goal_target": 500000,
+                        "goal_target_date": None,
+                        "goal_percentage_complete": 60,
+                    }
+                ],
+            }
         }
     }
 
-    # Transform using our method
-    transformed_response = PlanMonthResponse.from_ynab_data(ynab_api_data)
+    # Transform using a real-ish YNAB response object
+    import ynab
+
+    response_obj = ynab.MonthDetailResponse.model_validate(ynab_api_data)
+    transformed = PlanMonth.from_ynab_response(response_obj)
 
     # Validate the transformation
-    assert (
-        transformed_response.month.month == "2026-07"
-    )  # Date should be converted to string
-    assert transformed_response.month.income == 5000000
-    assert len(transformed_response.month.categories) == 1
-    assert transformed_response.month.categories[0].category_id is not None
-    assert transformed_response.month.categories[0].category_name == "Groceries"
-
-    # Validate with simplified approach
-    validated_response = simple_validate(
-        transformed_response.model_dump(), PlanMonthResponse
-    )
-    assert validated_response.month.month == "2026-07"
-    assert validated_response.month.categories[0].category_name == "Groceries"
+    assert transformed.month == "2026-07"  # Date converted to YYYY-MM
+    assert transformed.income == 5000000
+    assert len(transformed.categories) == 1
+    cat = transformed.categories[0]
+    assert cat.category_id is not None
+    assert cat.category_name == "Groceries"
+    # Lean layer — formatted strings only, no integer milliunit twins
+    assert cat.budgeted_formatted == "$500.00"
+    assert cat.activity_formatted == "-$300.00"
+    assert cat.balance_formatted == "$200.00"
 
     print("✓ YNAB API data transformation test passed")
 

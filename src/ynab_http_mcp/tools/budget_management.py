@@ -101,7 +101,7 @@ def register(mcp, ynab_service: YnabService):
             "success": True,
             "category": clean_ynab_data(result.data.category.to_dict()),
         }
-        
+
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
     def clear_category_goals(request: ClearCategoryGoalRequest) -> Dict[str, Any]:
         """
@@ -118,6 +118,7 @@ def register(mcp, ynab_service: YnabService):
             "success": True,
             "category": clean_ynab_data(result.data.category.to_dict()),
         }
+
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False))
     def create_transaction(request: CreateTransactionRequest) -> Dict[str, Any]:
         """
@@ -145,6 +146,7 @@ def register(mcp, ynab_service: YnabService):
             "success": True,
             "transaction": clean_ynab_data(result.data.transaction.to_dict()),
         }
+
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     def check_budget_health(month: str) -> BudgetHealthResponse:
         """
@@ -211,7 +213,7 @@ def register(mcp, ynab_service: YnabService):
             is_healthy=health_percentage
             >= 0.8,  # Consider healthy if 80%+ categories are healthy
         )
-    
+
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     def get_spending_insights(
         month: str, category_id: Optional[str] = None

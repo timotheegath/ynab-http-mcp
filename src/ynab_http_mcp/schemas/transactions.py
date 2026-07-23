@@ -5,204 +5,231 @@ This module defines simplified Pydantic models for validating
 YNAB transaction data using basic data types suitable for agents.
 """
 
-from typing import Optional, List, Dict, Any
-from datetime import date as date_type, datetime as datetime_type
-from pydantic import BaseModel, Field, ConfigDict
-from ynab import (
-    TransactionsResponse as ynabTransactionsResponse,
-    TransactionResponse as ynabTransactionResponse,
+from typing import Any, ClassVar, Dict, Optional, List, Self
+from pydantic import Field
+import ynab
+from ynab_http_mcp.utils.schema_utils import (
+    clean_enum_for_MCP_output,
+    clean_ynab_data,
 )
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
-from ynab_http_mcp.debug import debug_exception
+from .base import MCPResponse, date_type, uuid_type
 
 
-class CleanTransaction(BaseModel):
+class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
     """
-    Simplified transaction model using basic data types.
+    A transaction indicates a movement of money between accounts, or between an account and a payee.
 
-    This represents a YNAB transaction with all essential fields
-    using simple types that are easily consumable by AI agents.
+    Lean layer (per the Lean / Full / Aggregate convention):
+
+    - ``amount`` is a formatted currency string (e.g. ``"-$45.00"``).
+    - ``milli_amount`` (integer milliunit twin) is **dropped** from the lean
+      layer; the integer value lives in
+      ``data://transactions/{id}/full`` under ``full_details.amount``.
+    - Sub-transactions follow the same rule — ``MCPSubTransaction.amount`` is
+      a formatted string, and the integer value is reachable only via the
+      Full layer (``full_details.subtransactions[i].amount``).
     """
 
-    model_config = ConfigDict(json_encoders={date_type: str, datetime_type: str})
+    class MCPSubTransaction(MCPResponse[ynab.SubTransaction]):
+        """
+        A transaction may be split into multiple sub-transactions. This is to:
+        - Split-assigning a real-life transaction to different categories,
+        - ?
+        """
 
-    @staticmethod
-    def _extract_hints() -> Dict[str, str]:
-        """
-        Extract contextual hints for complex fields from the schema.
-        """
-        hints = {}
-        for field_name, field_info in CleanTransaction.model_fields.items():
-            if field_info.description and any(
-                keyword in field_info.description
-                for keyword in [
-                    "transfer",
-                    "matched",
-                    "flag",
-                    "debt",
-                    "amount",
-                    "cleared",
-                ]
-            ):
-                hints[field_name] = field_info.description
-        return hints
+        id: uuid_type = Field(..., description="Unique transaction identifier")
+        parent_transaction_id: uuid_type = Field(
+            ..., description="Unique identifier of the parent transaction"
+        )
+        amount: Optional[str] = Field(None, description="Formatted amount string")
+
+        memo: Optional[str] = Field(None, description="Subtransaction memo/note")
+
+        payee_id: Optional[uuid_type] = Field(
+            None, description="Payee identifier if applicable"
+        )
+        payee_name: Optional[str] = Field(None, description="Payee name")
+        category_id: Optional[uuid_type] = Field(
+            None, description="Category identifier if applicable"
+        )
+        category_name: Optional[str] = Field(None, description="Category name")
+        transfer_account_id: Optional[uuid_type] = Field(
+            None,
+            description="If a transfer, the account_id which the subtransaction transfers to",
+        )
+        transfer_transaction_id: Optional[uuid_type] = Field(
+            None,
+            description="If a transfer, the id of transaction on the other side of the transfer",
+        )
+        deleted: bool = Field(
+            ..., description="Whether the sub-transaction has been deleted"
+        )
+
+        @classmethod
+        def from_ynab(cls, raw: ynab.SubTransaction):
+
+            return cls(
+                id=uuid_type(raw.id),
+                parent_transaction_id=uuid_type(raw.transaction_id),
+                amount=raw.amount_formatted,
+                memo=raw.memo,
+                payee_id=raw.payee_id,
+                payee_name=raw.payee_name,
+                category_id=raw.category_id,
+                category_name=raw.category_name,
+                transfer_account_id=raw.transfer_account_id,
+                transfer_transaction_id=uuid_type(raw.transfer_transaction_id)
+                if raw.transfer_transaction_id
+                else None,
+                deleted=raw.deleted,
+            )
 
     # Required fields
-    id: str = Field(..., description="Unique transaction identifier")
+    id: uuid_type = Field(..., description="Unique transaction identifier")
     date: date_type = Field(..., description="Transaction date")
-    amount: int = Field(
-        ..., description="Transaction amount in milliunits (1/1000 of currency unit)"
-    )
+    amount: Optional[str] = Field(None, description="Formatted amount string")
     memo: Optional[str] = Field(None, description="Transaction memo/note")
     cleared: str = Field(
         ...,
         description="Cleared status (cleared/uncleared/reconciled). Values: 'cleared', 'uncleared', 'reconciled'",
     )
     approved: bool = Field(..., description="Whether transaction is approved")
-    account_id: str = Field(..., description="Account identifier")
+    account_id: uuid_type = Field(..., description="Account identifier")
     account_name: str = Field(..., description="Account name")
 
     # Optional fields
-    payee_id: Optional[str] = Field(None, description="Payee identifier if applicable")
+    payee_id: Optional[uuid_type] = Field(
+        None, description="Payee identifier if applicable"
+    )
     payee_name: Optional[str] = Field(None, description="Payee name")
-    category_id: Optional[str] = Field(
+    category_id: Optional[uuid_type] = Field(
         None, description="Category identifier if applicable"
     )
-    category_name: Optional[str] = Field(None, description="Category name")
-    transfer_account_id: Optional[str] = Field(
+    category_name: Optional[str] = Field(
         None,
-        description="Transfer account identifier if applicable. Used in subtransactions to specify target account for transfers",
+        description="The name of the category. If a split transaction, this will be 'Split'.",
     )
-    transfer_transaction_id: Optional[str] = Field(
+    transfer_account_id: Optional[uuid_type] = Field(
         None,
-        description="Transfer transaction ID if applicable. Used in subtransactions to link to reverse transfer transaction",
+        description="If a transfer transaction, the account to which it transfers",
     )
-    matched_transaction_id: Optional[str] = Field(
+    transfer_transaction_id: Optional[uuid_type] = Field(
         None,
-        description="Matched transaction ID if applicable. Used for imported transactions to link to existing records",
+        description="If a transfer transaction, the id of transaction on the other side of the transfer",
+    )
+    import_payee_name_original: Optional[str] = Field(
+        None,
+        description="If the transaction was imported, the original payee name as it appeared on the statement",
     )
     flag_color: Optional[str] = Field(
         None,
         description="Flag color if flagged. Possible values: red, orange, yellow, green, blue, purple",
     )
-    flag_name: Optional[str] = Field(None, description="Flag name if flagged")
     debt_transaction_type: Optional[str] = Field(
         None,
         description="Debt transaction type if applicable. Possible values: loan_payment, loan_principal, loan_interest, credit_card_payment, credit_card_principal, credit_card_fee",
     )
-    amount_formatted: Optional[str] = Field(None, description="Formatted amount string")
-    amount_currency: Optional[float] = Field(
-        None, description="Amount in currency units"
-    )
-    subtransactions: List[Dict[str, Any]] = Field(
+    subtransactions: List[MCPSubTransaction] = Field(
         default_factory=list, description="Subtransactions if split transaction"
     )
 
+    @classmethod
+    def from_ynab(
+        cls,
+        raw: ynab.TransactionDetail | ynab.HybridTransaction | ynab.TransactionResponse,
+    ) -> Self:
+        if isinstance(raw, ynab.TransactionResponse):
+            raw = raw.data.transaction
 
-class TransactionsResponse(BaseModel):
+        subs = getattr(raw, "subtransactions", None) or []
+
+        return cls(
+            id=uuid_type(raw.id),
+            date=raw.var_date,
+            amount=raw.amount_formatted,
+            memo=raw.memo,
+            cleared=clean_enum_for_MCP_output(raw.cleared),
+            approved=raw.approved,
+            account_id=raw.account_id,
+            account_name=raw.account_name,
+            payee_id=raw.payee_id,
+            payee_name=raw.payee_name,
+            category_id=raw.category_id,
+            category_name=raw.category_name,
+            transfer_account_id=raw.transfer_account_id,
+            transfer_transaction_id=uuid_type(raw.transfer_transaction_id)
+            if raw.transfer_transaction_id
+            else None,
+            import_payee_name_original=raw.import_payee_name_original,
+            flag_color=clean_enum_for_MCP_output(raw.flag_color),
+            debt_transaction_type=raw.debt_transaction_type,
+            subtransactions=[cls.MCPSubTransaction.from_ynab(sub) for sub in subs],
+        )
+
+
+class MCPTransactionFull(MCPTransaction):
+    """Full sibling of ``MCPTransaction`` — same lean fields plus ``full_details``.
+
+    ``full_details`` is the cleaned raw ``ynab.TransactionDetail`` as a dict
+    and contains the integer ``amount`` (milliunits), integer ``subtransactions[i].amount``,
+    and every other field the Lean layer dropped (e.g. ``import_payee_name``,
+    ``matched_transaction_id``). Use this when arithmetic or SDK-fidelity
+    access is required.
+    """
+
+    full_details: Dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Cleaned raw ``ynab.TransactionDetail`` as a dict. Contains every "
+            "field the YNAB SDK exposes for a transaction, including the "
+            "integer ``amount`` in milliunits and every other field the Lean "
+            "layer dropped. UUIDs are strings, datetimes are ISO dates, and "
+            "YNAB-specific import fields are removed."
+        ),
+    )
+
+    @classmethod
+    def from_ynab(
+        cls,
+        raw: ynab.TransactionDetail | ynab.HybridTransaction | ynab.TransactionResponse,
+    ) -> Self:
+        if isinstance(raw, ynab.TransactionResponse):
+            raw_txn: ynab.TransactionDetail | ynab.HybridTransaction = (
+                raw.data.transaction
+            )
+        else:
+            raw_txn = raw
+
+        lean = MCPTransaction.from_ynab(raw_txn)
+        return cls(
+            **lean.model_dump(),
+            full_details=clean_ynab_data(raw_txn.to_dict()),
+        )
+
+
+class MCPTransactions(
+    MCPResponse[ynab.TransactionsResponse | ynab.HybridTransactionsResponse]
+):
     """
     Simplified response structure for transactions endpoint.
 
     Wraps the list of simplified transactions with metadata.
     """
 
-    transactions: List[CleanTransaction] = Field(
+    HIDE_DELETED: ClassVar[bool] = True
+    transactions: List[MCPTransaction] = Field(
         ..., description="List of simplified transactions"
     )
-    server_knowledge: int = Field(
-        ..., description="Server knowledge version for pagination"
-    )
-    hints: Optional[Dict[str, str]] = Field(
-        None, description="Contextual hints for complex fields"
-    )
 
-    @staticmethod
-    def from_ynab_response(
-        ynab_reponse: ynabTransactionsResponse,
-    ) -> "TransactionsResponse":
-        # Convert to dict and clean data using unified function
-        raw_data = ynab_reponse.to_dict()
-
-        # Clean each transaction using unified data cleaning
-        cleaned_transactions = []
-        for transaction_data in raw_data.get("data", {}).get("transactions", []):
-            # Clean data using unified function (handles UUID→string, import field filtering, etc.)
-            cleaned_data = clean_ynab_data(transaction_data)
-
-            # Validate using simplified approach
-            try:
-                validated_transaction = simple_validate(cleaned_data, CleanTransaction)
-                cleaned_transactions.append(validated_transaction.model_dump())
-            except Exception:
-                debug_exception(
-                    f"Failed to validate transaction {transaction_data.get('id', 'unknown')}"
-                )
-                # Skip invalid transactions but continue processing others
+    @classmethod
+    def from_ynab(
+        cls,
+        raw: ynab.TransactionsResponse | ynab.HybridTransactionsResponse,
+    ) -> Self:
+        transactions = []
+        for transaction in raw.data.transactions:
+            if transaction.deleted and cls.HIDE_DELETED:
                 continue
-
-        # Create final response with contextual hints extracted from schema
-        hints = CleanTransaction._extract_hints()
-
-        final_response = {
-            "transactions": cleaned_transactions,
-            "server_knowledge": raw_data.get("data", {}).get("server_knowledge", 0),
-            "hints": hints,
-        }
-
-        # Validate the complete response structure using simplified approach
-        validated_response = simple_validate(final_response, TransactionsResponse)
-        return validated_response
-
-
-class TransactionResponse(BaseModel):
-    """
-    Simplified response structure for transactions endpoint.
-
-    Wraps the list of simplified transactions with metadata.
-    """
-
-    transaction: CleanTransaction = Field(
-        ..., description="Single simplified transaction"
-    )
-    server_knowledge: int = Field(
-        ..., description="Server knowledge version for pagination"
-    )
-    hints: Optional[Dict[str, str]] = Field(
-        None, description="Contextual hints for complex fields"
-    )
-
-    @staticmethod
-    def from_ynab_response(
-        ynab_reponse: ynabTransactionResponse,
-    ) -> "TransactionResponse":
+            transactions.append(MCPTransaction.from_ynab(transaction))
         # Convert to dict and clean data using unified function
-        raw_data = ynab_reponse.to_dict()
-        transaction_data = raw_data.get("data", {})["transaction"]
-
-        # Clean each transaction using unified data cleaning
-        cleaned_transaction = {}
-
-        # Clean data using unified function (handles UUID→string, import field filtering, etc.)
-        cleaned_data = clean_ynab_data(transaction_data)
-
-        # Validate using simplified approach
-        try:
-            validated_transaction = simple_validate(cleaned_data, CleanTransaction)
-            cleaned_transaction = validated_transaction.model_dump()
-        except Exception:
-            debug_exception(
-                f"Failed to validate transaction {transaction_data.get('id', 'unknown')}"
-            )
-
-        # Create final response with contextual hints extracted from schema
-        hints = CleanTransaction._extract_hints()
-
-        final_response = {
-            "transaction": cleaned_transaction,
-            "server_knowledge": raw_data.get("data", {}).get("server_knowledge", 0),
-            "hints": hints,
-        }
-
-        # Validate the complete response structure using simplified approach
-        validated_response = simple_validate(final_response, TransactionResponse)
-        return validated_response
+        return cls(transactions=transactions)

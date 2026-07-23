@@ -3,24 +3,24 @@
 Test script to verify schema metadata is accessible.
 """
 
-import os
 import sys
 import json
 
 # Add project root to path
 sys.path.insert(0, "/home/timo/projects/ynab-http-mcp/src")
 
-from ynab_http_mcp.schemas.transactions import TransactionsResponse
-from ynab_http_mcp.schemas.categories import CategoriesResponse
-from ynab_http_mcp.schemas.planning import PlanMonthResponse, AllPlanMonthsResponse
 from ynab_http_mcp.schemas import (
-    CleanTransaction,
-    CleanCategory,
-    CategoryGroup,
+    MCPTransaction,
+    MCPTransactions,
+    MCPCategory,
+    MCPCategoryGoal,
+    MCPCategoryGroup,
+    MCPCategories,
     MonthCategory,
     PlanMonth,
     PlanMonthSummary,
     AllPlanMonthsResponse,
+    PlanMonthResponse,
 )
 
 
@@ -30,11 +30,12 @@ def test_schema_registry():
 
     # Check that all schemas are accessible
     expected_schemas = [
-        CleanTransaction,
-        TransactionsResponse,
-        CleanCategory,
-        CategoryGroup,
-        CategoriesResponse,
+        MCPTransaction,
+        MCPTransactions,
+        MCPCategory,
+        MCPCategoryGoal,
+        MCPCategoryGroup,
+        MCPCategories,
         MonthCategory,
         PlanMonth,
         PlanMonthResponse,
@@ -54,8 +55,8 @@ def test_json_schema_generation():
     print("Testing JSON schema generation...")
 
     schemas_to_test = [
-        TransactionsResponse,
-        CategoriesResponse,
+        MCPTransactions,
+        MCPCategories,
         PlanMonthResponse,
         AllPlanMonthsResponse,
     ]
@@ -88,7 +89,7 @@ def test_fastmcp_metadata_compatibility():
     print("Testing FastMCP metadata compatibility...")
 
     # Test that returnSchema annotations would work
-    test_annotations = {"returnSchema": TransactionsResponse.model_json_schema()}
+    test_annotations = {"returnSchema": MCPTransactions.model_json_schema()}
 
     # Verify the annotation contains valid schema
     assert "returnSchema" in test_annotations
@@ -104,11 +105,12 @@ def test_registry_json_schemas():
 
     # Test JSON schema generation for all models
     expected_schemas = [
-        CleanTransaction,
-        TransactionsResponse,
-        CleanCategory,
-        CategoryGroup,
-        CategoriesResponse,
+        MCPTransaction,
+        MCPTransactions,
+        MCPCategory,
+        MCPCategoryGoal,
+        MCPCategoryGroup,
+        MCPCategories,
         MonthCategory,
         PlanMonth,
         PlanMonthResponse,
