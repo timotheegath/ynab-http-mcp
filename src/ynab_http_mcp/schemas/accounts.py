@@ -86,7 +86,9 @@ class MCPAccount(MCPResponse[ynab.Account]):
             cleared_balance=raw.cleared_balance_formatted,
             uncleared_balance=raw.uncleared_balance_formatted,
             transfer_payee_id=raw.transfer_payee_id,
-            last_reconciled_at=raw.last_reconciled_at,
+            last_reconciled_at=raw.last_reconciled_at.date()
+            if raw.last_reconciled_at is not None
+            else None,
             direct_import_linked=raw.direct_import_linked,
             direct_import_in_error=raw.direct_import_in_error,
         )
