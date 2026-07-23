@@ -20,8 +20,6 @@ from .payees import (
     CleanPayee,
     CleanPayeeFull,
     PayeesResponse,
-    PayeeResponse,
-    PayeeResponseFull,
 )
 from .planning import (
     MonthCategory,
@@ -57,8 +55,6 @@ __all__ = [
     "CleanPayee",
     "CleanPayeeFull",
     "PayeesResponse",
-    "PayeeResponse",
-    "PayeeResponseFull",
     "MonthCategory",
     "MonthCategoryFull",
     "PlanMonth",
