@@ -134,9 +134,14 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
     )
 
     @classmethod
-    def from_ynab(cls, raw: ynab.TransactionDetail | ynab.TransactionResponse) -> Self:
+    def from_ynab(
+        cls,
+        raw: ynab.TransactionDetail | ynab.HybridTransaction | ynab.TransactionResponse,
+    ) -> Self:
         if isinstance(raw, ynab.TransactionResponse):
             raw = raw.data.transaction
+
+        subs = getattr(raw, "subtransactions", None) or []
 
         return cls(
             id=uuid_type(raw.id),
@@ -158,9 +163,7 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
             import_payee_name_original=raw.import_payee_name_original,
             flag_color=clean_enum_for_MCP_output(raw.flag_color),
             debt_transaction_type=raw.debt_transaction_type,
-            subtransactions=[
-                cls.MCPSubTransaction.from_ynab(sub) for sub in raw.subtransactions
-            ],
+            subtransactions=[cls.MCPSubTransaction.from_ynab(sub) for sub in subs],
         )
 
 
@@ -186,9 +189,14 @@ class MCPTransactionFull(MCPTransaction):
     )
 
     @classmethod
-    def from_ynab(cls, raw: ynab.TransactionDetail | ynab.TransactionResponse) -> Self:
+    def from_ynab(
+        cls,
+        raw: ynab.TransactionDetail | ynab.HybridTransaction | ynab.TransactionResponse,
+    ) -> Self:
         if isinstance(raw, ynab.TransactionResponse):
-            raw_txn: ynab.TransactionDetail = raw.data.transaction
+            raw_txn: ynab.TransactionDetail | ynab.HybridTransaction = (
+                raw.data.transaction
+            )
         else:
             raw_txn = raw
 
@@ -199,7 +207,9 @@ class MCPTransactionFull(MCPTransaction):
         )
 
 
-class MCPTransactions(MCPResponse[ynab.TransactionsResponse]):
+class MCPTransactions(
+    MCPResponse[ynab.TransactionsResponse | ynab.HybridTransactionsResponse]
+):
     """
     Simplified response structure for transactions endpoint.
 
@@ -214,7 +224,7 @@ class MCPTransactions(MCPResponse[ynab.TransactionsResponse]):
     @classmethod
     def from_ynab(
         cls,
-        raw: ynab.TransactionsResponse,
+        raw: ynab.TransactionsResponse | ynab.HybridTransactionsResponse,
     ) -> Self:
         transactions = []
         for transaction in raw.data.transactions:
