@@ -221,3 +221,8 @@ __marimo__/
 # Old openspec
 
 openspec/changes/
+
+# BEGIN oh-my-opencode-slim worktrees
+.slim/worktrees/
+.slim/worktrees.json
+# END oh-my-opencode-slim worktrees
