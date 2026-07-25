@@ -5,3 +5,4 @@ services:
   ynabhttpmcp:
     env_file: .env.prod
     restart: unless-stopped
+    # INSTALL_DEV defaults to false in Dockerfile — no override needed
