@@ -1,11 +1,8 @@
 """
 Budget management tools for YNAB HTTP MCP.
-
-This module provides tools for budget management operations including
-money reassignment, budget health checking, and spending insights.
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Annotated
 from mcp.types import ToolAnnotations
 from ..ynab_service import YnabService
 from ..utils.schema_utils import clean_ynab_data
@@ -28,15 +25,7 @@ def register(mcp, ynab_service: YnabService):
     def assign_budget_to_category(
         request: AssignBudgetCategoryRequest,
     ) -> Dict[str, Any]:
-        """
-        Update a month category budget amount.
-
-        Args:
-            request: Update request with month, category_id, and new budgeted amount
-
-        Returns:
-            Dictionary with success status and updated category data
-        """
+        """Update a month category budget amount."""
         result = ynab_service.update_month_category(
             f"{request.month}-01", request.category_id, request.budgeted_amount
         )
@@ -49,15 +38,7 @@ def register(mcp, ynab_service: YnabService):
     def update_category_goal_to_recurring(
         request: UpdateCategoryGoalRecurringRequest,
     ) -> Dict[str, Any]:
-        """
-        Update a category's goal to a recurring goal in YNAB.
-
-        Args:
-            request: Update request with category parameters and goal settings
-
-        Returns:
-            Dictionary with success status and updated category data
-        """
+        """Update a category's goal to a recurring goal."""
         result = ynab_service.update_category(request.to_update_category_request())
         return {
             "success": True,
@@ -68,15 +49,7 @@ def register(mcp, ynab_service: YnabService):
     def update_category_goal_to_target_date(
         request: UpdateCategoryTargetDateRequest,
     ) -> Dict[str, Any]:
-        """
-        Update a category's goal to set aside until a target date.
-
-        Args:
-            request: Update request with category parameters and goal settings
-
-        Returns:
-            Dictionary with success status and updated category data
-        """
+        """Update a category's goal to set aside until a target date."""
         result = ynab_service.update_category(request.to_update_category_request())
         return {
             "success": True,
@@ -87,15 +60,7 @@ def register(mcp, ynab_service: YnabService):
     def update_category_details(
         request: UpdateCategoryDetailsRequest,
     ) -> Dict[str, Any]:
-        """
-        Update a category's details, and assignment to a category group ID.
-
-        Args:
-            request: Update request with category parameters and goal settings
-
-        Returns:
-            Dictionary with success status and updated category data
-        """
+        """Update a category's name, note, or category group assignment."""
         result = ynab_service.update_category(request.to_update_category_request())
         return {
             "success": True,
@@ -104,15 +69,7 @@ def register(mcp, ynab_service: YnabService):
 
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
     def clear_category_goals(request: ClearCategoryGoalRequest) -> Dict[str, Any]:
-        """
-        Clear a category's goal
-
-        Args:
-            request: Update request with category parameters and goal settings
-
-        Returns:
-            Dictionary with success status and updated category data
-        """
+        """Clear a category's goal."""
         result = ynab_service.update_category(request.to_update_category_request())
         return {
             "success": True,
@@ -121,15 +78,7 @@ def register(mcp, ynab_service: YnabService):
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False))
     def create_transaction(request: CreateTransactionRequest) -> Dict[str, Any]:
-        """
-        Create a new transaction.
-
-        Args:
-            request: Transaction creation request
-
-        Returns:
-            Dictionary with success status and created transaction data
-        """
+        """Create a new transaction."""
         result = ynab_service.create_transaction(
             request.account_id,
             request.date,
@@ -148,16 +97,10 @@ def register(mcp, ynab_service: YnabService):
         }
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-    def check_budget_health(month: str) -> BudgetHealthResponse:
-        """
-        Check overall budget health for a specific month.
-
-        Args:
-            month: Month in YYYY-MM format
-
-        Returns:
-            BudgetHealthResponse with health metrics
-        """
+    def check_budget_health(
+        month: Annotated[str, "Month YYYY-MM"],
+    ) -> BudgetHealthResponse:
+        """Check overall budget health for a specific month."""
         # Get month data
         month_detail = ynab_service.get_plan_month(month).data.month
 
@@ -216,18 +159,10 @@ def register(mcp, ynab_service: YnabService):
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     def get_spending_insights(
-        month: str, category_id: Optional[str] = None
+        month: Annotated[str, "Month YYYY-MM"],
+        category_id: Annotated[Optional[str], "Category UUID"] = None,
     ) -> SpendingInsightsResponse:
-        """
-        Get spending insights for a month and optional category.
-
-        Args:
-            month: Month in YYYY-MM format
-            category_id: Optional category ID to filter by
-
-        Returns:
-            SpendingInsightsResponse with spending metrics
-        """
+        """Get spending insights for a month and optional category."""
         # Get transactions for the month
         from datetime import datetime
 
