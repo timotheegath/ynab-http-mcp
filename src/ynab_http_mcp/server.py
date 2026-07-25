@@ -1,21 +1,38 @@
 import asyncio
+import os
+import sys
+
+from dotenv import load_dotenv
 from fastmcp import FastMCP
 from fastmcp.server.transforms import ResourcesAsTools
-import os
-from dotenv import load_dotenv
-from ynab_http_mcp.ynab_service import YnabService
+
+import ynab_http_mcp.tools.accounts as account_tools
+import ynab_http_mcp.tools.budget_management as budget_tools
 import ynab_http_mcp.tools.categories as category_tools
+import ynab_http_mcp.tools.payees as payee_tools
 import ynab_http_mcp.tools.planning as planning_tools
 import ynab_http_mcp.tools.transactions as transaction_tools
-import ynab_http_mcp.tools.accounts as account_tools
-import ynab_http_mcp.tools.payees as payee_tools
-import ynab_http_mcp.tools.budget_management as budget_tools
-
+from ynab_http_mcp.ynab_service import YnabService
 
 # Load .env
 load_dotenv()  # loads .env into environment
-# Initialize FastMCP server
 
+# ── Environment banner ────────────────────────────────────────────────────────
+_ENV = os.getenv("ENVIRONMENT", "dev")
+if _ENV == "prod":
+    print(
+        "\033[1;31m⚠️  PRODUCTION MODE — real YNAB data. "
+        "Do NOT run coding-agent sessions against this instance.\033[0m",
+        file=sys.stderr,
+    )
+else:
+    print(
+        "\033[1;32m✅  DEV MODE — safe to experiment (ENVIRONMENT=dev).\033[0m",
+        file=sys.stderr,
+    )
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Initialize FastMCP server
 HOST = "0.0.0.0"
 PORT = int(os.getenv("HTTP_PORT", 8000))
 mcp = FastMCP("ynab")

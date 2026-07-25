@@ -1,0 +1,7 @@
+# Production compose override.
+# Usage: docker compose -f compose.yaml -f compose.prod.yaml up
+# WARNING: uses real YNAB credentials. Never run from a coding-agent session.
+services:
+  ynabhttpmcp:
+    env_file: .env.prod
+    restart: unless-stopped
