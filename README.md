@@ -1,233 +1,186 @@
 # ynab-http-mcp
 
-HTTP Streaming MCP for YNAB capabilities
+HTTP Streaming MCP server for YNAB capabilities — enables AI agents to read and write your YNAB budget.
 
 ## Overview
 
-This project provides an HTTP-based Micro Content Provider (MCP) server that enables agents to interact with a user's YNAB (You Need A Budget) budget. The goal is to help users gain insights into their spending habits, optimize their budget planning, and perform bulk operations like cleaning up payee names or categorizing transactions.
+This project provides an HTTP-based Model Context Protocol (MCP) server that lets agents interact with a user's [YNAB](https://www.youneedabudget.com/) budget. It supports spending insights, budget planning, bulk transaction operations, and write operations for category budgets and transactions.
 
 ## Key Dependencies
 
-- **[ynab-sdk-python](https://github.com/ynab/ynab-sdk-python)**: The official YNAB Python SDK used to interact with the YNAB API.
-- **FastMCP**: A lightweight framework for building MCP servers.
+- **[ynab-sdk-python](https://github.com/ynab/ynab-sdk-python)**: Official YNAB Python SDK.
+- **[FastMCP](https://github.com/jlowin/fastmcp)**: Lightweight MCP server framework.
 
-## Key Capabilities
+---
 
-### Budget Management Tools (NEW)
+## Running the Server
 
-The budget management tools enable write operations for budget optimization and financial planning:
-
-- **Update Month Category**: `update_month_category` tool - Modify budgeted amounts for specific categories
-- **Create Transaction**: `create_transaction` tool - Add new transactions to your budget
-- **Check Budget Health**: `data://budget/check-health/{month}` resource - Analyze budget health metrics
-- **Get Spending Insights**: `data://budget/spending-insights/{month}` resource - Generate spending analysis
-
-### Adding a new transaction
-
-### Getting planning advice based on previous spending trends
-
-### Automatically triage transactions
-
-```plain
-Triage all transactions from the last few days. If any doubt on categories, ask me.
-```
-
-### Help optimize money assignment
-
-```plain
-I am reaching the end of my Eating Out money. Which money could I reassign confidently?
-```
-
-### Budget Management Examples
-
-**Update a category budget:**
-```json
-{
-  "tool": "update_month_category",
-  "parameters": {
-    "month": "2024-01",
-    "category_id": "category-123",
-    "request": {
-      "budgeted_amount": 50000
-    }
-  }
-}
-```
-
-**Create a new transaction:**
-```json
-{
-  "tool": "create_transaction",
-  "parameters": {
-    "request": {
-      "account_id": "account-456",
-      "date": "2024-01-15",
-      "amount": -50000,
-      "payee_name": "Grocery Store",
-      "category_id": "category-789",
-      "memo": "Weekly groceries"
-    }
-  }
-}
-```
-
-**Check budget health:**
-```bash
-GET /mcp/data://budget/check-health/2024-01
-```
-
-**Get spending insights:**
-```bash
-GET /mcp/data://budget/spending-insights/2024-01?category_id=category-123
-```
-
-### Bulk cleanup operations
-
-- Clean up payee names
-- Categorize transactions in bulk
-- Identify and merge duplicate payees
-
-### Month Planning Resources
-
-- **Get all months**: `data://months` - Retrieve summary of all plan months
-- **Get specific month**: `data://months/{YYYY-MM-DD}` - Get detailed planning data for a specific month
-- **Get month category**: `data://months/{YYYY-MM-DD}/categories/{category_id}` - Get category details for a specific month
-
-### Budget Management Resources
-
-- **Check Budget Health**: `data://budget/check-health/{month}` - Get budget health metrics including income, budgeted amounts, activity, and health status
-- **Get Spending Insights**: `data://budget/spending-insights/{month}` - Get detailed spending analysis with category breakdowns
-
-## Environment Variables
-
-- `YNAB_API_KEY`: Your YNAB API key (loaded from `.env`, and for docker, specified at runtime.)
-- `YNAB_PLAN_ID`: Optional. The YNAB plan ID to use. If not set, the server will use the plan that was modified the latest.
-- `HTTP_PORT`: Optional. The port where the MCP server will listen. If not set, defaults to 8000.
-- `LOG_LEVEL`: Optional, defaults to "debug" in dev
-- `DEBUG_MODE`: Optional, enables debug logging
-
-## Running the server
+### Local development (recommended)
 
 ```bash
-# Run the server
+# 1. Copy and fill in your dev credentials
+cp .env.dev.example .env
+# edit .env — set YNAB_API_KEY to your dev/sandbox key
+
+# 2. Run
 uv run ynab-http-mcp
 ```
 
-### Running in Docker
+On startup the server prints its environment:
+- `✅ DEV MODE` — safe to experiment
+- `⚠️ PRODUCTION MODE` — real YNAB data, handle with care
 
-#### Build the image
+### Docker
+
+Two compose overrides control the environment. **Always specify one explicitly.**
 
 ```bash
+# Development — includes dev dependencies (mypy, pytest, ruff…)
+docker compose -f compose.yaml -f compose.dev.yaml up
+
+# Production — lean image, no dev deps, restart policy enabled
+docker compose -f compose.yaml -f compose.prod.yaml up
+```
+
+Or build the image manually:
+
+```bash
+# Production image (default)
 docker build -t ynab-http-mcp .
+
+# Development image (includes dev deps)
+docker build --build-arg INSTALL_DEV=true -t ynab-http-mcp .
 ```
 
-#### Run with proper configuration
-
-```bash
-docker run -d \
-  --name ynab-server \
-  -e YNAB_API_KEY="your_api_key" \
-  -e YNAB_PLAN_ID="your_plan_id" \
-  -p 8000:8000 \
-  ynab-http-mcp
-```
-
-Or using an env file:
-
-```bash
-docker run --env-file .env -d --name ynab-server -p 8000:8000 ynab-http-mcp
-```
-
-#### View logs
+View logs / stop:
 
 ```bash
 docker logs ynab-server
-```
-
-#### Stop when done
-
-```bash
 docker stop ynab-server
 ```
 
-## Testing
+---
 
-Test using MCP Inspector:
+## Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `YNAB_API_KEY` | ✅ | Your YNAB personal access token |
+| `ENVIRONMENT` | recommended | `dev` or `prod` — controls the startup banner |
+| `YNAB_PLAN_ID` | optional | Budget ID to use; defaults to most-recently-modified budget |
+| `HTTP_PORT` | optional | Port for the MCP server (default: `8000`) |
+| `LOG_LEVEL` | optional | Log verbosity (default: `debug`) |
+| `DEBUG_MODE` | optional | Enable verbose debug logging (`True`/`False`) |
+
+Templates:
 
 ```bash
-# Run the server and point MCP Inspector to it
+cp .env.dev.example .env   # for local dev / agent sessions
+cp .env.prod.example .env  # for production deploys only
+```
+
+> **Never commit `.env` or `.env.prod` to version control.**
+
+---
+
+## Development Workflow
+
+- All development happens on the **`dev` branch**.
+- Changes reach **`main`** only via a pull request with human approval.
+- Coding agents must follow the rules in [`AGENTS.md`](AGENTS.md) — most importantly: never commit to `main` directly, never use prod credentials.
+
+---
+
+## Key Capabilities
+
+### Read resources (Lean / Full / Aggregate)
+
+Every entity follows a three-layer read convention:
+
+- **Lean** (`data://accounts`, `data://transactions`, …) — minimal fields, fast, LLM-friendly.
+- **Full** (`data://accounts/{id}/full`, …) — lean fields + `full_details` dict with every raw SDK field.
+- **Aggregate** (`data://transactions/insights`) — pre-computed insights (monthly buckets, top payees/categories, spending trend).
+
+### Write tools
+
+- **`update_month_category`** — modify a category's budgeted amount for a given month.
+- **`create_transaction`** — add a new transaction.
+
+### Example agent prompts
+
+```
+Triage all transactions from the last few days. If any doubt on categories, ask me.
+```
+
+```
+I am reaching the end of my Eating Out money. Which money could I reassign confidently?
+```
+
+---
+
+## Resource URI Reference
+
+### Lean resources
+
+| URI | Description |
+|---|---|
+| `data://accounts` | All accounts |
+| `data://accounts/{id}` | Single account |
+| `data://categories` | All categories |
+| `data://categories/{id}` | Single category |
+| `data://months` | All plan months summary |
+| `data://months/{YYYY-MM}` | Single plan month |
+| `data://months/{YYYY-MM}/categories/{id}` | Per-month per-category |
+| `data://payees` | All payees |
+| `data://payees/{id}` | Single payee |
+| `data://transactions` | Transactions (filterable) |
+| `data://transactions/{id}` | Single transaction |
+| `data://accounts/{id}/transactions` | Per-account transactions |
+| `data://categories/{id}/transactions` | Per-category transactions |
+| `data://months/{YYYY-MM}/transactions` | Per-month transactions |
+| `data://payees/{id}/transactions` | Per-payee transactions |
+| `data://budget/check-health/{month}` | Budget health metrics |
+| `data://budget/spending-insights/{month}` | Spending analysis |
+
+### Full (drill-in) resources
+
+Append `/full` to any single-entity URI, e.g. `data://transactions/{id}/full`.
+
+### Aggregate
+
+| URI | Description |
+|---|---|
+| `data://transactions/insights` | Pre-computed insights (last 3 months by default) |
+
+---
+
+## Testing
+
+```bash
+# Full test suite
+uv run pytest tests/
+
+# MCP Inspector (interactive)
 uv run ynab-http-mcp & npx @modelcontextprotocol/inspector --remote http://127.0.0.1:8000/mcp
 ```
 
+---
+
 ## Migration Guide (v1.1.0)
 
-### Changes in this Version
+Planning tools were converted from `@mcp.tool()` to `@mcp.resource()`. Update any clients using the old tool endpoints:
 
-- **Planning tools converted to resources**: All planning endpoints have been converted from `@mcp.tool()` to `@mcp.resource()` decorators for consistency.
-- **New month-category endpoint**: Added `data://months/{month_date}/categories/{category_id}` for direct access to category details within a specific month.
-- **Improved date handling**: All month endpoints now accept both `YYYY-MM` and `YYYY-MM-DD` formats.
+| Before | After |
+|---|---|
+| `POST /mcp/tools/get_plan_month` | `GET /mcp/data://months/{date}` |
+| `POST /mcp/tools/get_all_plan_months` | `GET /mcp/data://months` |
 
-### API Changes
+All month endpoints accept both `YYYY-MM` and `YYYY-MM-DD` date formats.
 
-#### Old Tool Endpoints (Deprecated)
-```
-POST /mcp/tools/get_plan_month
-POST /mcp/tools/get_all_plan_months
-```
+---
 
-#### New Resource Endpoints
-```
-GET /mcp/data://months
-GET /mcp/data://months/{month_date}
-GET /mcp/data://months/{month_date}/categories/{category_id}
-```
+## To Do
 
-### Migration Steps
-
-1. **Update endpoint URLs**: Replace tool endpoints with resource endpoints
-2. **Change HTTP method**: Use GET instead of POST for resource endpoints
-3. **Update date formats**: Use ISO format dates (`YYYY-MM-DD` or `YYYY-MM`)
-4. **Handle responses**: Resource endpoints return the same JSON structure as before
-
-### Example Migration
-
-**Before (Tool)**:
-```json
-{
-  "tool": "get_plan_month",
-  "parameters": {
-    "month_date": "2023-12-15"
-  }
-}
-```
-
-**After (Resource)**:
-```
-GET /mcp/data://months/2023-12-15
-```
-
-## Error Handling Patterns
-
-The budget management tools follow consistent error handling patterns:
-
-- **Input Validation**: All requests are validated using Pydantic schemas before processing
-- **Service Errors**: YNAB API errors are caught and re-raised with descriptive messages
-- **Resource Not Found**: Returns appropriate error responses for invalid resources
-- **Currency Handling**: All amounts use milliunits (1/1000 of currency unit) for precision
-
-### Common Error Scenarios
-
-- **Invalid Category ID**: Returns validation error with available category suggestions
-- **Insufficient Funds**: Prevents budget updates that would create negative balances
-- **Duplicate Transactions**: Detects and prevents duplicate transaction creation
-- **Rate Limiting**: Handles YNAB API rate limits gracefully
-
-## To do
-
-- Harmonize the schemas
-  - Introduce a consistent MCPResponse schema and MCPRequest schema to streamline validation, cleanup and conversion to YNAB types
-  - Remove duplicate validation code and move it to common classes
-  - Have the YNAB service rely more on it's native classes rather than repacking from dict
-- Implement basic authentication now that tools have a write ability
-- 
-- Update Docker health check to work with proxy deployments, don't test localhost:8000, and modify to not rely on curl being included as a library by default
+- Harmonize schemas: consistent `MCPResponse`/`MCPRequest`, remove duplicate validation code
+- Implement basic authentication (now that write tools exist)
+- Update Docker health check for proxy deployments (avoid relying on `curl` and `localhost:8000`)
