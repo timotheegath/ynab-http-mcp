@@ -200,8 +200,20 @@ class BudgetHealthResponse(BaseModel):
 
     month: str = Field(..., description="Month in YYYY-MM format")
     total_budgeted: int = Field(..., description="Total budgeted in milliunits")
+    total_budgeted_formatted: str = Field(
+        ...,
+        description="Fmt budgeted (e.g. $800.00)",
+    )
     total_activity: int = Field(..., description="Total activity in milliunits")
+    total_activity_formatted: str = Field(
+        ...,
+        description="Fmt activity (e.g. $600.00)",
+    )
     to_be_budgeted: int = Field(..., description="To be budgeted in milliunits")
+    to_be_budgeted_formatted: str = Field(
+        ...,
+        description="Fmt TBB (e.g. $200.00)",
+    )
     category_health: Dict[str, Dict[str, Any]] = Field(
         ..., description="Category-level health metrics"
     )
@@ -228,7 +240,15 @@ class SpendingInsightsResponse(BaseModel):
         None, description="Filtered category ID if applicable"
     )
     total_spending: int = Field(..., description="Total spending in milliunits")
+    total_spending_formatted: str = Field(
+        ...,
+        description="Fmt spending (e.g. -$1,000.00)",
+    )
     average_transaction: float = Field(..., description="Average transaction amount")
+    average_transaction_formatted: str = Field(
+        ...,
+        description="Fmt avg (e.g. -$33)",
+    )
     transaction_count: int = Field(..., description="Number of transactions")
     category_insights: Dict[str, Dict[str, Any]] = Field(
         ..., description="Category-level spending insights"

@@ -16,6 +16,7 @@ from ..schemas.budget_tools import (
     BudgetHealthResponse,
     SpendingInsightsResponse,
 )
+from ..schemas.transaction_aggregate import _ynab_format
 
 
 def register(mcp, ynab_service: YnabService):
@@ -100,7 +101,7 @@ def register(mcp, ynab_service: YnabService):
     def check_budget_health(
         month: Annotated[str, "Month YYYY-MM"],
     ) -> BudgetHealthResponse:
-        """Check overall budget health for a specific month."""
+        """Check budget health for a month."""
         # Get month data
         month_detail = ynab_service.get_plan_month(month).data.month
 
@@ -108,6 +109,20 @@ def register(mcp, ynab_service: YnabService):
         total_budgeted = month_detail.budgeted
         total_activity = month_detail.activity
         to_be_budgeted = month_detail.to_be_budgeted
+
+        # Grab SDK-formatted strings with fallback to _ynab_format
+        _template = None
+        if month_detail.budgeted_formatted:
+            _template = month_detail.budgeted_formatted
+
+        def _fmt(value: int, sdk_fmt: Optional[str]) -> str:
+            return sdk_fmt if sdk_fmt else _ynab_format(value, _template)
+
+        total_budgeted_formatted = _fmt(total_budgeted, month_detail.budgeted_formatted)
+        total_activity_formatted = _fmt(total_activity, month_detail.activity_formatted)
+        to_be_budgeted_formatted = _fmt(
+            to_be_budgeted, month_detail.to_be_budgeted_formatted
+        )
 
         # Calculate category-level health metrics
         category_health = {}
@@ -135,8 +150,11 @@ def register(mcp, ynab_service: YnabService):
             category_health[str(category.id)] = {
                 "category_name": category.name,
                 "budgeted": cat_budgeted,
+                "budgeted_formatted": _fmt(cat_budgeted, category.budgeted_formatted),
                 "activity": cat_activity,
+                "activity_formatted": _fmt(cat_activity, category.activity_formatted),
                 "balance": cat_balance,
+                "balance_formatted": _fmt(cat_balance, category.balance_formatted),
                 "activity_ratio": activity_ratio,
                 "is_healthy": is_healthy,
             }
@@ -149,8 +167,11 @@ def register(mcp, ynab_service: YnabService):
         return BudgetHealthResponse(
             month=month,
             total_budgeted=total_budgeted,
+            total_budgeted_formatted=total_budgeted_formatted,
             total_activity=total_activity,
+            total_activity_formatted=total_activity_formatted,
             to_be_budgeted=to_be_budgeted,
+            to_be_budgeted_formatted=to_be_budgeted_formatted,
             category_health=category_health,
             health_percentage=health_percentage,
             is_healthy=health_percentage
@@ -162,7 +183,7 @@ def register(mcp, ynab_service: YnabService):
         month: Annotated[str, "Month YYYY-MM"],
         category_id: Annotated[Optional[str], "Category UUID"] = None,
     ) -> SpendingInsightsResponse:
-        """Get spending insights for a month and optional category."""
+        """Get monthly spending insights."""
         # Get transactions for the month
         from datetime import datetime
 
@@ -178,10 +199,28 @@ def register(mcp, ynab_service: YnabService):
         # Extract transactions from response
         transactions = transactions_response.data.transactions
 
+        # Derive format template from the first transaction's amount_formatted
+        _template = None
+        for txn in transactions:
+            if txn.amount_formatted:
+                _template = txn.amount_formatted
+                break
+
         # Calculate metrics
         total_spending = sum(t.amount for t in transactions)
         average_transaction = total_spending / len(transactions) if transactions else 0
         transaction_count = len(transactions)
+
+        # Format the average using a deterministic integer milliunit value:
+        # round() ties to nearest even, which is deterministic.
+        avg_milli = int(round(average_transaction)) if transactions else 0
+
+        total_spending_formatted = (
+            _ynab_format(total_spending, _template) if transactions else "$0.00"
+        )
+        average_transaction_formatted = (
+            _ynab_format(avg_milli, _template) if transactions else "$0.00"
+        )
 
         # Get category insights
         category_insights: Dict[str, Any] = {}
@@ -192,9 +231,13 @@ def register(mcp, ynab_service: YnabService):
                 if cat_id in category_insights:
                     category_insights[cat_id]["total"] += amount
                     category_insights[cat_id]["count"] += 1
+                    category_insights[cat_id]["total_formatted"] = _ynab_format(
+                        category_insights[cat_id]["total"], _template
+                    )
                 else:
                     category_insights[cat_id] = {
                         "total": amount,
+                        "total_formatted": _ynab_format(amount, _template),
                         "count": 1,
                         "category_name": transaction.category_name or "Unknown",
                     }
@@ -203,7 +246,9 @@ def register(mcp, ynab_service: YnabService):
             month=month,
             category_id=category_id,
             total_spending=total_spending,
+            total_spending_formatted=total_spending_formatted,
             average_transaction=average_transaction,
+            average_transaction_formatted=average_transaction_formatted,
             transaction_count=transaction_count,
             category_insights=category_insights,
         )
