@@ -18,13 +18,20 @@ ENV YNAB_PLAN_ID="6eb84411-a778-43db-ac70-54099d711d5c"
 
 WORKDIR /app
 
-# Install uv requirements as root (before switching user)
 COPY pyproject.toml .
 COPY README.md ./
 COPY src/ ./src/
+
+# Set INSTALL_DEV=true to include dev dependencies (mypy, pytest, ruff, etc.)
+# Defaults to false for lean production images.
+ARG INSTALL_DEV=false
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv \
-    uv sync
+    if [ "$INSTALL_DEV" = "true" ]; then \
+        uv sync; \
+    else \
+        uv sync --no-dev; \
+    fi
 
 USER appuser
 
