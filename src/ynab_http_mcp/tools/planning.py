@@ -25,20 +25,12 @@ def register(mcp, ynab_service: YnabService):
     async def get_plan_month(
         month_date: Annotated[
             str,
-            "ISO-format date within the month of choice. Accepts 'YYYY-MM-DD' or 'YYYY-MM' format. For instance, '2023-12-11' or '2023-12' both target December 2023.",
+            "ISO date YYYY-MM-DD or YYYY-MM. Day is ignored.",
         ],
     ) -> str:
-        """Get the details of a particular plan month, the money assigned to each category in that month.
-
-        Accepts month_date in 'YYYY-MM-DD' or 'YYYY-MM' format. Day is ignored.
-        """
-        # Get raw YNAB response - validation is now handled by the service method
+        """Get the plan for a specific month with formatted budget/activity/balance per category."""
         raw_response = ynab_service.get_plan_month(date=month_date)
-
-        # Transform and validate with schema
         validated_response = PlanMonthResponse.from_ynab_response(raw_response)
-
-        # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json(exclude_none=True)
 
     @mcp.resource(
@@ -53,13 +45,8 @@ def register(mcp, ynab_service: YnabService):
     )
     async def get_all_plan_months() -> str:
         """Get a summarised list of all months in the plan."""
-        # Get raw YNAB response
         raw_response = ynab_service.get_all_plan_months()
-
-        # Transform and validate with schema
         validated_response = AllPlanMonthsResponse.from_ynab_response(raw_response)
-
-        # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json(exclude_none=True)
 
     @mcp.resource(
@@ -75,17 +62,14 @@ def register(mcp, ynab_service: YnabService):
     async def get_month_category_by_id(
         month_date: Annotated[
             str,
-            "ISO-format date within the month of choice. Accepts 'YYYY-MM-DD' or 'YYYY-MM' format. For instance, '2023-12-11' or '2023-12' both target December 2023.",
+            "ISO date YYYY-MM-DD or YYYY-MM. Day is ignored.",
         ],
         category_id: Annotated[
             str,
             "ID of the category to retrieve",
         ],
     ) -> str:
-        """Get a specific category's data for a given month.
-
-        Accepts month_date in 'YYYY-MM-DD' or 'YYYY-MM' format. Day is ignored.
-        """
+        """Get a specific category's data for a given month."""
         raw_response = ynab_service.get_month_category(
             month_date=month_date, category_id=category_id
         )
@@ -105,20 +89,12 @@ def register(mcp, ynab_service: YnabService):
     async def get_plan_month_full(
         month_date: Annotated[
             str,
-            "ISO-format date within the month of choice. Accepts 'YYYY-MM-DD' or 'YYYY-MM' format.",
+            "ISO date YYYY-MM-DD or YYYY-MM.",
         ],
     ) -> str:
-        """Get a single plan month, including the cleaned raw ``ynab.MonthDetail``
-        under ``full_details``.
-
-        The Lean endpoint (``data://months/{month_date}``) returns the
-        formatted budget/activity/balance strings per category and a lean
-        nested ``MCPCategoryGoal``. This drill-in endpoint adds a single
-        ``full_details`` dict carrying the integer milliunit
-        budget/activity/balance, the full raw goal field set, and every
-        other field the Lean layer dropped. Use this when arithmetic or
-        SDK-fidelity access is required.
-        """
+        """Get a plan month with full_details for integer milliunit
+        budget/activity/balance and the full raw goal field set. Use when
+        arithmetic or SDK-fidelity access is required beyond the lean endpoint."""
         raw_response = ynab_service.get_plan_month(date=month_date)
         plan_full = PlanMonthFull.from_ynab_response(raw_response)
         wrapped = PlanMonthFullResponse(month=plan_full)
@@ -137,19 +113,18 @@ def register(mcp, ynab_service: YnabService):
     async def get_month_category_full(
         month_date: Annotated[
             str,
-            "ISO-format date within the month of choice. Accepts 'YYYY-MM-DD' or 'YYYY-MM' format.",
+            "ISO date YYYY-MM-DD or YYYY-MM.",
         ],
         category_id: Annotated[
             str,
             "ID of the category to retrieve",
         ],
     ) -> str:
-        """Get a specific category's data for a given month, including the
-        cleaned raw YNAB SDK payload under ``full_details``."""
+        """Get a month category with full_details for raw SDK fields. Use when
+        arithmetic or SDK-fidelity access is required beyond the lean endpoint."""
         raw_response = ynab_service.get_month_category(
             month_date=month_date, category_id=category_id
         )
-        # The service returns a CategoryResponse; extract the raw Category
         raw_cat = (
             raw_response.data.category
             if isinstance(raw_response, ynab.CategoryResponse)

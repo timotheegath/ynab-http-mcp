@@ -1,8 +1,5 @@
 """
 Budget tool schemas for YNAB HTTP MCP.
-
-This module defines Pydantic models for budget management tool
-requests and responses.
 """
 
 from typing import Optional, Dict, Any, Literal
@@ -10,116 +7,81 @@ from pydantic import BaseModel, Field
 
 
 class AssignBudgetCategoryRequest(BaseModel):
-    """
-    Request schema for updating a month category budget amount.
-    """
+    """Request schema for updating a month category budget amount."""
 
-    month: str = Field(..., description="Month in YYYY-MM format")
-    category_id: str = Field(..., description="YNAB category ID")
-    budgeted_amount: int = Field(
-        ..., description="New budgeted amount in milliunits", ge=0
-    )
+    month: str = Field(..., description="Month YYYY-MM")
+    category_id: str = Field(..., description="Category UUID")
+    budgeted_amount: int = Field(..., description="Budgeted amount in milliunits", ge=0)
 
 
 class UpdateCategoryRequest(BaseModel):
-    """
-    Request schema for updating a category in YNAB.
-
-    This schema maps to the YNAB API's ExistingCategory model and supports comprehensive
-    category updates including name, note, category group changes, and various goal configurations.
-
-    Usage examples:
-    - To set a monthly funding goal: provide goal_target with goal_frequency='monthly'
-    - To set a target date goal: provide goal_target with goal_target_date
-    - To remove a goal: set goal_type='none' or omit all goal-related fields
-    - To update category metadata: provide name, note, or category_group_id
-
-    Note: This is a comprehensive schema that supports all YNAB category update operations.
-    Not all fields are required for every operation - provide only the fields you want to update.
-    """
+    """Request schema for updating a category in YNAB."""
 
     category_id: str = Field(
         ...,
-        description="YNAB category ID. The unique identifier for the category to update.",
+        description="YNAB category ID (UUID).",
         pattern=r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
     )
     name: Optional[str] = Field(
         None,
-        description="Optional new name for the category. When provided, updates the category name. Use null to leave unchanged.",
+        description="New category name (max 50 chars). null = unchanged.",
         max_length=50,
     )
     note: Optional[str] = Field(
         None,
-        description="Optional note for the category. When provided, updates the category note. Use null to leave unchanged.",
+        description="Category note (max 500 chars). null = unchanged.",
         max_length=500,
     )
     category_group_id: Optional[str] = Field(
         None,
-        description="Optional ID of category group to move to. When provided, moves the category to a different group. Cannot be used to move to internal category groups. Use null to leave in current group.",
+        description="Move to this category group (UUID). null = unchanged.",
         pattern=r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
     )
     goal_target: Optional[int] = Field(
         None,
-        description="""Goal target amount in milliunits. When specified, configures the goal target amount. 
-        - If goal_target_date is also provided: Creates a target-by-date goal
-        - If goal_frequency is also provided: Creates a recurring goal with this target
-        - If neither is provided and goal has not been configured: Creates a monthly goal
-        - Use null to remove an existing target while keeping other goal settings
-        - For Credit Card Payment categories, defaults to 'NEED' goal type if goal_type not specified""",
+        description="Goal target in milliunits (>=0). With goal_target_date = target-by-date; with goal_frequency = recurring; alone = monthly. null = keep existing.",
         ge=0,
     )
     goal_target_date: Optional[str] = Field(
         None,
-        description="Goal target date in ISO format (YYYY-MM-DD). When provided with goal_target, creates a target-by-date goal. Cannot be combined with goal_frequency. Use null for non-date-based goals.",
+        description="Target date YYYY-MM-DD. Cannot combine with goal_frequency. null = no date target.",
         pattern=r"^\d{4}-\d{2}-\d{2}$",
     )
     goal_needs_whole_amount: Optional[bool] = Field(
         None,
-        description="""Whether the goal requires the full target amount each period. Only applicable for 'NEED' type goals. 
-        - true: Goal is configured as 'Set aside another...' (accumulating)
-        - false: Goal is configured as 'Refill up to...' (maintaining balance)
-        - null: Leaves existing setting unchanged
-        Only supported for 'NEED' goals. Ignored for other goal types.""",
+        description="NEED goal: true = 'Set aside another' (accumulating), false = 'Refill up to' (maintaining). null = unchanged.",
     )
     goal_frequency: Optional[Literal["monthly", "weekly", "daily", "yearly"]] = Field(
         None,
-        description="""Frequency for recurring goals. When specified with goal_target, configures a recurring 'NEED' target. 
-        Supported values: 'monthly', 'weekly', 'daily', 'yearly'
-        - Cannot be combined with goal_target_date
-        - Not supported for Credit Card Payment categories
-        - Requires goal_target to be set
-        - Use null to leave an existing target's cadence unchanged""",
+        description="Recurring NEED goal frequency. Requires goal_target. Cannot combine with goal_target_date. null = unchanged.",
     )
 
 
-class UpdateCategoryGoalRecurringRequest(UpdateCategoryRequest):
-    """
-    Request schema for updating a category goal to a recurring goal in YNAB.
-    Usage examples:
-    - To set a monthly funding goal: provide goal_target with goal_frequency='monthly'
-    """
+class UpdateCategoryGoalRecurringRequest(BaseModel):
+    """Request schema for updating a category goal to a recurring goal."""
 
-    # Excluded fields:
-    name: Optional[str] = Field(default=None, exclude=True)
-    category_group_id: Optional[str] = Field(default=None, exclude=True)
-    goal_target_date: Optional[str] = Field(default=None, exclude=True)
-
-    # Fields with updated parameters
+    category_id: str = Field(
+        ...,
+        description="Category UUID.",
+        pattern=r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+    )
+    note: Optional[str] = Field(
+        None,
+        description="Note (max 500). null = unchanged.",
+        max_length=500,
+    )
     goal_target: int = Field(
         ...,
-        description="""Goal target amount in milliunits.""",
+        description="Target in milliunits.",
         ge=0,
     )
     goal_needs_whole_amount: bool = Field(
         ...,
-        description="""Whether the goal requires the full target amount each period. Only applicable for 'NEED' type goals. 
-        - true: Goal is configured as 'Set aside another...' (accumulating)
-        - false: Goal is configured as 'Refill up to...' (maintaining balance)""",
+        description="NEED: true=accumulating, false=maintaining.",
     )
     goal_frequency: Literal["monthly", "weekly", "daily", "yearly"] = Field(
         ...,
-        description="""Frequency for recurring goals. When specified with goal_target, configures a recurring 'NEED' target. 
-        Supported values: 'monthly', 'weekly', 'daily', 'yearly'""",
+        description="Recurring frequency.",
     )
 
     def to_update_category_request(self) -> UpdateCategoryRequest:
@@ -132,21 +94,29 @@ class UpdateCategoryGoalRecurringRequest(UpdateCategoryRequest):
         )  # type: ignore
 
 
-class UpdateCategoryDetailsRequest(UpdateCategoryRequest):
-    """
-    Request schema for updating a category's basic fields.
+class UpdateCategoryDetailsRequest(BaseModel):
+    """Request schema for updating a category's basic fields (name, note, group)."""
 
-    """
-
-    # Excluded fields:
-    goal_target_date: Optional[str] = Field(default=None, exclude=True)
-    goal_target: Optional[int] = Field(default=None, exclude=True)
-    goal_frequency: Optional[Literal["monthly", "weekly", "daily", "yearly"]] = Field(
-        default=None, exclude=True
+    category_id: str = Field(
+        ...,
+        description="Category UUID.",
+        pattern=r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
     )
-    goal_needs_whole_amount: Optional[bool] = Field(default=None, exclude=True)
-
-    # Fields with updated parameters
+    name: Optional[str] = Field(
+        None,
+        description="Name (max 50). null = unchanged.",
+        max_length=50,
+    )
+    note: Optional[str] = Field(
+        None,
+        description="Note (max 500). null = unchanged.",
+        max_length=500,
+    )
+    category_group_id: Optional[str] = Field(
+        None,
+        description="Group UUID. null = unchanged.",
+        pattern=r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+    )
 
     def to_update_category_request(self) -> UpdateCategoryRequest:
         return UpdateCategoryRequest(
@@ -157,31 +127,27 @@ class UpdateCategoryDetailsRequest(UpdateCategoryRequest):
         )  # type: ignore
 
 
-class UpdateCategoryTargetDateRequest(UpdateCategoryRequest):
-    """
-    Request schema for updating a category goal to a target date in YNAB.
-    Usage examples:
-    - To set a target date goal: provide goal_target with goal_target_date
-    """
+class UpdateCategoryTargetDateRequest(BaseModel):
+    """Request schema for updating a category goal to a target date."""
 
-    # Excluded fields:
-    name: Optional[str] = Field(default=None, exclude=True)
-    category_group_id: Optional[str] = Field(default=None, exclude=True)
-    goal_frequency: Optional[Literal["monthly", "weekly", "daily", "yearly"]] = Field(
-        default=None, exclude=True
+    category_id: str = Field(
+        ...,
+        description="Category UUID.",
+        pattern=r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
     )
-    goal_needs_whole_amount: Optional[bool] = Field(default=None, exclude=True)
-
+    note: Optional[str] = Field(
+        None,
+        description="Note (max 500). null = unchanged.",
+        max_length=500,
+    )
     goal_target: int = Field(
         ...,
-        description="""Goal target amount in milliunits. When specified, configures the goal target amount. 
-        - If goal_target_date is also provided: Creates a target-by-date goal
-        - For Credit Card Payment categories, defaults to 'NEED' goal type if goal_type not specified""",
+        description="Target in milliunits.",
         ge=0,
     )
     goal_target_date: str = Field(
         ...,
-        description="Goal target date in ISO format (YYYY-MM-DD).",
+        description="Date YYYY-MM-DD.",
         pattern=r"^\d{4}-\d{2}-\d{2}$",
     )
 
@@ -194,20 +160,19 @@ class UpdateCategoryTargetDateRequest(UpdateCategoryRequest):
         )  # type: ignore
 
 
-class ClearCategoryGoalRequest(UpdateCategoryRequest):
-    """
-    Request schema for clearing a category goal.
-    """
+class ClearCategoryGoalRequest(BaseModel):
+    """Request schema for clearing a category goal."""
 
-    # Excluded fields:
-    name: Optional[str] = Field(default=None, exclude=True)
-    category_group_id: Optional[str] = Field(default=None, exclude=True)
-    goal_frequency: Optional[Literal["monthly", "weekly", "daily", "yearly"]] = Field(
-        default=None, exclude=True
+    category_id: str = Field(
+        ...,
+        description="Category UUID.",
+        pattern=r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
     )
-    goal_needs_whole_amount: Optional[bool] = Field(default=None, exclude=True)
-    goal_target: Optional[int] = Field(default=None, exclude=True)
-    goal_target_date: Optional[str] = Field(default=None, exclude=True)
+    note: Optional[str] = Field(
+        None,
+        description="Note (max 500). null = unchanged.",
+        max_length=500,
+    )
 
     def to_update_category_request(self) -> UpdateCategoryRequest:
         return UpdateCategoryRequest(
@@ -216,26 +181,22 @@ class ClearCategoryGoalRequest(UpdateCategoryRequest):
 
 
 class CreateTransactionRequest(BaseModel):
-    """
-    Request schema for creating a new transaction.
-    """
+    """Request schema for creating a new transaction."""
 
-    account_id: str = Field(..., description="YNAB account ID")
-    date: str = Field(..., description="Transaction date in YYYY-MM-DD format")
-    amount: int = Field(..., description="Transaction amount in milliunits")
-    payee_id: Optional[str] = Field(None, description="YNAB payee ID")
+    account_id: str = Field(..., description="Account UUID")
+    date: str = Field(..., description="Date YYYY-MM-DD")
+    amount: int = Field(..., description="Amount in milliunits")
+    payee_id: Optional[str] = Field(None, description="Payee UUID")
     payee_name: Optional[str] = Field(None, description="Payee name")
-    category_id: Optional[str] = Field(None, description="YNAB category ID")
-    memo: Optional[str] = Field(None, description="Transaction memo")
-    cleared: str = Field("cleared", description="Transaction cleared status")
-    approved: bool = Field(True, description="Whether transaction is approved")
-    flag_color: Optional[str] = Field(None, description="Transaction flag color")
+    category_id: Optional[str] = Field(None, description="Category UUID")
+    memo: Optional[str] = Field(None, description="Memo")
+    cleared: str = Field("cleared", description="Cleared")
+    approved: bool = Field(True, description="Approved")
+    flag_color: Optional[str] = Field(None, description="Flag")
 
 
 class BudgetHealthResponse(BaseModel):
-    """
-    Response schema for budget health check.
-    """
+    """Response schema for budget health check."""
 
     month: str = Field(..., description="Month in YYYY-MM format")
     total_budgeted: int = Field(..., description="Total budgeted in milliunits")
@@ -251,9 +212,7 @@ class BudgetHealthResponse(BaseModel):
 
 
 class SpendingInsightCategory(BaseModel):
-    """
-    Category spending insight.
-    """
+    """Category spending insight."""
 
     category_id: str = Field(..., description="Category ID")
     category_name: str = Field(..., description="Category name")
@@ -262,9 +221,7 @@ class SpendingInsightCategory(BaseModel):
 
 
 class SpendingInsightsResponse(BaseModel):
-    """
-    Response schema for spending insights.
-    """
+    """Response schema for spending insights."""
 
     month: str = Field(..., description="Month in YYYY-MM format")
     category_id: Optional[str] = Field(

@@ -1,5 +1,19 @@
 # OpenCode Agent Instructions for ynab-http-mcp
 
+## ⚠️ Environment Safety Rules (READ FIRST)
+
+> These rules exist to prevent accidental changes to production YNAB data.
+> **Read and follow them before taking any action.**
+
+- **ALWAYS work on the `dev` branch.** Never commit directly to `main`.
+- **Use `.env.dev` credentials only.** Never read, write, or modify `.env.prod`.
+- **Never run `compose.prod.yaml`.** All local runs must use `compose.dev.yaml`.
+- **Before any start/restart, confirm `ENVIRONMENT=dev`** appears in the active `.env`.
+- **To promote changes to prod:** open a PR from `dev` → `main` and wait for human approval. Do not merge it yourself.
+- If in doubt about which environment is active, run `grep ENVIRONMENT .env` and stop if the output is not `ENVIRONMENT=dev`.
+
+---
+
 ## Project Overview
 
 - **Type**: Python MCP (Micro Content Provider) server for YNAB (You Need A Budget) HTTP streaming
@@ -12,18 +26,38 @@
 
 ### Required Environment Variables
 
+- `ENVIRONMENT`: `dev` or `prod` — controls startup banner and signals which credentials are active
 - `YNAB_API_KEY`: Your YNAB API key (loaded from `.env`)
-- `LOG_LEVEL`: Optional, defaults to "debug" in dev
+- `LOG_LEVEL`: Optional, defaults to `debug` in dev
 - `DEBUG_MODE`: Optional, enables debug logging
 
-### .env File
+### .env Files
 
-The project uses `python-dotenv` to load environment variables from `.env`. Example:
+The project uses `python-dotenv` to load environment variables from `.env`.
+Two example templates are provided — never commit either with real credentials:
 
 ```text
-YNAB_API_KEY="your_api_key_here"
+.env.dev.example   # dev template  → cp .env.dev.example .env  (for development)
+.env.prod.example  # prod template → cp .env.prod.example .env (for production deploy only)
+```
+
+Example dev `.env`:
+
+```text
+ENVIRONMENT=dev
+YNAB_API_KEY="your_dev_api_key_here"
 LOG_LEVEL="debug"
 DEBUG_MODE=True
+```
+
+### Docker Compose
+
+```bash
+# Development (always use this in agent sessions)
+docker compose -f compose.yaml -f compose.dev.yaml up
+
+# Production (human-only, never from an agent session)
+docker compose -f compose.yaml -f compose.prod.yaml up
 ```
 
 ## Project Structure

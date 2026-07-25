@@ -25,34 +25,22 @@ def register(mcp, ynab_service: YnabService):
     async def get_transactions_resource(
         since_date: Annotated[
             str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions starting from this date. Leave blank for no start date filter.",
+            "ISO date YYYY-MM-DD. Leave blank for no start filter.",
         ] = None,
         until_date: Annotated[
             str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions up to this date. Leave blank for no end date filter.",
+            "ISO date YYYY-MM-DD. Leave blank for no end filter.",
         ] = None,
         type: Annotated[
             Literal["all", "uncleared", "cleared", "reconciled"] | None,
-            "Transaction type filter. Must be one of: 'all', 'uncleared', 'cleared', 'reconciled'.",
+            "Filter: all, uncleared, cleared, reconciled.",
         ] = "all",
         limit: Annotated[
             int | None,
-            "Maximum number of transactions to return. Leave blank for no limit.",
+            "Max transactions to return. Leave blank for no limit.",
         ] = None,
     ) -> str:
-        """
-        Get transactions with flexible filtering options as a resource.
-
-        Filtering is specified via filter_params in the format:
-        since_date=YYYY-MM-DD&until_date=YYYY-MM-DD&type=cleared&account_id=XXX
-
-        Examples:
-        - data://transactions/since_date=2024-01-01&until_date=2024-01-31
-        - data://transactions/type=cleared&account_id=XYZ
-        """
-        # Parse filter parameters from the path
-
-        # Get raw YNAB response - validation is now handled by the service method
+        """Get transactions with flexible filtering options."""
         try:
             raw_response = ynab_service.get_transactions(
                 since_date=since_date,
@@ -64,7 +52,6 @@ def register(mcp, ynab_service: YnabService):
             return json.dumps(error_response)
 
         validated_response = MCPTransactions.from_ynab(raw_response)
-        # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json(exclude_none=True)
 
     @mcp.resource(
@@ -74,34 +61,20 @@ def register(mcp, ynab_service: YnabService):
     async def get_transaction_insights(
         since_date: Annotated[
             str | None,
-            "ISO-format date (YYYY-MM-DD) to start the analysis window. Defaults to the first day of (current month - 2 months).",
+            "ISO date YYYY-MM-DD. Defaults to first day of (current month - 2 months).",
         ] = None,
         until_date: Annotated[
             str | None,
-            "ISO-format date (YYYY-MM-DD) to end the analysis window (exclusive). Defaults to the first day of the month after the current month.",
+            "ISO date YYYY-MM-DD (exclusive). Defaults to first day of month after current.",
         ] = None,
         account_id: Annotated[
             str | None,
-            "Optional account UUID to scope the aggregate to a single account.",
+            "Optional account UUID to scope aggregate to a single account.",
         ] = None,
     ) -> str:
-        """
-        Get a pre-computed aggregate view of transactions over a time window.
-
-        Returns ``TransactionInsightsResponse`` with monthly buckets
-        (zero-filled), inflow / outflow / net totals, top-5 payees,
-        top-5 categories, cleared-status breakdown, and a directional
-        ``spending_trend`` (``"increasing"`` / ``"decreasing"`` /
-        ``"stable"``). Default window is the last 3 calendar months
-        (current + previous 2) when no ``since_date`` / ``until_date`` are
-        given.
-
-        Examples:
-        - data://transactions/insights
-        - data://transactions/insights?since_date=2024-01-01&until_date=2024-04-01
-        - data://transactions/insights?account_id=00000000-0000-0000-0000-000000000000
-        """
-        # Resolve the window
+        """Get pre-computed aggregate transaction insights: monthly buckets,
+        inflow/outflow/net, top-5 payees/categories, cleared breakdown, and
+        spending_trend. Default window is the last 3 calendar months."""
         try:
             if since_date is None and until_date is None:
                 since, until = _default_window()
@@ -135,7 +108,6 @@ def register(mcp, ynab_service: YnabService):
             )
             return err.model_dump_json(exclude_none=True)
 
-        # Fetch transactions in the window (one YNAB call)
         try:
             raw_response = ynab_service.get_transactions(
                 since_date=since.isoformat(),
@@ -184,7 +156,6 @@ def register(mcp, ynab_service: YnabService):
             )
             return err.model_dump_json(exclude_none=True)
 
-        # Build the aggregate
         try:
             insights = build_transaction_insights(
                 raw_response.data.transactions or [], since, until
@@ -217,20 +188,9 @@ def register(mcp, ynab_service: YnabService):
             "UUID of the transaction to retrieve.",
         ],
     ) -> str:
-        """
-        Get a single transaction by its UUID
-
-        Example:
-        - data://transactions/fd6bb67d-b77f-4dee-a2f5-47ef2bd8613c
-        """
-        # Parse filter parameters from the path
-
-        # Get raw YNAB response
+        """Get a single transaction by its UUID."""
         raw_response = ynab_service.get_transaction(id)
-
         validated_response = MCPTransaction.from_ynab(raw_response)
-
-        # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json(exclude_none=True)
 
     @mcp.resource(uri="data://transactions/{id}/full", mime_type="application/json")
@@ -240,17 +200,9 @@ def register(mcp, ynab_service: YnabService):
             "UUID of the transaction to retrieve.",
         ],
     ) -> str:
-        """
-        Get a single transaction by its UUID, including the cleaned raw
-        YNAB SDK payload under ``full_details``.
-
-        The Lean endpoint (``data://transactions/{id}``) returns the
-        formatted ``amount`` string only. This drill-in endpoint adds a
-        single ``full_details`` dict containing the integer ``amount`` in
-        milliunits, the raw ``subtransactions`` array with integer amounts
-        per sub, and every other field the Lean layer dropped. Use this
-        when arithmetic or SDK-fidelity access is required.
-        """
+        """Get a transaction with full_details for integer amount in
+        milliunits and raw subtransactions. Use when arithmetic or
+        SDK-fidelity access is required beyond the lean endpoint."""
         raw_response = ynab_service.get_transaction(id)
         validated_response = MCPTransactionFull.from_ynab(raw_response)
         return validated_response.model_dump_json(exclude_none=True)
@@ -262,33 +214,22 @@ def register(mcp, ynab_service: YnabService):
     async def get_transactions_by_account(
         account_id: Annotated[
             str,
-            "Account ID to filter transactions by specific account. Takes precedence over month, payee, and category filters.",
+            "Account ID to filter by.",
         ],
         since_date: Annotated[
             str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions starting from this date. Leave blank for no start date filter.",
+            "ISO date YYYY-MM-DD. Leave blank for no start filter.",
         ] = None,
         until_date: Annotated[
             str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions up to this date. Leave blank for no end date filter.",
+            "ISO date YYYY-MM-DD. Leave blank for no end filter.",
         ] = None,
         type: Annotated[
             Literal["all", "uncleared", "cleared", "reconciled"] | None,
-            "Transaction type filter. Must be one of: 'all', 'uncleared', 'cleared', 'reconciled'.",
+            "Filter: all, uncleared, cleared, reconciled.",
         ] = "all",
     ) -> str:
-        """
-        Get transactions related a specific account.
-
-        Filtering is specified via filter_params in the format:
-        since_date=YYYY-MM-DD&until_date=YYYY-MM-DD&type=cleared
-
-        Examples:
-        - data://accounts/44b436fd-149a-4901-b00f-d34e244eedcf/transactions/since_date=2024-01-01&until_date=2024-01-31
-        """
-        # Parse filter parameters from the path
-
-        # Get raw YNAB response - validation is now handled by the service method
+        """Get transactions for a specific account."""
         try:
             raw_response = ynab_service.get_transactions(
                 since_date=since_date,
@@ -301,7 +242,6 @@ def register(mcp, ynab_service: YnabService):
             return json.dumps(error_response)
 
         validated_response = MCPTransactions.from_ynab(raw_response)
-        # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json()
 
     @mcp.resource(
@@ -311,33 +251,22 @@ def register(mcp, ynab_service: YnabService):
     async def get_transactions_by_month(
         month_date: Annotated[
             str,
-            "ISO-format date within the month of choice. For instance, '2023-12-11' targets December 2023. Leave blank to select current month",
+            "ISO date YYYY-MM-DD or YYYY-MM. Day is ignored.",
         ],
         since_date: Annotated[
             str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions starting from this date. Leave blank for no start date filter.",
+            "ISO date YYYY-MM-DD. Leave blank for no start filter.",
         ] = None,
         until_date: Annotated[
             str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions up to this date. Leave blank for no end date filter.",
+            "ISO date YYYY-MM-DD. Leave blank for no end filter.",
         ] = None,
         type: Annotated[
             Literal["all", "uncleared", "cleared", "reconciled"] | None,
-            "Transaction type filter. Must be one of: 'all', 'uncleared', 'cleared', 'reconciled'.",
+            "Filter: all, uncleared, cleared, reconciled.",
         ] = "all",
     ) -> str:
-        """
-        Get transactions within a specific month.
-
-        Filtering is specified via filter_params in the format:
-        since_date=YYYY-MM-DD&until_date=YYYY-MM-DD&type=cleared
-
-        Examples:
-        - data://accounts/44b436fd-149a-4901-b00f-d34e244eedcf/transactions/since_date=2024-01-01&until_date=2024-01-31
-        """
-        # Parse filter parameters from the path
-
-        # Get raw YNAB response - validation is now handled by the service method
+        """Get transactions within a specific month."""
         try:
             raw_response = ynab_service.get_transactions(
                 since_date=since_date,
@@ -350,7 +279,6 @@ def register(mcp, ynab_service: YnabService):
             return json.dumps(error_response)
 
         validated_response = MCPTransactions.from_ynab(raw_response)
-        # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json()
 
     @mcp.resource(
@@ -360,33 +288,22 @@ def register(mcp, ynab_service: YnabService):
     async def get_transactions_by_payee(
         payee_id: Annotated[
             str,
-            "Payee ID to filter transactions by specific payee.",
+            "Payee ID to filter by.",
         ],
         since_date: Annotated[
             str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions starting from this date. Leave blank for no start date filter.",
+            "ISO date YYYY-MM-DD. Leave blank for no start filter.",
         ] = None,
         until_date: Annotated[
             str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions up to this date. Leave blank for no end date filter.",
+            "ISO date YYYY-MM-DD. Leave blank for no end filter.",
         ] = None,
         type: Annotated[
             Literal["all", "uncleared", "cleared", "reconciled"] | None,
-            "Transaction type filter. Must be one of: 'all', 'uncleared', 'cleared', 'reconciled'.",
+            "Filter: all, uncleared, cleared, reconciled.",
         ] = "all",
     ) -> str:
-        """
-        Get transactions related a specific payee.
-
-        Filtering is specified via filter_params in the format:
-        since_date=YYYY-MM-DD&until_date=YYYY-MM-DD&type=cleared
-
-        Examples:
-        - data://payees/2211a810-42bf-435d-974b-35fc8cdfdf8a/transactions/since_date=2024-01-01&until_date=2024-01-31
-        """
-        # Parse filter parameters from the path
-
-        # Get raw YNAB response - validation is now handled by the service method
+        """Get transactions for a specific payee."""
         try:
             raw_response = ynab_service.get_transactions(
                 since_date=since_date,
@@ -399,7 +316,6 @@ def register(mcp, ynab_service: YnabService):
             return json.dumps(error_response)
 
         validated_response = MCPTransactions.from_ynab(raw_response)
-        # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json()
 
     @mcp.resource(
@@ -409,33 +325,22 @@ def register(mcp, ynab_service: YnabService):
     async def get_transactions_by_category(
         category_id: Annotated[
             str,
-            "Category ID to filter transactions by specific category.",
+            "Category ID to filter by.",
         ],
         since_date: Annotated[
             str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions starting from this date. Leave blank for no start date filter.",
+            "ISO date YYYY-MM-DD. Leave blank for no start filter.",
         ] = None,
         until_date: Annotated[
             str | None,
-            "ISO-format date (YYYY-MM-DD) to filter transactions up to this date. Leave blank for no end date filter.",
+            "ISO date YYYY-MM-DD. Leave blank for no end filter.",
         ] = None,
         type: Annotated[
             Literal["all", "uncleared", "cleared", "reconciled"] | None,
-            "Transaction type filter. Must be one of: 'all', 'uncleared', 'cleared', 'reconciled'.",
+            "Filter: all, uncleared, cleared, reconciled.",
         ] = "all",
     ) -> str:
-        """
-        Get transactions related a specific category.
-
-        Filtering is specified via filter_params in the format:
-        since_date=YYYY-MM-DD&until_date=YYYY-MM-DD&type=cleared
-
-        Examples:
-        - data://category/f7ab4ff3-99c3-44db-b060-2c2df8d9384b/transactions/since_date=2024-01-01&until_date=2024-01-31
-        """
-        # Parse filter parameters from the path
-
-        # Get raw YNAB response - validation is now handled by the service method
+        """Get transactions for a specific category."""
         try:
             raw_response = ynab_service.get_transactions(
                 since_date=since_date,
@@ -448,5 +353,4 @@ def register(mcp, ynab_service: YnabService):
             return json.dumps(error_response)
 
         validated_response = MCPTransactions.from_ynab(raw_response)
-        # Return as JSON string for MCP resource compatibility
         return validated_response.model_dump_json(exclude_none=True)
