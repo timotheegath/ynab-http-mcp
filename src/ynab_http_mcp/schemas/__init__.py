@@ -38,6 +38,13 @@ from .transaction_aggregate import (
     CategoryAggregate,
     TransactionInsightsResponse,
 )
+from .money_movement_aggregate import (
+    MonthlyMoneyMovementBucket,
+    SourceCategoryAggregate,
+    DestinationCategoryAggregate,
+    RecurringMovementPair,
+    MoneyMovementInsightsResponse,
+)
 
 __all__ = [
     "get_json_schema",
@@ -68,4 +75,9 @@ __all__ = [
     "PayeeAggregate",
     "CategoryAggregate",
     "TransactionInsightsResponse",
+    "MonthlyMoneyMovementBucket",
+    "SourceCategoryAggregate",
+    "DestinationCategoryAggregate",
+    "RecurringMovementPair",
+    "MoneyMovementInsightsResponse",
 ]
