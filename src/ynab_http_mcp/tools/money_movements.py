@@ -134,11 +134,11 @@ def register(mcp, ynab_service: YnabService):
             "ISO date YYYY-MM-DD (exclusive). Defaults to first day of month after current.",
         ] = None,
     ) -> str:
-        """Get pre-computed aggregate money-movement insights: monthly
-        buckets, TBA vs other-category source split, top-5 source /
-        destination categories, recurring pairs, monthly trend,
-        proactive_pct, and a planning_health summary. Default window is
-        the last 3 calendar months."""
+        """Get pre-computed money-movement insights: monthly buckets,
+        TBA vs other-category split, top-5 source / destination
+        categories, recurring pairs, monthly trend, proactive_pct, and
+        a planning_health summary. Default window is the last 3
+        calendar months."""
         try:
             if since_date is None and until_date is None:
                 since, until = _default_window()
@@ -209,10 +209,8 @@ def register(mcp, ynab_service: YnabService):
             "ISO date YYYY-MM-DD or YYYY-MM. Day is ignored.",
         ],
     ) -> str:
-        """Get pre-computed money-movement insights for a single month.
-
-        Issues exactly one SDK call per request. Use to drill in from a
-        window response into a specific month."""
+        """Get money-movement insights for a single month. One SDK call
+        per request. Use to drill in from a window response."""
         try:
             parsed = parse_month_date(month_date)
         except ValueError as exc:

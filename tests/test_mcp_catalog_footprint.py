@@ -45,6 +45,7 @@ async def _fetch_catalog():
     import ynab_http_mcp.tools.accounts as account_tools
     import ynab_http_mcp.tools.payees as payee_tools
     import ynab_http_mcp.tools.budget_management as budget_tools
+    import ynab_http_mcp.tools.money_movements as money_movement_tools
 
     category_tools.register(mcp, ynab_service)
     planning_tools.register(mcp, ynab_service)
@@ -52,6 +53,7 @@ async def _fetch_catalog():
     account_tools.register(mcp, ynab_service)
     payee_tools.register(mcp, ynab_service)
     budget_tools.register(mcp, ynab_service)
+    money_movement_tools.register(mcp, ynab_service)
     mcp.add_transform(ResourcesAsTools(mcp))
 
     async with Client(mcp) as client:
@@ -88,7 +90,7 @@ class TestCatalogFootprint:
     """Character-budget assertions for the serialized MCP catalogs."""
 
     TOOL_BUDGET = 10_000
-    RESOURCE_TEMPLATE_BUDGET = 6_500
+    RESOURCE_TEMPLATE_BUDGET = 8_000
 
     def test_tool_catalog_stays_within_budget(self, catalog_data):
         tools_json = _compact_json(catalog_data["tools"])
@@ -412,6 +414,8 @@ EXPECTED_RESOURCE_TEMPLATE_URIS: Set[str] = {
     "data://months/{month_date}/transactions{?type}",
     "data://payees/{payee_id}/transactions{?since_date,until_date,type}",
     "data://categories/{category_id}/transactions{?since_date,until_date,type}",
+    "data://money-movements/insights{?since_date,until_date}",
+    "data://months/{month_date}/money-movements/insights",
 }
 
 
