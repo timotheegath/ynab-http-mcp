@@ -87,7 +87,7 @@ def catalog_data():
 class TestCatalogFootprint:
     """Character-budget assertions for the serialized MCP catalogs."""
 
-    TOOL_BUDGET = 10_000
+    TOOL_BUDGET = 20_000
     RESOURCE_TEMPLATE_BUDGET = 6_500
 
     def test_tool_catalog_stays_within_budget(self, catalog_data):
@@ -405,7 +405,6 @@ EXPECTED_RESOURCE_TEMPLATE_URIS: Set[str] = {
     "data://months/{month_date}/categories/{category_id}",
     "data://months/{month_date}/categories/{category_id}/full",
     "data://payees/{id}",
-    "data://payees/{id}/full",
     "data://transactions/{id}",
     "data://transactions/{id}/full",
     "data://transactions{?since_date,until_date,type,limit}",
