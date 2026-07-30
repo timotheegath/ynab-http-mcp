@@ -121,7 +121,7 @@ def _build_category_lookup(ynab_service: YnabService) -> Callable[[Optional[str]
 
 def register(mcp, ynab_service: YnabService):
 
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), serialize_output_schema=False)
     def get_money_movement_insights(
         since_date: Annotated[
             Optional[str],
@@ -193,7 +193,7 @@ def register(mcp, ynab_service: YnabService):
                 error=f"Aggregate computation failed: {exc}",
             )
 
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), serialize_output_schema=False)
     def get_money_movement_insights_for_month(
         month_date: Annotated[
             str,
