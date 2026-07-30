@@ -59,12 +59,13 @@ one response payload.
 
 Aggregate
 ---------
-Pre-computed insights exposed at dedicated URIs (currently
-``data://transactions/insights`` for transaction spending and
-``data://money-movements/insights`` for budget planning quality).
-Aggregates are derived server-side (top-N, trend, totals, breakdown)
-and embedded in their own response model. They are never embedded in
-Lean resources.
+Pre-computed insights exposed at dedicated surface points (currently
+``data://transactions/insights`` for transaction spending as a resource
+and ``get_money_movement_insights`` /
+``get_money_movement_insights_for_month`` for budget planning quality
+as FastMCP tools). Aggregates are derived server-side (top-N, trend,
+totals, breakdown) and embedded in their own response model. They are
+never embedded in Lean resources.
 
 Serialization
 -------------
