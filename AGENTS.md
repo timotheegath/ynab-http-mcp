@@ -223,7 +223,7 @@ itself never `None`.
 - `data://transactions/{id}` — single transaction
 - `data://accounts/{account_id}/transactions` — per-account transactions
 - `data://categories/{category_id}/transactions` — per-category transactions
-- `data://months/{month_date}/transactions` — per-month transactions
+- `data://months/{month_date}/transactions` — per-month transactions (optional `type` filter; date filters intentionally unavailable because the URI path already scopes to a month)
 - `data://payees/{payee_id}/transactions` — per-payee transactions
 
 ### Full (drill-in) resources — `*Full` shape with `full_details`

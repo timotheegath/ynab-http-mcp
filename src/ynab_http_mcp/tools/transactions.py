@@ -245,7 +245,7 @@ def register(mcp, ynab_service: YnabService):
         return validated_response.model_dump_json()
 
     @mcp.resource(
-        uri="data://months/{month_date}/transactions{?since_date,until_date,type}",
+        uri="data://months/{month_date}/transactions{?type}",
         mime_type="application/json",
     )
     async def get_transactions_by_month(
@@ -253,24 +253,22 @@ def register(mcp, ynab_service: YnabService):
             str,
             "ISO date YYYY-MM-DD or YYYY-MM. Day is ignored.",
         ],
-        since_date: Annotated[
-            str | None,
-            "ISO date YYYY-MM-DD. Leave blank for no start filter.",
-        ] = None,
-        until_date: Annotated[
-            str | None,
-            "ISO date YYYY-MM-DD. Leave blank for no end filter.",
-        ] = None,
         type: Annotated[
             Literal["all", "uncleared", "cleared", "reconciled"] | None,
             "Filter: all, uncleared, cleared, reconciled.",
         ] = "all",
     ) -> str:
-        """Get transactions within a specific month."""
+        """Get transactions within a specific month.
+
+        The URI path scopes the result to a single month, so free-range
+        `since_date` / `until_date` query parameters are intentionally not
+        accepted here — pass them to the unscoped `data://transactions`
+        endpoint instead.
+        """
         try:
             raw_response = ynab_service.get_transactions(
-                since_date=since_date,
-                until_date=until_date,
+                since_date=None,
+                until_date=None,
                 type=type if type else "all",
                 month=month_date,
             )

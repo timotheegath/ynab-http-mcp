@@ -409,7 +409,7 @@ EXPECTED_RESOURCE_TEMPLATE_URIS: Set[str] = {
     "data://transactions{?since_date,until_date,type,limit}",
     "data://transactions/insights{?since_date,until_date,account_id}",
     "data://accounts/{account_id}/transactions{?since_date,until_date,type}",
-    "data://months/{month_date}/transactions{?since_date,until_date,type}",
+    "data://months/{month_date}/transactions{?type}",
     "data://payees/{payee_id}/transactions{?since_date,until_date,type}",
     "data://categories/{category_id}/transactions{?since_date,until_date,type}",
 }
