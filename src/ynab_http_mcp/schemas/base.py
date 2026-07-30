@@ -59,10 +59,12 @@ one response payload.
 
 Aggregate
 ---------
-Pre-computed insights exposed at dedicated URIs (currently only
-``data://transactions/insights``). Aggregates are derived server-side
-(top-N, trend, totals, breakdown) and embedded in their own response
-model. They are never embedded in Lean resources.
+Pre-computed insights exposed at dedicated URIs (currently
+``data://transactions/insights`` for transaction spending and
+``data://money-movements/insights`` for budget planning quality).
+Aggregates are derived server-side (top-N, trend, totals, breakdown)
+and embedded in their own response model. They are never embedded in
+Lean resources.
 
 Serialization
 -------------

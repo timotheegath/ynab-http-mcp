@@ -76,14 +76,17 @@ src/
     │   ├── payees.py               # MCPPayee, MCPPayeeFull
     │   ├── transactions.py         # MCPTransaction, MCPTransactionFull
     │   ├── planning.py             # PlanMonth, PlanMonthFull, MonthCategory
-    │   └── transaction_aggregate.py # TransactionInsightsResponse (Aggregate)
+    │   ├── transaction_aggregate.py # TransactionInsightsResponse (Aggregate)
+    │   └── money_movement_aggregate.py # MoneyMovementInsightsResponse (Aggregate)
     ├── tools/                      # FastMCP resource registrations
     │   ├── accounts.py             # data://accounts, data://accounts/{id}/full
     │   ├── categories.py           # data://categories, data://categories/{id}/full
     │   ├── payees.py               # data://payees, data://payees/{id}/full
     │   ├── planning.py             # data://months, data://months/{ym}/full, ...
-    │   └── transactions.py         # data://transactions, data://transactions/{id}/full,
-    │                               # data://transactions/insights
+    │   ├── transactions.py         # data://transactions, data://transactions/{id}/full,
+    │   │                           # data://transactions/insights
+    │   └── money_movements.py      # data://money-movements/insights{?since_date,until_date},
+    │                               # data://months/{month_date}/money-movements/insights
     └── utils/                      # helpers (dates, schema_utils)
 ```
 
@@ -151,6 +154,7 @@ Always check service status before testing and restart after code changes.
 uv run pytest tests/                      # Run the full suite
 uv run pytest tests/test_categories_schema.py  # Lean goal / cadence math
 uv run pytest tests/test_transaction_aggregate.py  # Aggregate computation
+uv run pytest tests/test_money_movement_aggregate.py  # Money-movement aggregate
 uv run pytest tests/test_integration.py   # End-to-end lean shape
 ```
 
