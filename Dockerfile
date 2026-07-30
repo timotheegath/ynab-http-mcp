@@ -23,14 +23,26 @@ ENV YNAB_PLAN_ID="6eb84411-a778-43db-ac70-54099d711d5c"
 
 WORKDIR /app
 
-# Copy lockfile + project metadata first so dependency install is reproducible + cacheable.
-COPY pyproject.toml uv.lock ./
-COPY README.md ./
-COPY src/ ./src/
-
-# Set INSTALL_DEV=true to include dev dependencies (mypy, pytest, ruff, debugpy, etc.).
-# Defaults to false for lean production images.
+# Set INSTALL_DEV=true to include dev dependencies (mypy, pytest, ruff, debugpy, etc.)
+# and bundle the test suite into the image. Defaults to false for lean production images.
 ARG INSTALL_DEV=false
+
+# Copy source files owned by appuser so the runtime user can write
+# (pytest caches, .pyc, fixtures, etc.). --chown must be on each COPY.
+COPY --chown=appuser:appuser pyproject.toml uv.lock ./
+COPY --chown=appuser:appuser README.md ./
+COPY --chown=appuser:appuser src/ ./src/
+
+# In dev mode, also ship the test suite so `pytest` can run inside the container.
+# In prod mode, the staged copy is removed so tests never land in the final image
+# (the Dockerfile is the source of truth for what the runtime image contains).
+COPY tests/ /tmp/tests-staged/
+RUN if [ "$INSTALL_DEV" = "true" ]; then \
+        mv /tmp/tests-staged /app/tests; \
+    else \
+        rm -rf /tmp/tests-staged; \
+    fi
+
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv \
     if [ "$INSTALL_DEV" = "true" ]; then \
@@ -38,6 +50,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     else \
         uv sync --no-dev; \
     fi
+
+# uv sync runs as root and creates .venv/ and uv.lock metadata at the root
+# level. Reown the whole workdir so appuser can write to .venv (e.g. python -m
+# pip install, .pyc writes under .venv/lib/...) and any future test output,
+# including the bundled tests/ directory from the dev build.
+RUN chown -R appuser:appuser /app
 
 USER appuser
 

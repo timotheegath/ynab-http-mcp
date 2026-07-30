@@ -121,7 +121,7 @@ def _build_category_lookup(ynab_service: YnabService) -> Callable[[Optional[str]
 
 def register(mcp, ynab_service: YnabService):
 
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), serialize_output_schema=False)
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), output_schema=None)
     def get_money_movement_insights(
         since_date: Annotated[
             Optional[str],
@@ -133,7 +133,7 @@ def register(mcp, ynab_service: YnabService):
         ] = None,
     ) -> MoneyMovementInsightsResponse:
         """Get pre-computed money-movement insights over a window:
-        monthly buckets, TBA vs other-category split, top-5 source /
+        monthly buckets, to-be-assigned vs other-category split, top-5 source /
         destination categories, recurring pairs, monthly trend,
         proactive_pct, and a planning_health summary. Default window is
         the last 3 calendar months."""
@@ -193,15 +193,14 @@ def register(mcp, ynab_service: YnabService):
                 error=f"Aggregate computation failed: {exc}",
             )
 
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), serialize_output_schema=False)
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), output_schema=None)
     def get_money_movement_insights_for_month(
         month_date: Annotated[
             str,
             "Month YYYY-MM or full ISO date YYYY-MM-DD. Day is ignored.",
         ],
     ) -> MoneyMovementInsightsResponse:
-        """Get pre-computed money-movement insights for a single month.
-        One SDK call per request. Use to drill in from a window
+        """Get pre-computed money-movement insights for a single month. Use to drill in from a window
         response."""
         try:
             parsed = parse_month_date(month_date)

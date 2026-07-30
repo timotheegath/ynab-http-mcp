@@ -3,7 +3,7 @@
     "compounds": [
         {
             "name": "Dev: Attach + MCP Inspector",
-            "configurations": ["Attach: Dev Container", "MCP Inspector"],
+            "configurations": ["Dev: Attach Only", "MCP Inspector"],
             "preLaunchTask": "compose: up dev",
             "postDebugTask": "compose: down dev",
             "stopAll": true
@@ -20,7 +20,7 @@
             }
         },
         {
-            "name": "Attach: Dev Container",
+            "name": "Dev: Attach Only",
             "type": "debugpy",
             "request": "attach",
             "connect": {
@@ -33,7 +33,13 @@
                     "remoteRoot": "/app"
                 }
             ],
-            "justMyCode": true
+            "justMyCode": true,
+            "preLaunchTask": "compose: up dev",
+            "presentation": {
+                "hidden": false,
+                "group": "debug",
+                "order": 1
+            }
         },
         {
             "name": "MCP Inspector",

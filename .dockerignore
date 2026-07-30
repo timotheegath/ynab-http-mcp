@@ -14,10 +14,6 @@
 # Environment files (should be provided at runtime)
 **/.env
 
-# Test files (not needed in production)
-**/tests/
-**/test_*.py
-
 # OpenSpec development files (not needed in production)
 **/openspec/
 
