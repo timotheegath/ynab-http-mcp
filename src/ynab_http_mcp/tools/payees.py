@@ -55,28 +55,3 @@ def register(mcp, ynab_service: YnabService):
             )
             cleaned = MCPPayee(id="", name="", deleted=False, transfer_account_id=None)
         return cleaned.model_dump_json(exclude_none=True)
-
-    @mcp.resource(uri="data://payees/{id}/full", mime_type="application/json")
-    async def get_single_payee_full(
-        id: Annotated[
-            str,
-            "UUID of the payee to retrieve.",
-        ],
-    ) -> str:
-        """Get a payee with full_details for raw SDK fields. Use when
-        SDK-fidelity access is required beyond the lean endpoint."""
-        raw_response = ynab_service.get_payee(id)
-        try:
-            cleaned = MCPPayeeFull.from_ynab(raw_response.data.payee)
-        except Exception:
-            debug_exception(
-                f"Failed to validate payee (full) {getattr(raw_response.data.payee, 'id', 'unknown')}"
-            )
-            cleaned = MCPPayeeFull(
-                id="",
-                name="",
-                deleted=False,
-                transfer_account_id=None,
-                full_details={},
-            )
-        return cleaned.model_dump_json(exclude_none=True)
