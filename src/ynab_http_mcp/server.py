@@ -9,6 +9,7 @@ from fastmcp.server.transforms import ResourcesAsTools
 import ynab_http_mcp.tools.accounts as account_tools
 import ynab_http_mcp.tools.budget_management as budget_tools
 import ynab_http_mcp.tools.categories as category_tools
+import ynab_http_mcp.tools.money_movements as money_movement_tools
 import ynab_http_mcp.tools.payees as payee_tools
 import ynab_http_mcp.tools.planning as planning_tools
 import ynab_http_mcp.tools.transactions as transaction_tools
@@ -45,6 +46,7 @@ transaction_tools.register(mcp, ynab_service)
 account_tools.register(mcp, ynab_service)
 payee_tools.register(mcp, ynab_service)
 budget_tools.register(mcp, ynab_service)
+money_movement_tools.register(mcp, ynab_service)
 # For compatibility as resources are under-adopted.
 mcp.add_transform(ResourcesAsTools(mcp))
 
