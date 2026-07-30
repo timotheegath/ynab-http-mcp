@@ -117,6 +117,7 @@ class TestCatalogFootprint:
 
 EXPECTED_TOOL_NAMES: Set[str] = {
     # Budget management tools
+    "search_payees",
     "assign_budget_to_category",
     "update_category_goal_to_recurring",
     "update_category_goal_to_target_date",
@@ -133,6 +134,8 @@ EXPECTED_TOOL_NAMES: Set[str] = {
 # (tool_name, field_name, required, type_str, has_ge, has_pattern, enum_values)
 TOOL_FIELD_CONTRACTS: List[tuple] = [
     # assign_budget_to_category -> AssignBudgetCategoryRequest
+    ("search_payees", "query", True, "string", False, False, None),
+    ("search_payees", "limit", False, "integer", False, False, None),
     ("assign_budget_to_category", "month", True, "string", False, False, None),
     ("assign_budget_to_category", "category_id", True, "string", False, False, None),
     (
@@ -390,7 +393,6 @@ EXPECTED_RESOURCE_URIS: Set[str] = {
     "data://accounts",
     "data://categories",
     "data://months",
-    "data://payees",
 }
 
 EXPECTED_RESOURCE_TEMPLATE_URIS: Set[str] = {
