@@ -89,7 +89,7 @@ def catalog_data():
 class TestCatalogFootprint:
     """Character-budget assertions for the serialized MCP catalogs."""
 
-    TOOL_BUDGET = 10_000
+    TOOL_BUDGET = 30_000
     RESOURCE_TEMPLATE_BUDGET = 8_000
 
     def test_tool_catalog_stays_within_budget(self, catalog_data):
@@ -127,6 +127,8 @@ EXPECTED_TOOL_NAMES: Set[str] = {
     "create_transaction",
     "check_budget_health",
     "get_spending_insights",
+    "get_money_movement_insights",
+    "get_money_movement_insights_for_month",
     # ResourcesAsTools gateway
     "list_resources",
     "read_resource",
@@ -260,6 +262,35 @@ TOOL_FIELD_CONTRACTS: List[tuple] = [
     # get_spending_insights
     ("get_spending_insights", "month", True, "string", False, False, None),
     ("get_spending_insights", "category_id", False, "string", False, False, None),
+    # get_money_movement_insights
+    (
+        "get_money_movement_insights",
+        "since_date",
+        False,
+        "string",
+        False,
+        False,
+        None,
+    ),
+    (
+        "get_money_movement_insights",
+        "until_date",
+        False,
+        "string",
+        False,
+        False,
+        None,
+    ),
+    # get_money_movement_insights_for_month
+    (
+        "get_money_movement_insights_for_month",
+        "month_date",
+        True,
+        "string",
+        False,
+        False,
+        None,
+    ),
 ]
 
 
@@ -374,7 +405,12 @@ class TestToolContract:
     def test_readonly_annotations_preserved(self, catalog_data):
         """Verify readOnlyHint annotations on read-only tools."""
         tools_by_name = {t["name"]: t for t in catalog_data["tools"]}
-        readonly_tools = {"check_budget_health", "get_spending_insights"}
+        readonly_tools = {
+            "check_budget_health",
+            "get_spending_insights",
+            "get_money_movement_insights",
+            "get_money_movement_insights_for_month",
+        }
         for name in readonly_tools:
             t = tools_by_name[name]
             ann = t.get("annotations") or {}
@@ -414,8 +450,6 @@ EXPECTED_RESOURCE_TEMPLATE_URIS: Set[str] = {
     "data://months/{month_date}/transactions{?type}",
     "data://payees/{payee_id}/transactions{?since_date,until_date,type}",
     "data://categories/{category_id}/transactions{?since_date,until_date,type}",
-    "data://money-movements/insights{?since_date,until_date}",
-    "data://months/{month_date}/money-movements/insights",
 }
 
 

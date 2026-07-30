@@ -1,25 +1,26 @@
 """
-Money movement MCP resources.
+Money movement insight tools for YNAB HTTP MCP.
 
-Exposes two pre-computed aggregate reads that mirror the
-``data://transactions/insights`` shape and adapt the Aggregate layer
-to the money-movement collection:
+Exposes two read-only tools that compute planning-quality insights over
+a window of money movements:
 
-- ``data://money-movements/insights{?since_date,until_date}`` — window
-  view (default: last 3 calendar months).
-- ``data://months/{month_date}/money-movements/insights`` — single
-  month drill-in.
+- ``get_money_movement_insights(since_date, until_date)`` — window view
+  (default: last 3 calendar months).
+- ``get_money_movement_insights_for_month(month_date)`` — single month
+  drill-in.
 
-Both resources return ``MoneyMovementInsightsResponse`` serialised with
-``exclude_none=True``. Any ``ValueError`` or SDK failure produces a
-fully zeroed response with ``error`` populated so the LLM can
-pattern-match on ``response.error`` without dealing with partial data.
+Both tools return a ``MoneyMovementInsightsResponse`` Pydantic model.
+Any ``ValueError`` or SDK failure produces a fully zeroed response with
+``error`` populated so the caller can pattern-match on
+``response.error`` without dealing with partial data.
 """
 
 from __future__ import annotations
 
 from datetime import date
 from typing import Annotated, Callable, Dict, List, Optional
+
+from mcp.types import ToolAnnotations
 
 from ynab_http_mcp.ynab_service import YnabService
 from ynab_http_mcp.schemas.money_movement_aggregate import (
@@ -95,8 +96,8 @@ def _build_category_lookup(ynab_service: YnabService) -> Callable[[Optional[str]
 
     Calls ``ynab_service.get_categories()`` once per call. Falls back to
     ``"Unknown"`` for any unresolved id (and ``"Ready to Assign"`` for
-    the sentinel ``None`` id) when the categories call fails or the
-    id is not present.
+    the sentinel ``None`` id) when the categories call fails or the id
+    is not present.
     """
     try:
         raw = ynab_service.get_categories()
@@ -120,25 +121,22 @@ def _build_category_lookup(ynab_service: YnabService) -> Callable[[Optional[str]
 
 def register(mcp, ynab_service: YnabService):
 
-    @mcp.resource(
-        uri="data://money-movements/insights{?since_date,until_date}",
-        mime_type="application/json",
-    )
-    async def get_money_movements_insights(
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    def get_money_movement_insights(
         since_date: Annotated[
-            str | None,
+            Optional[str],
             "ISO date YYYY-MM-DD. Defaults to first day of (current month - 2 months).",
         ] = None,
         until_date: Annotated[
-            str | None,
+            Optional[str],
             "ISO date YYYY-MM-DD (exclusive). Defaults to first day of month after current.",
         ] = None,
-    ) -> str:
-        """Get pre-computed money-movement insights: monthly buckets,
-        TBA vs other-category split, top-5 source / destination
-        categories, recurring pairs, monthly trend, proactive_pct, and
-        a planning_health summary. Default window is the last 3
-        calendar months."""
+    ) -> MoneyMovementInsightsResponse:
+        """Get pre-computed money-movement insights over a window:
+        monthly buckets, TBA vs other-category split, top-5 source /
+        destination categories, recurring pairs, monthly trend,
+        proactive_pct, and a planning_health summary. Default window is
+        the last 3 calendar months."""
         try:
             if since_date is None and until_date is None:
                 since, until = _default_window()
@@ -152,16 +150,14 @@ def register(mcp, ynab_service: YnabService):
                 else:
                     until = parse_date(until_date).date()
         except ValueError as exc:
-            return _empty_response(
-                error=f"Invalid date: {exc}",
-            ).model_dump_json(exclude_none=True)
+            return _empty_response(error=f"Invalid date: {exc}")
 
         if until <= since:
             return _empty_response(
                 period_start=since.isoformat(),
                 period_end=until.isoformat(),
                 error="period_end must be strictly after period_start",
-            ).model_dump_json(exclude_none=True)
+            )
 
         category_name_lookup = _build_category_lookup(ynab_service)
 
@@ -176,17 +172,17 @@ def register(mcp, ynab_service: YnabService):
                 period_end=until.isoformat(),
                 buckets=_zero_buckets(since, until),
                 error=f"Invalid parameter: {exc}",
-            ).model_dump_json(exclude_none=True)
+            )
         except Exception as exc:
             return _empty_response(
                 period_start=since.isoformat(),
                 period_end=until.isoformat(),
                 buckets=_zero_buckets(since, until),
                 error=f"YNAB API failure: {exc}",
-            ).model_dump_json(exclude_none=True)
+            )
 
         try:
-            insights = build_money_movement_insights(
+            return build_money_movement_insights(
                 movements, since, until, category_name_lookup
             )
         except Exception as exc:
@@ -195,28 +191,22 @@ def register(mcp, ynab_service: YnabService):
                 period_end=until.isoformat(),
                 buckets=_zero_buckets(since, until),
                 error=f"Aggregate computation failed: {exc}",
-            ).model_dump_json(exclude_none=True)
+            )
 
-        return insights.model_dump_json(exclude_none=True)
-
-    @mcp.resource(
-        uri="data://months/{month_date}/money-movements/insights",
-        mime_type="application/json",
-    )
-    async def get_month_money_movements_insights(
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    def get_money_movement_insights_for_month(
         month_date: Annotated[
             str,
-            "ISO date YYYY-MM-DD or YYYY-MM. Day is ignored.",
+            "Month YYYY-MM or full ISO date YYYY-MM-DD. Day is ignored.",
         ],
-    ) -> str:
-        """Get money-movement insights for a single month. One SDK call
-        per request. Use to drill in from a window response."""
+    ) -> MoneyMovementInsightsResponse:
+        """Get pre-computed money-movement insights for a single month.
+        One SDK call per request. Use to drill in from a window
+        response."""
         try:
             parsed = parse_month_date(month_date)
         except ValueError as exc:
-            return _empty_response(
-                error=f"Invalid month_date: {exc}",
-            ).model_dump_json(exclude_none=True)
+            return _empty_response(error=f"Invalid month_date: {exc}")
 
         since = parsed.date().replace(day=1)
         # First day of next month
@@ -240,17 +230,17 @@ def register(mcp, ynab_service: YnabService):
                 period_end=until.isoformat(),
                 buckets=_zero_buckets(since, until),
                 error=f"Invalid parameter: {exc}",
-            ).model_dump_json(exclude_none=True)
+            )
         except Exception as exc:
             return _empty_response(
                 period_start=since.isoformat(),
                 period_end=until.isoformat(),
                 buckets=_zero_buckets(since, until),
                 error=f"YNAB API failure: {exc}",
-            ).model_dump_json(exclude_none=True)
+            )
 
         try:
-            insights = build_money_movement_insights(
+            return build_money_movement_insights(
                 movements, since, until, category_name_lookup
             )
         except Exception as exc:
@@ -259,6 +249,4 @@ def register(mcp, ynab_service: YnabService):
                 period_end=until.isoformat(),
                 buckets=_zero_buckets(since, until),
                 error=f"Aggregate computation failed: {exc}",
-            ).model_dump_json(exclude_none=True)
-
-        return insights.model_dump_json(exclude_none=True)
+            )

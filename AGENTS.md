@@ -85,8 +85,8 @@ src/
     │   ├── planning.py             # data://months, data://months/{ym}/full, ...
     │   ├── transactions.py         # data://transactions, data://transactions/{id}/full,
     │   │                           # data://transactions/insights
-    │   └── money_movements.py      # data://money-movements/insights{?since_date,until_date},
-    │                               # data://months/{month_date}/money-movements/insights
+    │   └── money_movements.py      # get_money_movement_insights,
+    │                               # get_money_movement_insights_for_month (tools)
     └── utils/                      # helpers (dates, schema_utils)
 ```
 
