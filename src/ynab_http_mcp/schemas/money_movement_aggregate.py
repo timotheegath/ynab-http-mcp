@@ -35,7 +35,6 @@ import ynab
 
 from ynab_http_mcp.schemas.transaction_aggregate import (
     _classify_trend,
-    _default_window,
     _months_in_window,
     _ynab_format,
 )

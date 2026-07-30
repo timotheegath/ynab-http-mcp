@@ -16,11 +16,6 @@ from uuid import uuid4
 import ynab
 
 from ynab_http_mcp.schemas.money_movement_aggregate import (
-    DestinationCategoryAggregate,
-    MoneyMovementInsightsResponse,
-    MonthlyMoneyMovementBucket,
-    RecurringMovementPair,
-    SourceCategoryAggregate,
     _classify_planning_health,
     build_money_movement_insights,
 )
