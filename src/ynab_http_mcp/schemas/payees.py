@@ -95,9 +95,6 @@ class MCPPayees(BaseModel):
     """
 
     payees: List[MCPPayee] = Field(..., description="List of payees")
-    hints: Optional[Dict[str, str]] = Field(
-        None, description="Contextual hints for complex fields"
-    )
 
     @staticmethod
     def from_ynab_response(ynab_response: ynab.PayeesResponse) -> "MCPPayees":
@@ -111,5 +108,4 @@ class MCPPayees(BaseModel):
                 )
                 continue
 
-        hints = MCPPayee._extract_hints()
-        return MCPPayees(payees=cleaned_payees, hints=hints)
+        return MCPPayees(payees=cleaned_payees)
