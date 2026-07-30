@@ -1,10 +1,19 @@
 # Development compose override.
 # Usage: docker compose -f compose.yaml -f compose.dev.yaml up
+#
+# Includes:
+#   - dev dependencies (mypy, pytest, ruff, debugpy) via INSTALL_DEV=true
+#   - debugpy listener on 5678 (attach via VS Code "Attach: Dev Container")
+#   - MCP HTTP endpoint on 3000 (reachable from host for MCP Inspector)
+#   - DEBUG_MODE=true enables the debugpy wrapping inside entrypoint.sh
+#
+# Override DEBUG_MODE in .env.dev to false for plain iteration without a debugger.
 services:
   ynabhttpmcp:
     env_file: .env.dev
     ports:
-      - "8000:8000"
+      - "3000:3000"   # MCP HTTP endpoint
+      - "5678:5678"   # debugpy attach port
     build:
       args:
         INSTALL_DEV: "true"

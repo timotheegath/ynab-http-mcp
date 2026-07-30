@@ -1,28 +1,53 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
+    "compounds": [
+        {
+            "name": "Dev: Attach + MCP Inspector",
+            "configurations": ["Attach: Dev Container", "MCP Inspector"],
+            "preLaunchTask": "compose: up dev",
+            "postDebugTask": "compose: down dev",
+            "stopAll": true
+        }
+    ],
     "configurations": [
         {
-            "name": "Python Debugger: Module",
+            "name": "Python Debugger: Module (local)",
             "type": "debugpy",
             "request": "launch",
-            "module": "ynab_http_mcp"
+            "module": "ynab_http_mcp",
+            "presentation": {
+                "hidden": true
+            }
         },
         {
-            "name": "Containers: Python - General",
-            "type": "docker",
+            "name": "Attach: Dev Container",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 5678
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}",
+                    "remoteRoot": "/app"
+                }
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "MCP Inspector",
+            "type": "node",
             "request": "launch",
-            "preLaunchTask": "docker-run: debug",
-            "python": {
-                "pathMappings": [
-                    {
-                        "localRoot": "${workspaceFolder}",
-                        "remoteRoot": "/app"
-                    }
-                ],
-                "projectType": "general"
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "--yes",
+                "@modelcontextprotocol/inspector",
+                "http://localhost:3000/mcp"
+            ],
+            "skipFiles": ["<node_internals>/**"],
+            "presentation": {
+                "hidden": true
             }
         }
     ]

@@ -1,26 +1,27 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "docker-build",
-			"label": "docker-build",
-			"platform": "python",
-			"dockerBuild": {
-				"tag": "ynabhttpmcp:latest",
-				"dockerfile": "${workspaceFolder}/Dockerfile",
-				"context": "${workspaceFolder}",
-				"pull": true
-			}
-		},
-		{
-			"type": "docker-run",
-			"label": "docker-run: debug",
-			"dependsOn": [
-				"docker-build"
-			],
-			"python": {
-				"file": "src/ynab_http_mcp/__main__.py"
-			}
-		}
-	]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "compose: up dev",
+            "type": "shell",
+            "command": "docker compose -f compose.yaml -f compose.dev.yaml up -d --build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "group": "dev-lifecycle"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "compose: down dev",
+            "type": "shell",
+            "command": "docker compose -f compose.yaml -f compose.dev.yaml down",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "dedicated",
+                "group": "dev-lifecycle"
+            },
+            "problemMatcher": []
+        }
+    ]
 }
