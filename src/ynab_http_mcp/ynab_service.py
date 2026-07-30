@@ -1,7 +1,7 @@
 import os
 import ynab
 from uuid import UUID
-from datetime import datetime
+from datetime import date, datetime
 from ynab_http_mcp.debug import debug_exception, debug_ynab_response
 from typing import Optional, Callable, TypeVar
 from ynab_http_mcp.schemas.budget_tools import UpdateCategoryRequest
@@ -187,6 +187,57 @@ class YnabService:
                 ynab.TransactionsApi,
                 lambda api: api.get_transactions(str(self.plan_id), **params),
             )
+
+    def get_money_movements(
+        self,
+        since_date: datetime | str | None,
+        until_date: datetime | str | None,
+    ) -> list[ynab.MoneyMovement]:
+        """Fetch every ``ynab.MoneyMovement`` in the half-open window
+        ``[since_date, until_date)``.
+
+        Walks each calendar month in the window and issues one
+        ``ynab.MoneyMovementsApi.get_money_movements_by_month`` call per
+        month, concatenating the per-month ``data.money_movements`` lists
+        into a single flat list. Date filtering is purely on the service
+        side; the SDK endpoint does not accept ``since_date`` /
+        ``until_date`` query parameters.
+
+        Raises:
+            ValueError: If ``since_date`` or ``until_date`` is missing or
+                unparseable, or if the window is empty/inverted.
+        """
+        if not since_date or not until_date:
+            raise ValueError("since_date and until_date must be provided")
+        parsed_since = parse_date(since_date).date()
+        parsed_until = parse_date(until_date).date()
+        if parsed_until <= parsed_since:
+            raise ValueError("until_date must be strictly after since_date")
+
+        months: list[date] = []
+        y, m = parsed_since.year, parsed_since.month
+        while True:
+            cur = date(y, m, 1)
+            if cur >= parsed_until:
+                break
+            months.append(cur)
+            m += 1
+            if m > 12:
+                m = 1
+                y += 1
+
+        movements: list[ynab.MoneyMovement] = []
+        for month_start in months:
+            month_str_val = month_start.strftime("%Y-%m-%d")
+            resp = self._call_api(
+                ynab.MoneyMovementsApi,
+                lambda api, ms=month_str_val: api.get_money_movements_by_month(
+                    str(self.plan_id), ms
+                ),
+            )
+            if resp and resp.data and resp.data.money_movements:
+                movements.extend(resp.data.money_movements)
+        return movements
 
     def get_transaction(self, id: str) -> ynab.TransactionResponse:
         return self._call_api(
