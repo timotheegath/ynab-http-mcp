@@ -7,18 +7,20 @@ description: Use this skill when you need to test YNAB HTTP MCP resources and en
 
 Use this skill when you need to test YNAB HTTP MCP resources and endpoints.
 
+The dev container exposes the MCP HTTP transport on `http://localhost:3000/mcp` (see `compose.dev.yaml`). Use the `ynab-http-mcp-control` skill to bring the container up before testing.
+
 ## Testing Workflow
 
-### 1. Start the Service
+### 1. Start the Dev Container
 
 ```bash
-bash scripts/start-ynab-mcp.sh
+docker compose -f compose.yaml -f compose.dev.yaml up -d --build
 ```
 
-### 2. Verify Service Status
+### 2. Verify Container Status
 
 ```bash
-bash scripts/status-ynab-mcp.sh
+docker compose -f compose.yaml -f compose.dev.yaml ps
 ```
 
 ### 3. Discover Available Resources
@@ -98,20 +100,20 @@ read_mcp_resource(server="ynab-http-mcp", uri="data://transactions/{transaction_
 ### 5. Debugging Issues
 
 ```bash
-# Check service logs
-tail -50 .ynab_http_mcp.log
+# Tail the container logs
+docker compose -f compose.yaml -f compose.dev.yaml logs -f ynabhttpmcp
 
 # Check for specific errors
-grep "Error" .ynab_http_mcp.log
+docker compose -f compose.yaml -f compose.dev.yaml logs ynabhttpmcp 2>&1 | grep -i error
 
 # Check debug output
-grep "DEBUG" .ynab_http_mcp.log
+docker compose -f compose.yaml -f compose.dev.yaml logs ynabhttpmcp 2>&1 | grep -i debug
 ```
 
-### 6. Restart After Code Changes
+### 6. Rebuild After Code Changes
 
 ```bash
-bash scripts/stop-ynab-mcp.sh && bash scripts/start-ynab-mcp.sh
+docker compose -f compose.yaml -f compose.dev.yaml up -d --build
 ```
 
 ## Common Issues and Fixes
@@ -160,10 +162,10 @@ def from_ynab_response(ynab_response: ynabPlanMonthResponse):
 
 ## Best Practices
 
-1. **Always check service status** before testing
+1. **Always check container status** before testing
 2. **Use MCP resource tools** instead of curl/http requests
-3. **Check logs** when errors occur
-4. **Restart service** after code changes
+3. **Check container logs** when errors occur
+4. **Rebuild the container** after code changes
 5. **Test both date formats** (YYYY-MM and YYYY-MM-DD)
 6. **Validate JSON responses** for proper structure
 7. **Test edge cases** (invalid dates, missing parameters)
@@ -171,8 +173,8 @@ def from_ynab_response(ynab_response: ynabPlanMonthResponse):
 ## Example Testing Session
 
 ```python
-# 1. Start service
-bash scripts/start-ynab-mcp.sh
+# 1. Bring the dev container up
+docker compose -f compose.yaml -f compose.dev.yaml up -d --build
 
 # 2. List available resources
 list_mcp_resources()
@@ -186,5 +188,5 @@ read_mcp_resource(server="ynab-http-mcp", uri="data://months/2024-01")
 read_mcp_resource(server="ynab-http-mcp", uri="data://months/2024-01/categories/42c2e872-94ca-4aa4-af62-5394e2574480")
 
 # 5. Check logs if any issues
-tail -20 .ynab_http_mcp.log
+docker compose -f compose.yaml -f compose.dev.yaml logs --tail=50 ynabhttpmcp
 ```
