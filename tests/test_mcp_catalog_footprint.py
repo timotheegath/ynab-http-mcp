@@ -89,13 +89,10 @@ def catalog_data():
 class TestCatalogFootprint:
     """Character-budget assertions for the serialized MCP catalogs."""
 
-<<<<<<< HEAD
+
     TOOL_BUDGET = 30_000
     RESOURCE_TEMPLATE_BUDGET = 8_000
-=======
-    TOOL_BUDGET = 20_000
-    RESOURCE_TEMPLATE_BUDGET = 6_500
->>>>>>> c2805ee (doubled the description budget)
+
 
     def test_tool_catalog_stays_within_budget(self, catalog_data):
         tools_json = _compact_json(catalog_data["tools"])
