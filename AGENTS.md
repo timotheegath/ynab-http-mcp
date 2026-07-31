@@ -138,14 +138,15 @@ Debug mode is enabled via `DEBUG_MODE=True` or `MY_MCP_DEBUG=1` environment vari
 
 ## Server Control Procedures
 
-Use the `ynab-http-mcp-control` skill for server management:
+Use the `ynab-http-mcp-control` skill for server management. It drives the same `docker compose -f compose.yaml -f compose.dev.yaml ...` commands that the VS Code task `compose: up dev` (`.vscode/tasks.json`) runs, so the dev container is the only thing to reason about.
 
-- **Start service**: `bash scripts/start-ynab-mcp.sh`
-- **Stop service**: `bash scripts/stop-ynab-mcp.sh`
-- **Check status**: `bash scripts/status-ynab-mcp.sh`
-- **Restart service**: `bash scripts/stop-ynab-mcp.sh && bash scripts/start-ynab-mcp.sh`
+- **Start service**: `docker compose -f compose.yaml -f compose.dev.yaml up -d --build`
+- **Stop service**: `docker compose -f compose.yaml -f compose.dev.yaml down`
+- **Check status**: `docker compose -f compose.yaml -f compose.dev.yaml ps`
+- **Tail logs**: `docker compose -f compose.yaml -f compose.dev.yaml logs -f ynabhttpmcp`
+- **Restart service** (rebuild + relaunch): `docker compose -f compose.yaml -f compose.dev.yaml up -d --build`
 
-Always check service status before testing and restart after code changes.
+Always confirm `ENVIRONMENT=dev` is set in `.env` before starting, and never run `compose.prod.yaml` from an agent session.
 
 
 ### Unit Tests
