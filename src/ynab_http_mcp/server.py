@@ -13,6 +13,7 @@ import ynab_http_mcp.tools.money_movements as money_movement_tools
 import ynab_http_mcp.tools.payees as payee_tools
 import ynab_http_mcp.tools.planning as planning_tools
 import ynab_http_mcp.tools.transactions as transaction_tools
+from ynab_http_mcp.health import register_health
 from ynab_http_mcp.ynab_service import YnabService
 
 # Load .env
@@ -37,6 +38,9 @@ else:
 HOST = "0.0.0.0"
 PORT = int(os.getenv("HTTP_PORT", 8000))
 mcp = FastMCP("ynab")
+# Liveness endpoint for the container HEALTHCHECK (see Dockerfile). Serves
+# GET /mcp/health and answers nothing else; it does not touch the YNAB API.
+register_health(mcp)
 # Create service:
 ynab_service = YnabService()
 # Register MCP tools:
