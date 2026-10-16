@@ -81,27 +81,6 @@ cp .env.prod.example .env  # for production deploys only
 
 > **Never commit `.env` or `.env.prod` to version control.**
 
-### Health check
-
-The server exposes a liveness endpoint at `GET /mcp/health`:
-
-```bash
-curl http://localhost:3000/mcp/health
-# {"status":"ok","service":"ynab-http-mcp"}
-```
-
-It lives under the `/mcp` prefix on purpose: the public domain serves everything
-MCP-related beneath `/mcp`, so a top-level `/health` would sit outside that
-namespace at the edge.
-
-The image's `HEALTHCHECK` probes this path on `HTTP_PORT` (default `8000`, the
-server's own fallback). The endpoint reads no YNAB data on purpose: it reports
-that the HTTP server is up, not that YNAB is reachable, so an upstream YNAB
-outage does not make the container look dead to the orchestrator.
-
-Note that `GET /` is **not** a usable health signal: the MCP app answers it with
-`404`, which is what made `docker ps` report a healthy container as unhealthy.
-
 ---
 
 ## Development Workflow
@@ -204,3 +183,4 @@ All month endpoints accept both `YYYY-MM` and `YYYY-MM-DD` date formats.
 
 - Harmonize schemas: consistent `MCPResponse`/`MCPRequest`, remove duplicate validation code
 - Implement basic authentication (now that write tools exist)
+- Update Docker health check for proxy deployments (avoid relying on `curl` and `localhost:8000`)
