@@ -83,12 +83,16 @@ cp .env.prod.example .env  # for production deploys only
 
 ### Health check
 
-The server exposes a liveness endpoint at `GET /health`:
+The server exposes a liveness endpoint at `GET /mcp/health`:
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:3000/mcp/health
 # {"status":"ok","service":"ynab-http-mcp"}
 ```
+
+It lives under the `/mcp` prefix on purpose: the public domain serves everything
+MCP-related beneath `/mcp`, so a top-level `/health` would sit outside that
+namespace at the edge.
 
 The image's `HEALTHCHECK` probes this path on `HTTP_PORT` (default `8000`, the
 server's own fallback). The endpoint reads no YNAB data on purpose: it reports

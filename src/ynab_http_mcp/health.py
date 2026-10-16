@@ -17,7 +17,10 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 #: Path of the liveness endpoint. Keep in sync with the Dockerfile HEALTHCHECK.
-HEALTH_PATH = "/health"
+#: Deliberately under the ``/mcp`` prefix: the public domain is managed such that
+#: everything MCP-related is served beneath ``/mcp``, so a top-level ``/health``
+#: would sit outside that namespace at the edge.
+HEALTH_PATH = "/mcp/health"
 
 
 def register_health(mcp: FastMCP) -> None:

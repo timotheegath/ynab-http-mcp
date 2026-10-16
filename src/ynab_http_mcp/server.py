@@ -39,7 +39,7 @@ HOST = "0.0.0.0"
 PORT = int(os.getenv("HTTP_PORT", 8000))
 mcp = FastMCP("ynab")
 # Liveness endpoint for the container HEALTHCHECK (see Dockerfile). Serves
-# GET /health and answers nothing else; it does not touch the YNAB API.
+# GET /mcp/health and answers nothing else; it does not touch the YNAB API.
 register_health(mcp)
 # Create service:
 ynab_service = YnabService()

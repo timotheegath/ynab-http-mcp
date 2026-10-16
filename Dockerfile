@@ -71,7 +71,7 @@ EXPOSE 3000
 # same env var the server does, with the same fallback, so the two cannot drift.
 # Stdlib only - python:3.12-slim already ships Python, so no curl is needed.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD python -c "import os, sys, urllib.request; port = os.getenv('HTTP_PORT', '8000'); sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:' + port + '/health', timeout=3).getcode() == 200 else 1)"
+  CMD python -c "import os, sys, urllib.request; port = os.getenv('HTTP_PORT', '8000'); sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:' + port + '/mcp/health', timeout=3).getcode() == 200 else 1)"
 
 # Entry point script for flexibility
 COPY --chown=appuser:appuser entrypoint.sh /entrypoint.sh

@@ -1,9 +1,12 @@
-"""Liveness endpoint tests, plus the regression this fix exists for.
+"""Liveness endpoint tests, plus the regressions this fix exists for.
 
-Two things are asserted here:
+Three things are asserted here:
 
-1. ``GET /health`` answers ``200`` so the Docker HEALTHCHECK can pass.
-2. ``GET /`` answers ``404`` - the behaviour the old HEALTHCHECK
+1. ``GET /mcp/health`` answers ``200`` so the Docker HEALTHCHECK can pass.
+2. The liveness path stays under the ``/mcp`` prefix - the public domain serves
+   everything MCP-related beneath ``/mcp``, so a top-level path would fall
+   outside that namespace at the edge.
+3. ``GET /`` answers ``404`` - the behaviour the old HEALTHCHECK
    (``curl -f http://localhost:3000/``) was pointed at. ``curl -f`` treats any
    status >= 400 as a failure, so the old probe could never succeed and the
    container was permanently reported unhealthy.
@@ -42,5 +45,20 @@ async def test_root_is_not_a_healthy_signal(app):
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/")
+
+    assert response.status_code == 404
+
+
+def test_health_path_lives_under_mcp_prefix():
+    """The public domain serves MCP under /mcp, so the probe path lives there."""
+    assert HEALTH_PATH.startswith("/mcp/")
+
+
+@pytest.mark.asyncio
+async def test_top_level_health_is_not_served(app):
+    """The endpoint moved under /mcp; the top-level path must not linger."""
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/health")
 
     assert response.status_code == 404
