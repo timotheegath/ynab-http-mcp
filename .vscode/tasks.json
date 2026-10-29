@@ -22,6 +22,33 @@
                 "group": "dev-lifecycle"
             },
             "problemMatcher": []
+<<<<<<< HEAD
+=======
+        },
+        {
+            "label": "run: mcp-inspector",
+            "type": "shell",
+            "command": "npx --yes @modelcontextprotocol/inspector http://localhost:3001/mcp",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "custom",
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "beginsPattern": "Starting MCP inspector...",
+                    "endsPattern": "Opening browser..."
+                }
+            },
+            "presentation": {
+                
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "run: compose up + mcp-inspector",
+            "dependsOn": ["compose: up dev", "run: mcp-inspector"]
+>>>>>>> b9439f2 (Fixed background process issue for MCP inspector)
         }
     ]
 }
