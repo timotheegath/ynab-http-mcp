@@ -12,7 +12,9 @@ import ynab_http_mcp.tools.categories as category_tools
 import ynab_http_mcp.tools.money_movements as money_movement_tools
 import ynab_http_mcp.tools.payees as payee_tools
 import ynab_http_mcp.tools.planning as planning_tools
+import ynab_http_mcp.tools.planning_insights as planning_insights_tools
 import ynab_http_mcp.tools.transactions as transaction_tools
+import ynab_http_mcp.prompts as prompts
 from ynab_http_mcp.ynab_service import YnabService
 
 # Load .env
@@ -47,6 +49,9 @@ account_tools.register(mcp, ynab_service)
 payee_tools.register(mcp, ynab_service)
 budget_tools.register(mcp, ynab_service)
 money_movement_tools.register(mcp, ynab_service)
+planning_insights_tools.register(mcp, ynab_service)
+# Register MCP prompts:
+prompts.register(mcp)
 # For compatibility as resources are under-adopted.
 mcp.add_transform(ResourcesAsTools(mcp))
 

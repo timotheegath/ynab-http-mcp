@@ -8,12 +8,13 @@ from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
 from uuid import UUID
 import ynab
+from ynab.exceptions import NotFoundException
 from ynab.models.category_response import CategoryResponse
 from ynab.models.category_response_data import CategoryResponseData
 from ynab.models.category import Category
 
 # Import the class to test
-from ynab_http_mcp.ynab_service import YnabService
+from ynab_http_mcp.ynab_service import YnabService, PlanMonthNotFoundError
 
 
 def test_get_month_category_success():
@@ -152,6 +153,70 @@ def test_get_month_category_month_formatting():
             assert call_kwargs[1] == expected_date, (
                 f"Expected '{expected_date}' but got '{call_kwargs[1]}' for input '{test_date}'"
             )
+
+
+def test_get_month_category_not_found_raises_domain_error():
+    """A 404 from YNAB for a month beyond the horizon means "no plan yet".
+
+    It is translated into PlanMonthNotFoundError so callers can distinguish
+    it from a real upstream failure.
+    """
+    service = YnabService()
+
+    with patch.object(YnabService, "_call_api") as mock_call_api:
+        mock_call_api.side_effect = NotFoundException(status=404, reason="Not Found")
+
+        with pytest.raises(PlanMonthNotFoundError) as exc_info:
+            service.get_month_category("2027-06", "test-category-id")
+
+        assert exc_info.value.month == "2027-06-01"
+        assert "No plan exists" in str(exc_info.value)
+
+
+def test_get_month_category_other_error_propagates():
+    """Non-404 failures are not swallowed by the not-found translation."""
+    service = YnabService()
+
+    with patch.object(YnabService, "_call_api") as mock_call_api:
+        mock_call_api.side_effect = ynab.exceptions.ServiceException(
+            status=500, reason="Server Error"
+        )
+
+        with pytest.raises(
+            RuntimeError, match="Failed to retrieve month category data"
+        ):
+            service.get_month_category("2026-01", "test-category-id")
+
+
+def test_get_plan_month_not_found_raises_domain_error():
+    """A 404 from YNAB for a month beyond the horizon means "no plan yet".
+
+    It is translated into PlanMonthNotFoundError so callers can distinguish
+    it from a real upstream failure.
+    """
+    service = YnabService()
+
+    with patch.object(YnabService, "_call_api") as mock_call_api:
+        mock_call_api.side_effect = NotFoundException(status=404, reason="Not Found")
+
+        with pytest.raises(PlanMonthNotFoundError) as exc_info:
+            service.get_plan_month("2027-06")
+
+        assert exc_info.value.month == "2027-06-01"
+        assert "No plan exists" in str(exc_info.value)
+
+
+def test_get_plan_month_other_error_propagates():
+    """Non-404 failures are not swallowed by the not-found translation."""
+    service = YnabService()
+
+    with patch.object(YnabService, "_call_api") as mock_call_api:
+        mock_call_api.side_effect = ynab.exceptions.ServiceException(
+            status=500, reason="Server Error"
+        )
+
+        with pytest.raises(ynab.exceptions.ServiceException):
+            service.get_plan_month("2026-01")
 
 
 if __name__ == "__main__":

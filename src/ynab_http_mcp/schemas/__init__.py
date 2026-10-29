@@ -45,6 +45,14 @@ from .money_movement_aggregate import (
     RecurringMovementPair,
     MoneyMovementInsightsResponse,
 )
+from .planning_aggregate import (
+    PlanInsightsMonth,
+    PlanInsightsCategoryMonth,
+    PlanInsightsGoal,
+    PlanInsightsDerived,
+    PlanInsightsCategory,
+    PlanInsightsResponse,
+)
 
 __all__ = [
     "get_json_schema",
@@ -80,4 +88,10 @@ __all__ = [
     "DestinationCategoryAggregate",
     "RecurringMovementPair",
     "MoneyMovementInsightsResponse",
+    "PlanInsightsMonth",
+    "PlanInsightsCategoryMonth",
+    "PlanInsightsGoal",
+    "PlanInsightsDerived",
+    "PlanInsightsCategory",
+    "PlanInsightsResponse",
 ]

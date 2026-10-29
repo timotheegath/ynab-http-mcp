@@ -2,9 +2,11 @@
 Budget management tools for YNAB HTTP MCP.
 """
 
+import logging
 from typing import Optional, Dict, Any, Annotated
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-from ..ynab_service import YnabService
+from ..ynab_service import YnabService, PlanMonthNotFoundError
 from ..utils.schema_utils import clean_ynab_data
 from ..schemas.budget_tools import (
     AssignBudgetCategoryRequest,
@@ -103,7 +105,13 @@ def register(mcp, ynab_service: YnabService):
     ) -> BudgetHealthResponse:
         """Check budget health for a month."""
         # Get month data
-        month_detail = ynab_service.get_plan_month(month).data.month
+        try:
+            month_detail = ynab_service.get_plan_month(month).data.month
+        except PlanMonthNotFoundError as e:
+            raise ToolError(
+                f"No plan exists for month {e.month} — it is beyond the plan's horizon.",
+                log_level=logging.INFO,
+            ) from e
 
         # Calculate health metrics from month detail
         total_budgeted = month_detail.budgeted

@@ -1,6 +1,8 @@
 # All planning actions.
+import logging
 import ynab
-from ynab_http_mcp.ynab_service import YnabService
+from fastmcp.exceptions import ResourceError
+from ynab_http_mcp.ynab_service import YnabService, PlanMonthNotFoundError
 from typing import Annotated
 from ynab_http_mcp.schemas.planning import (
     PlanMonthResponse,
@@ -9,6 +11,18 @@ from ynab_http_mcp.schemas.planning import (
     PlanMonthFullResponse,
 )
 from ynab_http_mcp.schemas.categories import MCPCategory, MCPCategoryFull
+
+
+def _no_plan_error(month: str) -> ResourceError:
+    """Build the client-facing error for a month that has no plan yet.
+
+    Logged at INFO, not ERROR: querying beyond the plan's horizon is an
+    expected condition, not a server fault.
+    """
+    return ResourceError(
+        f"No plan exists for month {month} — it is beyond the plan's horizon.",
+        log_level=logging.INFO,
+    )
 
 
 def register(mcp, ynab_service: YnabService):
@@ -29,7 +43,10 @@ def register(mcp, ynab_service: YnabService):
         ],
     ) -> str:
         """Get the plan for a specific month with formatted budget/activity/balance per category."""
-        raw_response = ynab_service.get_plan_month(date=month_date)
+        try:
+            raw_response = ynab_service.get_plan_month(date=month_date)
+        except PlanMonthNotFoundError as e:
+            raise _no_plan_error(e.month) from e
         validated_response = PlanMonthResponse.from_ynab_response(raw_response)
         return validated_response.model_dump_json(exclude_none=True)
 
@@ -70,9 +87,12 @@ def register(mcp, ynab_service: YnabService):
         ],
     ) -> str:
         """Get a specific category's data for a given month."""
-        raw_response = ynab_service.get_month_category(
-            month_date=month_date, category_id=category_id
-        )
+        try:
+            raw_response = ynab_service.get_month_category(
+                month_date=month_date, category_id=category_id
+            )
+        except PlanMonthNotFoundError as e:
+            raise _no_plan_error(e.month) from e
         cleaned_response = MCPCategory.from_ynab(raw_response)
         return cleaned_response.model_dump_json(exclude_none=True)
 
@@ -95,7 +115,10 @@ def register(mcp, ynab_service: YnabService):
         """Get a plan month with full_details for integer milliunit
         budget/activity/balance and the full raw goal field set. Use when
         arithmetic or SDK-fidelity access is required beyond the lean endpoint."""
-        raw_response = ynab_service.get_plan_month(date=month_date)
+        try:
+            raw_response = ynab_service.get_plan_month(date=month_date)
+        except PlanMonthNotFoundError as e:
+            raise _no_plan_error(e.month) from e
         plan_full = PlanMonthFull.from_ynab_response(raw_response)
         wrapped = PlanMonthFullResponse(month=plan_full)
         return wrapped.model_dump_json(exclude_none=True)
@@ -122,9 +145,12 @@ def register(mcp, ynab_service: YnabService):
     ) -> str:
         """Get a month category with full_details for raw SDK fields. Use when
         arithmetic or SDK-fidelity access is required beyond the lean endpoint."""
-        raw_response = ynab_service.get_month_category(
-            month_date=month_date, category_id=category_id
-        )
+        try:
+            raw_response = ynab_service.get_month_category(
+                month_date=month_date, category_id=category_id
+            )
+        except PlanMonthNotFoundError as e:
+            raise _no_plan_error(e.month) from e
         raw_cat = (
             raw_response.data.category
             if isinstance(raw_response, ynab.CategoryResponse)

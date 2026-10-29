@@ -2,12 +2,27 @@ import os
 import ynab
 from uuid import UUID
 from datetime import date, datetime
+from ynab.exceptions import NotFoundException
 from ynab_http_mcp.debug import debug_exception, debug_ynab_response
 from typing import Optional, Callable, TypeVar
 from ynab_http_mcp.schemas.budget_tools import UpdateCategoryRequest
 from ynab_http_mcp.utils.dates import parse_month_date, parse_date, month_str
 
 T = TypeVar("T")
+
+
+class PlanMonthNotFoundError(Exception):
+    """Raised when the requested month has no plan yet.
+
+    YNAB answers ``GET /budgets/{id}/months/{month}`` with 404
+    (``resource_not_found``) for a month that sits beyond the plan's
+    horizon. That is an expected condition, not an upstream failure: it
+    simply means "there is no plan for this month (yet)".
+    """
+
+    def __init__(self, month: str) -> None:
+        self.month = month
+        super().__init__(f"No plan exists for month {month}")
 
 
 class YnabService:
@@ -54,21 +69,24 @@ class YnabService:
 
         Raises:
             ValueError: If category_id is empty or invalid, or if month_date format is invalid
+            PlanMonthNotFoundError: If the month is beyond the plan's horizon
+                and no plan exists for it yet.
             RuntimeError: If there are issues with the YNAB API call
         """
         if not category_id or not isinstance(category_id, str):
             raise ValueError("category_id must be a non-empty string")
 
+        month_str_val = month_str(parse_month_date(month_date))
+
         try:
-            month_str_val = month_str(parse_month_date(month_date))
             return self._call_api(
                 ynab.CategoriesApi,
                 lambda api: api.get_month_category_by_id(
                     str(self.plan_id), month_str_val, category_id
                 ),
             )
-        except ValueError:
-            raise
+        except NotFoundException as e:
+            raise PlanMonthNotFoundError(month_str_val) from e
         except Exception as e:
             debug_exception(f"Error fetching month category: {str(e)}")
             raise RuntimeError(
@@ -81,15 +99,22 @@ class YnabService:
         """
         Returns the plan for a specific month.
         If no date is passed, returns the current month's plan.
+
+        Raises:
+            PlanMonthNotFoundError: If the month is beyond the plan's
+                horizon and no plan exists for it yet.
         """
         if date:
             reformatted_date = month_str(parse_month_date(date))
         else:
             reformatted_date = "current"
-        return self._call_api(
-            ynab.MonthsApi,
-            lambda api: api.get_plan_month(str(self.plan_id), reformatted_date),
-        )
+        try:
+            return self._call_api(
+                ynab.MonthsApi,
+                lambda api: api.get_plan_month(str(self.plan_id), reformatted_date),
+            )
+        except NotFoundException as e:
+            raise PlanMonthNotFoundError(reformatted_date) from e
 
     def get_all_plan_months(self) -> ynab.MonthSummariesResponse:
         return self._call_api(
