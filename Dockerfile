@@ -59,11 +59,11 @@ RUN chown -R appuser:appuser /app
 
 USER appuser
 
-EXPOSE 3000
+EXPOSE 3001
 
 # Health check - simple HTTP GET on /
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
+  CMD curl -f http://localhost:3001/ || exit 1
 
 # Entry point script for flexibility
 COPY --chown=appuser:appuser entrypoint.sh /entrypoint.sh
