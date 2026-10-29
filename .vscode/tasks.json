@@ -26,28 +26,26 @@
         {
             "label": "run: mcp-inspector",
             "type": "shell",
-            "command": "npx",
-            "args": [
-                "--yes",
-                "@modelcontextprotocol/inspector",
-                "http://localhost:3001/mcp"
-            ],
+            "command": "npx --yes @modelcontextprotocol/inspector http://localhost:3001/mcp",
             "isBackground": true,
             "problemMatcher": {
                 "owner": "custom",
                 "pattern": {
-                    "regexp": "^.*$"
+                    "regexp": "^$"
                 },
                 "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": ".*",
-                    "endsPattern": ".*Started.*|.*Listening.*|.*http.*"
+                    "beginsPattern": "Starting MCP inspector...",
+                    "endsPattern": "Opening browser..."
                 }
             },
             "presentation": {
-                "reveal": "silent",
+                
                 "panel": "shared"
             }
+        },
+        {
+            "label": "run: compose up + mcp-inspector",
+            "dependsOn": ["compose: up dev", "run: mcp-inspector"]
         }
     ]
 }
