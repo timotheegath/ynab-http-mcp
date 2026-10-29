@@ -101,6 +101,8 @@ Every entity follows a three-layer read convention:
 - **Full** (`data://accounts/{id}/full`, …) — lean fields + `full_details` dict with every raw SDK field.
 - **Aggregate** (`data://transactions/insights`) — pre-computed insights (monthly buckets, top payees/categories, spending trend).
 
+YNAB's internal bookkeeping categories (`Inflow: Ready to Assign`, `Uncategorized`) are excluded from category listings and plan months: their balances are cumulative Ready-to-Assign artifacts, not spendable money, so adding them to the real category balances would produce a meaningless total. Ready to Assign itself stays available on a plan month as `to_be_budgeted`.
+
 ### Write tools
 
 - **`update_month_category`** — modify a category's budgeted amount for a given month.
@@ -126,7 +128,7 @@ I am reaching the end of my Eating Out money. Which money could I reassign confi
 |---|---|
 | `data://accounts` | All accounts |
 | `data://accounts/{id}` | Single account |
-| `data://categories` | All categories |
+| `data://categories` | All categories (internal categories excluded) |
 | `data://categories/{id}` | Single category |
 | `data://months` | All plan months summary |
 | `data://months/{YYYY-MM}` | Single plan month |
