@@ -22,6 +22,32 @@
                 "group": "dev-lifecycle"
             },
             "problemMatcher": []
+        },
+        {
+            "label": "run: mcp-inspector",
+            "type": "shell",
+            "command": "npx",
+            "args": [
+                "--yes",
+                "@modelcontextprotocol/inspector",
+                "http://localhost:3001/mcp"
+            ],
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "custom",
+                "pattern": {
+                    "regexp": "^.*$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".*",
+                    "endsPattern": ".*Started.*|.*Listening.*|.*http.*"
+                }
+            },
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            }
         }
     ]
 }
