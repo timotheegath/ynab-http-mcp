@@ -22,8 +22,6 @@
                 "group": "dev-lifecycle"
             },
             "problemMatcher": []
-<<<<<<< HEAD
-=======
         },
         {
             "label": "run: mcp-inspector",
@@ -48,7 +46,6 @@
         {
             "label": "run: compose up + mcp-inspector",
             "dependsOn": ["compose: up dev", "run: mcp-inspector"]
->>>>>>> b9439f2 (Fixed background process issue for MCP inspector)
         }
     ]
 }
