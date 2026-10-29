@@ -11,10 +11,8 @@ ENV PYTHONUNBUFFERED=1
 # For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
 RUN adduser -u 5678 --disabled-password --gecos "" appuser
 
-# curl is required by the HEALTHCHECK below (python:3.12-slim does not ship with it)
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+# NOTE: curl used to be installed here only for the HEALTHCHECK. The probe now
+# uses the stdlib (see HEALTHCHECK below), so the layer was dropped.
 
 # Runtime env vars that are truly build-time constants
 ENV YNAB_PLAN_ID="6eb84411-a778-43db-ac70-54099d711d5c"
@@ -59,11 +57,21 @@ RUN chown -R appuser:appuser /app
 
 USER appuser
 
+# Documentation only: the server actually binds HTTP_PORT (default 8000, see
+# env var table in README / src/ynab_http_mcp/server.py). Deployments set
+# HTTP_PORT=3000 via .env.dev / .env.prod, which is what this EXPOSE refers to.
 EXPOSE 3000
 
-# Health check - simple HTTP GET on /
+# Health check - HTTP GET of the liveness endpoint.
+#
+# Two things were wrong before, both of which made a healthy container report
+# unhealthy: the probe hit "/" (which the MCP app answers with 404, and `curl -f`
+# fails on any status >= 400), and it hardcoded port 3000 while the server binds
+# HTTP_PORT (default 8000 when the env var is absent). The probe now reads the
+# same env var the server does, with the same fallback, so the two cannot drift.
+# Stdlib only - python:3.12-slim already ships Python, so no curl is needed.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
+  CMD python -c "import os, sys, urllib.request; port = os.getenv('HTTP_PORT', '8000'); sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:' + port + '/mcp/health', timeout=3).getcode() == 200 else 1)"
 
 # Entry point script for flexibility
 COPY --chown=appuser:appuser entrypoint.sh /entrypoint.sh
