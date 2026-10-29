@@ -49,7 +49,7 @@
             "runtimeArgs": [
                 "--yes",
                 "@modelcontextprotocol/inspector",
-                "http://localhost:3000/mcp"
+                "http://localhost:3001/mcp"
             ],
             "skipFiles": ["<node_internals>/**"],
             "presentation": {
