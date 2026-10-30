@@ -20,7 +20,7 @@ fi
 # When DEBUG_MODE=true, launch under debugpy so VS Code can attach on port 5678.
 # Otherwise exec the CMD as-is.
 if [ "${DEBUG_MODE:-false}" = "true" ]; then
-    exec python -m debugpy --listen 0.0.0.0:5678 -m ynab_http_mcp
+    exec python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m ynab_http_mcp
 else
     exec "$@"
 fi
