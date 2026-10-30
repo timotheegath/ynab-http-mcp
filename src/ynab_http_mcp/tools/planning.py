@@ -28,7 +28,9 @@ def register(mcp, ynab_service: YnabService):
             "ISO date YYYY-MM-DD or YYYY-MM. Day is ignored.",
         ],
     ) -> str:
-        """Get the plan for a specific month with formatted budget/activity/balance per category."""
+        """Get the plan for a specific month with formatted budget/activity/balance per category.
+        Internal categories (e.g. Inflow: Ready to Assign) are excluded; use to_be_budgeted
+        for the month's Ready to Assign amount."""
         raw_response = ynab_service.get_plan_month(date=month_date)
         validated_response = PlanMonthResponse.from_ynab_response(raw_response)
         return validated_response.model_dump_json(exclude_none=True)

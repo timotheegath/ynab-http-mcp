@@ -178,6 +178,40 @@ def _explain_goal_funding_status(raw: ynab.Category) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Internal-category helpers
+# ---------------------------------------------------------------------------
+
+
+def is_internal_category(raw: ynab.Category) -> bool:
+    """True when YNAB flags ``raw`` as an internal bookkeeping category.
+
+    Every plan carries internal bookkeeping categories — "Inflow: Ready to
+    Assign" and "Uncategorized" live in YNAB's internal master group. They
+    are not spendable categories: their balances are cumulative
+    Ready-to-Assign artifacts, so adding them to the real category balances
+    produces a meaningless total. Internal categories are therefore excluded
+    from every category listing and from every balance aggregate built over
+    those listings.
+
+    The flag is read from the category, never from its group: YNAB also
+    marks whole groups as internal while they still hold user categories
+    (e.g. "Credit Card Payments"), and those categories carry real balances.
+    """
+    return bool(raw.internal)
+
+
+def is_internal_category_group(raw: ynab.CategoryGroupWithCategories) -> bool:
+    """True when YNAB flags ``raw`` as an internal category group.
+
+    YNAB's internal groups are either pure bookkeeping (the master group
+    holding "Inflow: Ready to Assign") or containers for user categories
+    (the "Credit Card Payments" group). Only the former is dropped from
+    listings — see :meth:`MCPCategories.from_ynab`.
+    """
+    return bool(raw.internal)
+
+
+# ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------
 
@@ -310,10 +344,16 @@ class MCPCategoryGroup(MCPResponse[ynab.CategoryGroupWithCategories]):
 
     Represents a YNAB category group and the categories that live under it.
     Mirrors ``MCPAccount`` / ``MCPAccounts``: typed, ``MCPResponse``-backed,
-    exposes a ``HIDE_DELETED`` class constant and a ``from_ynab`` classmethod.
+    exposes ``HIDE_DELETED`` and ``HIDE_INTERNAL`` class constants and a
+    ``from_ynab`` classmethod.
+
+    ``HIDE_INTERNAL`` drops YNAB's bookkeeping categories (e.g. "Inflow:
+    Ready to Assign"), whose balances are cumulative artifacts that would
+    corrupt any total computed over category balances.
     """
 
     HIDE_DELETED: ClassVar[bool] = True
+    HIDE_INTERNAL: ClassVar[bool] = True
 
     id: uuid_type = Field(..., description="Unique category group identifier")
     name: str = Field(..., description="Category group name")
@@ -330,6 +370,8 @@ class MCPCategoryGroup(MCPResponse[ynab.CategoryGroupWithCategories]):
         categories: List[MCPCategory] = []
         for ynab_category in raw.categories or []:
             if cls.HIDE_DELETED and ynab_category.deleted:
+                continue
+            if cls.HIDE_INTERNAL and is_internal_category(ynab_category):
                 continue
             categories.append(MCPCategory.from_ynab(ynab_category))
         return cls(
@@ -349,9 +391,16 @@ class MCPCategories(MCPResponse[ynab.CategoriesResponse]):
     Iterates the raw ``category_groups`` envelope and emits a list of
     ``MCPCategoryGroup``, each carrying its own filtered ``categories`` list.
     Wire shape matches the YNAB-native ``{"category_groups": [...]}`` form.
+
+    ``HIDE_INTERNAL`` drops YNAB's internal bookkeeping categories (e.g.
+    "Inflow: Ready to Assign"), and with them the internal groups that hold
+    nothing else. Internal groups that hold user categories (e.g. "Credit
+    Card Payments") are kept, so the balances in this listing can be summed
+    into a real total.
     """
 
     HIDE_DELETED: ClassVar[bool] = True
+    HIDE_INTERNAL: ClassVar[bool] = True
     category_groups: List[MCPCategoryGroup] = Field(
         default_factory=list, description="List of category groups"
     )
@@ -362,7 +411,15 @@ class MCPCategories(MCPResponse[ynab.CategoriesResponse]):
         for ynab_group in raw.data.category_groups or []:
             if cls.HIDE_DELETED and ynab_group.deleted:
                 continue
-            groups.append(MCPCategoryGroup.from_ynab(ynab_group))
+            group = MCPCategoryGroup.from_ynab(ynab_group)
+            if cls.HIDE_INTERNAL and is_internal_category_group(ynab_group):
+                # An internal group is only bookkeeping when nothing but
+                # internal categories lived in it. Groups such as YNAB's
+                # "Credit Card Payments" hold user categories with real
+                # balances and are kept.
+                if not group.categories:
+                    continue
+            groups.append(group)
         return cls(category_groups=groups)
 
 
