@@ -31,6 +31,9 @@ def _compact_json(obj: Any) -> str:
 
 async def _fetch_catalog():
     """Build server and fetch tools/resources/templates."""
+    # This suite validates the full-resource contract, so enable the verbose
+    # /full drill-in resources explicitly before registering the tool modules.
+    os.environ["SHOW_FULL_RESOURCES"] = "true"
     from fastmcp import FastMCP
     from fastmcp.client import Client
     from fastmcp.server.transforms import ResourcesAsTools

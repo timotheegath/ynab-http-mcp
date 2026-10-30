@@ -22,6 +22,56 @@
                 "group": "dev-lifecycle"
             },
             "problemMatcher": []
+        },
+        {
+            "label": "compose: up prod",
+            "type": "shell",
+            "command": "docker compose -f compose.yaml -f compose.prod.yaml up -d --build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "group": "dev-lifecycle"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "compose: down prod",
+            "type": "shell",
+            "command": "docker compose -f compose.yaml -f compose.prod.yaml down",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "dedicated",
+                "group": "dev-lifecycle"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "run: mcp-inspector",
+            "type": "shell",
+            "command": "npx --yes @modelcontextprotocol/inspector http://localhost:3001/mcp",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "custom",
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "beginsPattern": "Starting MCP inspector...",
+                    "endsPattern": "Opening browser..."
+                }
+            },
+            "presentation": {
+                
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "run: compose up dev + mcp-inspector",
+            "dependsOn": ["compose: up dev", "run: mcp-inspector"]
+        },
+        {
+            "label": "run: compose up prod + mcp-inspector",
+            "dependsOn": ["compose: up prod", "run: mcp-inspector"]
         }
     ]
 }

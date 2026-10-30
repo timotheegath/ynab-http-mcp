@@ -13,6 +13,7 @@ from ynab_http_mcp.schemas.transaction_aggregate import (
     TransactionInsightsResponse,
 )
 from ynab_http_mcp.utils.dates import parse_date
+from ynab_http_mcp.tools._full import full_resource
 import json
 
 
@@ -193,7 +194,9 @@ def register(mcp, ynab_service: YnabService):
         validated_response = MCPTransaction.from_ynab(raw_response)
         return validated_response.model_dump_json(exclude_none=True)
 
-    @mcp.resource(uri="data://transactions/{id}/full", mime_type="application/json")
+    @full_resource(
+        mcp, uri="data://transactions/{id}/full", mime_type="application/json"
+    )
     async def get_single_transaction_full(
         id: Annotated[
             str,

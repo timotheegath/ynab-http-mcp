@@ -30,6 +30,7 @@
 - `YNAB_API_KEY`: Your YNAB API key (loaded from `.env`)
 - `LOG_LEVEL`: Optional, defaults to `debug` in dev
 - `DEBUG_MODE`: Optional, enables debug logging
+- `SHOW_FULL_RESOURCES`: Optional, `true` registers the verbose `/full` drill-in resources; defaults to `false` (hidden)
 
 ### .env Files
 

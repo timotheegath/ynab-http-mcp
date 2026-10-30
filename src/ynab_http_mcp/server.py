@@ -13,6 +13,8 @@ import ynab_http_mcp.tools.money_movements as money_movement_tools
 import ynab_http_mcp.tools.payees as payee_tools
 import ynab_http_mcp.tools.planning as planning_tools
 import ynab_http_mcp.tools.transactions as transaction_tools
+from ynab_http_mcp.config import full_resources_enabled
+from ynab_http_mcp.health import register_health
 from ynab_http_mcp.ynab_service import YnabService
 
 # Load .env
@@ -31,12 +33,22 @@ else:
         "\033[1;32m✅  DEV MODE — safe to experiment (ENVIRONMENT=dev).\033[0m",
         file=sys.stderr,
     )
+
+_FULL_MODE = "shown" if full_resources_enabled() else "hidden"
+_FULL_RAW = os.getenv("SHOW_FULL_RESOURCES", "false")
+print(
+    f"ℹ️  FULL RESOURCES: {_FULL_MODE} (SHOW_FULL_RESOURCES={_FULL_RAW})",
+    file=sys.stderr,
+)
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Initialize FastMCP server
 HOST = "0.0.0.0"
 PORT = int(os.getenv("HTTP_PORT", 8000))
 mcp = FastMCP("ynab")
+# Liveness endpoint for the container HEALTHCHECK (see Dockerfile). Serves
+# GET /mcp/health and answers nothing else; it does not touch the YNAB API.
+register_health(mcp)
 # Create service:
 ynab_service = YnabService()
 # Register MCP tools:

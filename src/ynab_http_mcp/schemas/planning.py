@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 import ynab
 from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
-from ynab_http_mcp.schemas.categories import MCPCategoryGoal
+from ynab_http_mcp.schemas.categories import MCPCategoryGoal, is_internal_category
 
 
 def _convert_date_to_string(date_value: Any) -> Optional[str]:
@@ -26,6 +26,26 @@ def _convert_date_to_string(date_value: Any) -> Optional[str]:
     if isinstance(date_value, str):
         return date_value
     return str(date_value)
+
+
+def _strip_internal_categories(month_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """Drop YNAB's internal bookkeeping categories from a raw month dict.
+
+    The month detail carries one internal category ("Inflow: Ready to
+    Assign") whose balance is a Ready-to-Assign artifact, not money assigned
+    to a spendable category. Leaving it in place makes any total computed
+    over the month's category balances meaningless.
+    """
+    categories = month_dict.get("categories")
+    if not isinstance(categories, list):
+        return month_dict
+
+    month_dict["categories"] = [
+        category
+        for category in categories
+        if not (isinstance(category, dict) and category.get("internal"))
+    ]
+    return month_dict
 
 
 class MonthCategory(BaseModel):
@@ -68,6 +88,11 @@ class MonthCategory(BaseModel):
 class PlanMonth(BaseModel):
     """
     Simplified plan month model using basic data types.
+
+    The ``categories`` list holds only spendable categories: YNAB's internal
+    bookkeeping categories ("Inflow: Ready to Assign") are excluded because
+    their balances are Ready-to-Assign artifacts. Use ``to_be_budgeted`` for
+    the month's Ready-to-Assign amount.
     """
 
     month: str = Field(..., description="Month identifier (YYYY-MM)")
@@ -95,11 +120,15 @@ class PlanMonth(BaseModel):
         if "month" in month_data and isinstance(month_data["month"], date):
             month_data["month"] = month_data["month"].strftime("%Y-%m")
 
-        # Build lean MonthCategory list with nested lean goals
+        # Build lean MonthCategory list with nested lean goals.
+        # Internal categories ("Inflow: Ready to Assign") are excluded: their
+        # balances are Ready-to-Assign artifacts, not spendable category money.
         if "categories" in month_data:
             transformed_categories = []
             for category in month_data["categories"]:
                 raw_category = ynab.Category.model_validate(category)
+                if is_internal_category(raw_category):
+                    continue
                 transformed_categories.append(
                     MonthCategory(
                         category_id=str(raw_category.id),
@@ -152,7 +181,9 @@ class PlanMonthFull(PlanMonth):
             "the YNAB SDK exposes for a month detail, including the integer "
             "milliunit budget/activity/balance and the full raw goal field "
             "set. UUIDs are strings, datetimes are ISO dates, and YNAB-specific "
-            "import fields are removed."
+            "import fields are removed. Internal categories (e.g. 'Inflow: "
+            "Ready to Assign') are excluded from the category list so the "
+            "balances can be summed into a real total."
         ),
     )
 
@@ -166,6 +197,9 @@ class PlanMonthFull(PlanMonth):
             month_dict = data["data"]["month"]
         else:
             month_dict = data.get("month", {})
+        # Same exclusion as the lean layer, so the drill-in path cannot be
+        # used to reintroduce the internal Ready-to-Assign balance.
+        _strip_internal_categories(month_dict)
         return PlanMonthFull(
             **transformed_month.model_dump(),
             full_details=clean_ynab_data(month_dict),

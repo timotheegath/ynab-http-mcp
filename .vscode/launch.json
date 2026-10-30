@@ -1,26 +1,10 @@
 {
     "version": "0.2.0",
     "compounds": [
-        {
-            "name": "Dev: Attach + MCP Inspector",
-            "configurations": ["Dev: Attach Only", "MCP Inspector"],
-            "preLaunchTask": "compose: up dev",
-            "postDebugTask": "compose: down dev",
-            "stopAll": true
-        }
     ],
     "configurations": [
         {
-            "name": "Python Debugger: Module (local)",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "ynab_http_mcp",
-            "presentation": {
-                "hidden": true
-            }
-        },
-        {
-            "name": "Dev: Attach Only",
+            "name": "Dev: Attach + MCP Inspector",
             "type": "debugpy",
             "request": "attach",
             "connect": {
@@ -34,27 +18,8 @@
                 }
             ],
             "justMyCode": true,
-            "preLaunchTask": "compose: up dev",
-            "presentation": {
-                "hidden": false,
-                "group": "debug",
-                "order": 1
-            }
-        },
-        {
-            "name": "MCP Inspector",
-            "type": "node",
-            "request": "launch",
-            "runtimeExecutable": "npx",
-            "runtimeArgs": [
-                "--yes",
-                "@modelcontextprotocol/inspector",
-                "http://localhost:3000/mcp"
-            ],
-            "skipFiles": ["<node_internals>/**"],
-            "presentation": {
-                "hidden": true
-            }
+            "preLaunchTask": "run: compose up dev + mcp-inspector",
+            "postDebugTask": "compose: down dev"
         }
     ]
 }

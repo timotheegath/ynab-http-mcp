@@ -9,6 +9,7 @@ from ynab_http_mcp.schemas.planning import (
     PlanMonthFullResponse,
 )
 from ynab_http_mcp.schemas.categories import MCPCategory, MCPCategoryFull
+from ynab_http_mcp.tools._full import full_resource
 
 
 def register(mcp, ynab_service: YnabService):
@@ -28,7 +29,9 @@ def register(mcp, ynab_service: YnabService):
             "ISO date YYYY-MM-DD or YYYY-MM. Day is ignored.",
         ],
     ) -> str:
-        """Get the plan for a specific month with formatted budget/activity/balance per category."""
+        """Get the plan for a specific month with formatted budget/activity/balance per category.
+        Internal categories (e.g. Inflow: Ready to Assign) are excluded; use to_be_budgeted
+        for the month's Ready to Assign amount."""
         raw_response = ynab_service.get_plan_month(date=month_date)
         validated_response = PlanMonthResponse.from_ynab_response(raw_response)
         return validated_response.model_dump_json(exclude_none=True)
@@ -76,7 +79,8 @@ def register(mcp, ynab_service: YnabService):
         cleaned_response = MCPCategory.from_ynab(raw_response)
         return cleaned_response.model_dump_json(exclude_none=True)
 
-    @mcp.resource(
+    @full_resource(
+        mcp,
         uri="data://months/{month_date}/full",
         mime_type="application/json",
         annotations={
@@ -100,7 +104,8 @@ def register(mcp, ynab_service: YnabService):
         wrapped = PlanMonthFullResponse(month=plan_full)
         return wrapped.model_dump_json(exclude_none=True)
 
-    @mcp.resource(
+    @full_resource(
+        mcp,
         uri="data://months/{month_date}/categories/{category_id}/full",
         mime_type="application/json",
         annotations={
