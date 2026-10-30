@@ -71,6 +71,7 @@ docker stop ynab-server
 | `HTTP_PORT` | optional | Port for the MCP server (default: `8000`) |
 | `LOG_LEVEL` | optional | Log verbosity (default: `debug`) |
 | `DEBUG_MODE` | optional | Enable verbose debug logging (`True`/`False`) |
+| `SHOW_FULL_RESOURCES` | optional | Register the verbose `/full` drill-in resources (`true`/`false`, default: `false` = hidden) |
 
 Templates:
 
@@ -102,6 +103,8 @@ Every entity follows a three-layer read convention:
 - **Aggregate** (`data://transactions/insights`) — pre-computed insights (monthly buckets, top payees/categories, spending trend).
 
 YNAB's internal bookkeeping categories (`Inflow: Ready to Assign`, `Uncategorized`) are excluded from category listings and plan months: their balances are cumulative Ready-to-Assign artifacts, not spendable money, so adding them to the real category balances would produce a meaningless total. Ready to Assign itself stays available on a plan month as `to_be_budgeted`.
+
+Full resources are **hidden by default** so the catalog stays lean. Set `SHOW_FULL_RESOURCES=true` in the env file to register them (the startup banner prints whether they are shown or hidden).
 
 ### Write tools
 
@@ -147,6 +150,8 @@ I am reaching the end of my Eating Out money. Which money could I reassign confi
 ### Full (drill-in) resources
 
 Append `/full` to any single-entity URI, e.g. `data://transactions/{id}/full`.
+
+Only registered when `SHOW_FULL_RESOURCES=true`; with the flag off these URIs are absent from the catalog entirely.
 
 ### Aggregate
 

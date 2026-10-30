@@ -9,6 +9,7 @@ from ynab_http_mcp.schemas.planning import (
     PlanMonthFullResponse,
 )
 from ynab_http_mcp.schemas.categories import MCPCategory, MCPCategoryFull
+from ynab_http_mcp.tools._full import full_resource
 
 
 def register(mcp, ynab_service: YnabService):
@@ -78,7 +79,8 @@ def register(mcp, ynab_service: YnabService):
         cleaned_response = MCPCategory.from_ynab(raw_response)
         return cleaned_response.model_dump_json(exclude_none=True)
 
-    @mcp.resource(
+    @full_resource(
+        mcp,
         uri="data://months/{month_date}/full",
         mime_type="application/json",
         annotations={
@@ -102,7 +104,8 @@ def register(mcp, ynab_service: YnabService):
         wrapped = PlanMonthFullResponse(month=plan_full)
         return wrapped.model_dump_json(exclude_none=True)
 
-    @mcp.resource(
+    @full_resource(
+        mcp,
         uri="data://months/{month_date}/categories/{category_id}/full",
         mime_type="application/json",
         annotations={
