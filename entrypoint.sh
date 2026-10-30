@@ -6,8 +6,12 @@ if [ -z "${YNAB_API_KEY}" ] && [ -f "/run/secrets/ynab_api_key" ]; then
     export YNAB_API_KEY=$(cat /run/secrets/ynab_api_key)
 fi
 
+# DEBUG_MODE may be written as True/TRUE/true depending on the .env file.
+# Normalize to lowercase once so the comparisons below are reliable.
+DEBUG_MODE_LOWER="$(printf '%s' "${DEBUG_MODE:-false}" | tr '[:upper:]' '[:lower:]')"
+
 # Print some debug info if DEBUG_MODE is enabled
-if [ "${DEBUG_MODE:-false}" = "true" ]; then
+if [ "$DEBUG_MODE_LOWER" = "true" ]; then
     echo "Starting YNAB HTTP MCP (DEBUG_MODE=true)..."
     echo "LOG_LEVEL: ${LOG_LEVEL:-info}"
     echo "YNAB_PLAN_ID: ${YNAB_PLAN_ID}"
@@ -19,7 +23,7 @@ fi
 
 # When DEBUG_MODE=true, launch under debugpy so VS Code can attach on port 5678.
 # Otherwise exec the CMD as-is.
-if [ "${DEBUG_MODE:-false}" = "true" ]; then
+if [ "$DEBUG_MODE_LOWER" = "true" ]; then
     exec python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m ynab_http_mcp
 else
     exec "$@"
