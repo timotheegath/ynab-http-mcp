@@ -180,21 +180,6 @@ class ClearCategoryGoalRequest(BaseModel):
         )  # type: ignore
 
 
-class CreateTransactionRequest(BaseModel):
-    """Request schema for creating a new transaction."""
-
-    account_id: str = Field(..., description="Account UUID")
-    date: str = Field(..., description="Date YYYY-MM-DD")
-    amount: int = Field(..., description="Amount in milliunits")
-    payee_id: Optional[str] = Field(None, description="Payee UUID")
-    payee_name: Optional[str] = Field(None, description="Payee name")
-    category_id: Optional[str] = Field(None, description="Category UUID")
-    memo: Optional[str] = Field(None, description="Memo")
-    cleared: str = Field("cleared", description="Cleared")
-    approved: bool = Field(True, description="Approved")
-    flag_color: Optional[str] = Field(None, description="Flag")
-
-
 class BudgetHealthResponse(BaseModel):
     """Response schema for budget health check."""
 

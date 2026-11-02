@@ -212,36 +212,3 @@ class UpdateCategoryRequest(BaseModel):
     balance_adjustment: Optional[int] = Field(
         None, description="Amount to adjust balance by in milliunits"
     )
-
-
-class CreateTransactionRequest(BaseModel):
-    """
-    Request schema for create_transaction service method.
-    """
-
-    account_id: str = Field(..., description="Account ID")
-    date: str = Field(
-        ...,
-        description="Transaction date in YYYY-MM-DD format",
-        pattern=r"^\d{4}-\d{2}-\d{2}$",
-    )
-    amount: int = Field(..., description="Transaction amount in milliunits")
-    payee_id: Optional[str] = Field(
-        None, description="Payee ID (required if payee_name not provided)"
-    )
-    payee_name: Optional[str] = Field(
-        None, description="Payee name (required if payee_id not provided)"
-    )
-    category_id: Optional[str] = Field(None, description="Category ID")
-    memo: Optional[str] = Field(None, description="Transaction memo", max_length=200)
-    cleared: str = Field(
-        "cleared",
-        description="Cleared status",
-        pattern=r"^(cleared|uncleared|reconciled)$",
-    )
-    approved: bool = Field(True, description="Whether transaction is approved")
-    flag_color: Optional[str] = Field(
-        None,
-        description="Flag color",
-        pattern=r"^(red|orange|yellow|green|blue|purple)$",
-    )

@@ -8,7 +8,6 @@ from ..ynab_service import YnabService
 from ..utils.schema_utils import clean_ynab_data
 from ..schemas.budget_tools import (
     AssignBudgetCategoryRequest,
-    CreateTransactionRequest,
     UpdateCategoryDetailsRequest,
     UpdateCategoryGoalRecurringRequest,
     UpdateCategoryTargetDateRequest,
@@ -76,26 +75,6 @@ def register(mcp, ynab_service: YnabService):
         return {
             "success": True,
             "category": clean_ynab_data(result.data.category.to_dict()),
-        }
-
-    @mcp.tool(annotations=ToolAnnotations(read_only_hint=False))
-    def create_transaction(request: CreateTransactionRequest) -> Dict[str, Any]:
-        """Create a new transaction."""
-        result = ynab_service.create_transaction(
-            request.account_id,
-            request.date,
-            request.amount,
-            request.payee_id,
-            request.payee_name,
-            request.category_id,
-            request.memo,
-            request.cleared,
-            request.approved,
-            request.flag_color,
-        )
-        return {
-            "success": True,
-            "transaction": clean_ynab_data(result.data.transaction.to_dict()),
         }
 
     @mcp.tool(annotations=ToolAnnotations(read_only_hint=True))
