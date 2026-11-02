@@ -15,6 +15,10 @@ from ynab.models.category import Category
 # Import the class to test
 from ynab_http_mcp.ynab_service import YnabService
 
+# A fixed plan id keeps these unit tests hermetic: without it the service
+# would resolve its target budget through a live /plans API call.
+TEST_PLAN_ID = UUID("12345678-1234-5678-1234-567812345678")
+
 
 def test_get_month_category_success():
     """Test get_month_category with valid parameters."""
@@ -38,7 +42,7 @@ def test_get_month_category_success():
         mock_call_api.return_value = mock_response
 
         # Create service instance
-        service = YnabService()
+        service = YnabService(plan_id=TEST_PLAN_ID)
 
         # Call the method
         test_date = datetime(2023, 12, 15, 10, 30, 0, tzinfo=timezone.utc)
@@ -67,7 +71,7 @@ def test_get_month_category_success():
 
 def test_get_month_category_invalid_category_id():
     """Test get_month_category with invalid category_id."""
-    service = YnabService()
+    service = YnabService(plan_id=TEST_PLAN_ID)
 
     # Test with empty string
     with pytest.raises(ValueError, match="category_id must be a non-empty string"):
@@ -80,7 +84,7 @@ def test_get_month_category_invalid_category_id():
 
 def test_get_month_category_invalid_month_date():
     """Test get_month_category with invalid month_date."""
-    service = YnabService()
+    service = YnabService(plan_id=TEST_PLAN_ID)
 
     # Test with invalid string format
     with pytest.raises(ValueError, match="Invalid month_date format"):
@@ -93,7 +97,7 @@ def test_get_month_category_invalid_month_date():
 
 def test_get_month_category_api_error():
     """Test get_month_category when YNAB API call fails."""
-    service = YnabService()
+    service = YnabService(plan_id=TEST_PLAN_ID)
 
     # Mock the _call_api to raise an exception
     with patch.object(YnabService, "_call_api") as mock_call_api:
@@ -125,7 +129,7 @@ def test_get_month_category_month_formatting():
     with patch.object(YnabService, "_call_api") as mock_call_api:
         mock_call_api.return_value = mock_response
 
-        service = YnabService()
+        service = YnabService(plan_id=TEST_PLAN_ID)
 
         # Test with different date formats - all should result in the same month string
         test_dates = [

@@ -6,9 +6,6 @@ Test script to verify schema metadata is accessible.
 import sys
 import json
 
-# Add project root to path
-sys.path.insert(0, "/home/timo/projects/ynab-http-mcp/src")
-
 from ynab_http_mcp.schemas import (
     MCPTransaction,
     MCPTransactions,

@@ -50,6 +50,9 @@ mcp = FastMCP("ynab")
 # GET /mcp/health and answers nothing else; it does not touch the YNAB API.
 register_health(mcp)
 # Create service:
+# Safe at import time: YnabService resolves its target budget lazily (see
+# YnabService.plan_id), so building the catalog performs no I/O and needs no
+# credentials. The /plans lookup only happens on the first actual tool call.
 ynab_service = YnabService()
 # Register MCP tools:
 category_tools.register(mcp, ynab_service)

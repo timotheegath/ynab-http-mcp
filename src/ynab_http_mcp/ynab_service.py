@@ -11,9 +11,30 @@ T = TypeVar("T")
 
 
 class YnabService:
-    def __init__(self):
+    def __init__(self, plan_id: Optional[UUID] = None):
         self.config = ynab.Configuration(access_token=os.getenv("YNAB_API_KEY"))
-        self.plan_id = YnabService._set_default_plan(self.config)
+        # The target budget is resolved lazily on first use (see `plan_id`).
+        # Constructing a service must never perform I/O: importing this module
+        # (and therefore the whole package) has to stay safe without
+        # credentials or network access.
+        self._plan_id: Optional[UUID] = plan_id
+
+    @property
+    def plan_id(self) -> UUID:
+        """The budget this service operates on.
+
+        Resolved on first access and cached afterwards. ``YNAB_PLAN_ID`` is
+        used when set; otherwise the most recently modified plan is looked up
+        from the YNAB API. Resolution is deferred so that building the MCP
+        catalog never triggers a live API call.
+        """
+        if self._plan_id is None:
+            self._plan_id = YnabService._set_default_plan(self.config)
+        return self._plan_id
+
+    @plan_id.setter
+    def plan_id(self, value: UUID) -> None:
+        self._plan_id = value
 
     def _call_api(self, api_cls, fn: Callable):
         with ynab.ApiClient(self.config) as api_client:
@@ -537,6 +558,11 @@ class YnabService:
         plan_id_str = os.getenv("YNAB_PLAN_ID")
         if plan_id_str is not None:
             return UUID(plan_id_str)
+        if not os.getenv("YNAB_API_KEY"):
+            raise RuntimeError(
+                "YNAB_API_KEY is not set, so the target budget cannot be "
+                "resolved. Set YNAB_API_KEY (and optionally YNAB_PLAN_ID)."
+            )
         with ynab.ApiClient(config) as api_client:
             plans_api = ynab.PlansApi(api_client)
             plans_response = plans_api.get_plans()
