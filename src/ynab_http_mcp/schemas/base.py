@@ -3,13 +3,12 @@ Base schema utilities for YNAB HTTP MCP schemas.
 
 This module provides core utilities for schema management and metadata.
 
-Read-side model convention: Lean / Full / Aggregate
-====================================================
+Read-side model convention: Lean / Aggregate
+============================================
 
-Every read resource in this server follows a three-layer convention. The
+Every read resource in this server follows a two-layer convention. The
 purpose is to keep the LLM's primary read path (Lean) cheap to read and
-reason about, while preserving an escape hatch (Full) for arithmetic and
-SDK-fidelity lookups, and a pre-computed view (Aggregate) for the
+reason about, while offering a pre-computed view (Aggregate) for the
 most-asked questions (top-N, trend, totals).
 
 Lean
@@ -43,36 +42,19 @@ the same value, drop the raw field; if a derived string captures the
 raw field, drop the raw field; if the LLM never needs it for filter /
 sort / date math, drop it.*
 
-Full
-----
-Every lean model has a ``*Full`` sibling that inherits the lean fields
-and adds exactly one new field, ``full_details: dict``. The dict
-contains the cleaned raw YNAB SDK object for the same entity — every
-field the SDK exposes (including fields the Lean layer dropped) is
-reachable by name inside the dict. The dict is a ``dict`` and is not
-typed as a Pydantic model (the SDK already has the model). Drill-in
-endpoints at ``data://{entity}/{id}/full`` return the ``*Full`` shape.
-
-Lean list responses never carry ``full_details``. The three layers
-(Lean / Full / Aggregate) live at distinct URIs and never co-occur in
-one response payload.
-
 Aggregate
 ---------
-Pre-computed insights exposed at dedicated surface points (currently
-``data://transactions/insights`` for transaction spending as a resource
-and ``get_money_movement_insights`` /
-``get_money_movement_insights_for_month`` for budget planning quality
-as FastMCP tools). Aggregates are derived server-side (top-N, trend,
-totals, breakdown) and embedded in their own response model. They are
-never embedded in Lean resources.
+Pre-computed insights exposed as dedicated FastMCP tools (currently
+``get_plan_insights`` for plan state and ``get_money_movement_insights``
+for budget planning quality). Aggregates are derived server-side
+(top-N, trend, totals, breakdown) and embedded in their own response
+model. They are never embedded in Lean resources.
 
 Serialization
 -------------
 Lean models are serialised with ``model_dump_json(exclude_none=True)``
 so that ``None`` fields are omitted from the JSON output — no
-``"field": null`` noise. The Full layer follows the same convention
-for its lean fields; ``full_details`` is itself never ``None``.
+``"field": null`` noise.
 """
 
 from typing import Any, Dict, Type, TypeVar, Generic, Self

@@ -13,9 +13,8 @@ transactions collection over a configurable time window:
   ``"decreasing"``, ``"stable"``) computed by linear regression over
   the monthly outflow series.
 
-Per the Lean / Full / Aggregate convention, this is the Aggregate
-layer. It is exposed at ``data://transactions/insights`` and never
-embedded in lean resources.
+Per the Lean / Aggregate convention, this is the Aggregate layer.
+Aggregates are never embedded in lean resources.
 """
 
 from __future__ import annotations

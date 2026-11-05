@@ -57,8 +57,7 @@ def create_sample_month_category():
         "category_id": str(uuid4()),
         "category_name": "Groceries",
         # Lean: integer milliunit budget/activity/balance are dropped; only
-        # formatted strings remain on the lean MonthCategory. The integer
-        # twins live on the Full layer's full_details dict.
+        # formatted strings remain on the lean MonthCategory.
         "budgeted_formatted": "$500.00",
         "activity_formatted": "-$300.00",
         "balance_formatted": "$200.00",

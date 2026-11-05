@@ -7,10 +7,9 @@ YNAB payee data using basic data types suitable for agents.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Self
+from typing import Dict, List, Optional, Self
 from pydantic import BaseModel, Field
 import ynab
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data
 from ynab_http_mcp.debug import debug_exception
 
 from .base import MCPResponse
@@ -57,33 +56,6 @@ class MCPPayee(MCPResponse[ynab.Payee]):
             transfer_account_id=(
                 str(raw.transfer_account_id) if raw.transfer_account_id else None
             ),
-        )
-
-
-class MCPPayeeFull(MCPPayee):
-    """Full sibling of ``MCPPayee`` — same lean fields plus ``full_details``.
-
-    ``full_details`` is the cleaned raw ``ynab.Payee`` as a dict and contains
-    every field the YNAB SDK exposes for a payee that the Lean layer dropped.
-    Use this when SDK-fidelity access is required.
-    """
-
-    full_details: Dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Cleaned raw ``ynab.Payee`` as a dict. Contains every field the "
-            "YNAB SDK exposes for a payee, including fields the Lean layer "
-            "dropped. UUIDs are strings, datetimes are ISO dates, and "
-            "YNAB-specific import fields are removed."
-        ),
-    )
-
-    @classmethod
-    def from_ynab(cls, raw: ynab.Payee) -> Self:
-        lean = MCPPayee.from_ynab(raw)
-        return cls(
-            **lean.model_dump(),
-            full_details=clean_ynab_data(raw.to_dict()),
         )
 
 

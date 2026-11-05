@@ -1,5 +1,5 @@
 from ynab_http_mcp.ynab_service import YnabService
-from ynab_http_mcp.schemas.categories import MCPCategories, MCPCategory, MCPCategoryFull
+from ynab_http_mcp.schemas.categories import MCPCategories, MCPCategory
 from uuid import UUID
 
 
@@ -17,15 +17,4 @@ def register(mcp, ynab_service: YnabService):
         """Get a single YNAB category using its ID."""
         raw_response = ynab_service.get_category(UUID(category_id))
         cleaned_response = MCPCategory.from_ynab(raw_response)
-        return cleaned_response.model_dump_json(exclude_none=True)
-
-    @mcp.resource(
-        uri="data://categories/{category_id}/full", mime_type="application/json"
-    )
-    async def get_category_full(category_id: str) -> str:
-        """Get a category with full_details for raw SDK fields (note, integer
-        milliunit budget/activity/balance, full goal field set). Use when
-        arithmetic or SDK-fidelity access is required beyond the lean endpoint."""
-        raw_response = ynab_service.get_category(UUID(category_id))
-        cleaned_response = MCPCategoryFull.from_ynab(raw_response)
         return cleaned_response.model_dump_json(exclude_none=True)

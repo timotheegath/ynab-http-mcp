@@ -16,13 +16,6 @@ a multi-month window, wired to the planning-aggregate builder.
 Any invalid parameter or upstream YNAB failure produces a fully zeroed
 response with ``error`` populated, so callers can pattern-match on
 ``response.error`` without handling partial data.
-
-History: this was originally a ``data://months/insights`` resource. That URI
-was shadowed by the ``data://months/{month_date}`` template in
-``tools/planning.py`` — FastMCP matched the shorter template first and parsed
-the literal ``insights`` as a month, so every read failed with
-"Invalid month_date format: 'insights'". The tool form is the primary
-interface; the resource is kept under a non-colliding URI for compatibility.
 """
 
 from __future__ import annotations
@@ -141,9 +134,8 @@ def _compute_insights_payload(
 ) -> str:
     """Resolve the window, fan out months, and serialize the aggregate.
 
-    Shared by the tool and the resource form so both return identical payloads
-    (and share the same TTL cache). Any invalid parameter or upstream failure
-    yields a fully zeroed response with ``error`` populated.
+    Any invalid parameter or upstream failure yields a fully zeroed response
+    with ``error`` populated.
     """
     try:
         since, until = resolve_month_window(since_date, until_date)
@@ -189,31 +181,4 @@ def register(mcp, ynab_service: YnabService):
         per-category budgeted/activity/balance series (milliunits + formatted),
         promoted goal blocks with a goal monthly rate, and derived arithmetic.
         Includes already-written future plan months; income is excluded."""
-        return _compute_insights_payload(since_date, until_date, ynab_service)
-
-    @mcp.resource(
-        uri="data://plan-insights{?since_date,until_date}",
-        mime_type="application/json",
-        annotations={
-            "title": "Read-only plan-state insights over a multi-month window.",
-            "destructiveHint": False,
-            "readOnlyHint": True,
-            "idempotentHint": True,
-        },
-    )
-    async def get_plan_insights_resource(
-        since_date: Annotated[
-            Optional[str],
-            "Month YYYY-MM or YYYY-MM-DD (day ignored). Defaults to 2 months ago.",
-        ] = None,
-        until_date: Annotated[
-            Optional[str],
-            "Month YYYY-MM or YYYY-MM-DD (day ignored, inclusive). Defaults to current month.",
-        ] = None,
-    ) -> str:
-        """Resource form of ``get_plan_insights``.
-
-        Kept for callers that read resources directly. Prefer the
-        ``get_plan_insights`` tool.
-        """
         return _compute_insights_payload(since_date, until_date, ynab_service)
