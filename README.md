@@ -93,17 +93,25 @@ cp .env.prod.example .env  # for production deploys only
 
 ## Key Capabilities
 
-### Read resources (Lean / Full / Aggregate)
+### Read resources (Lean)
 
-Every entity follows a three-layer read convention:
+Every entity follows a lean read convention: minimal formatted fields, fast and LLM-friendly.
 
-- **Lean** (`data://accounts`, `data://transactions`, …) — minimal fields, fast, LLM-friendly.
-- **Full** (`data://accounts/{id}/full`, …) — lean fields + `full_details` dict with every raw SDK field.
-- **Aggregate** (`data://transactions/insights`) — pre-computed insights (monthly buckets, top payees/categories, spending trend).
+- `data://accounts`, `data://categories`, `data://months`, `data://payees`, `data://transactions` and their single-entity / filtered variants (see the URI reference below).
+
+### Insight tools
+
+Pre-computed aggregates exposed as tools (not resources):
+
+- **`get_plan_insights(since_date?, until_date?)`** — plan-state insights over a multi-month window (Ready-to-Assign, per-category series, goals, derived arithmetic).
+- **`get_money_movement_insights(since_date?, until_date?)`** — money-movement planning quality over a window (default: last 3 months; pass both dates to drill into a single month).
+- **`check_budget_health(month)`** / **`get_spending_insights(month, category_id?)`** — per-month health and spending metrics.
 
 ### Write tools
 
-- **`update_month_category`** — modify a category's budgeted amount for a given month.
+- **`assign_budget_to_category`** — modify a category's budgeted amount for a given month.
+- **`set_category_goal`** — set or clear a category goal in one call (`monthly` / `recurring` / `target_by_date` / `clear`).
+- **`update_category_details`** — rename a category, edit its note, or move it to another group.
 - **`create_transaction`** — add a new transaction.
 
 ### Example agent prompts
@@ -141,16 +149,6 @@ I am reaching the end of my Eating Out money. Which money could I reassign confi
 | `data://payees/{id}/transactions` | Per-payee transactions |
 | `data://budget/check-health/{month}` | Budget health metrics |
 | `data://budget/spending-insights/{month}` | Spending analysis |
-
-### Full (drill-in) resources
-
-Append `/full` to any single-entity URI, e.g. `data://transactions/{id}/full`.
-
-### Aggregate
-
-| URI | Description |
-|---|---|
-| `data://transactions/insights` | Pre-computed insights (last 3 months by default) |
 
 ---
 

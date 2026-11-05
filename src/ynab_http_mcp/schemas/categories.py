@@ -7,13 +7,11 @@ YNAB category data using basic data types suitable for agents.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Dict, Optional, List, Self
+from typing import ClassVar, Optional, List, Self
 
 from pydantic import Field
 
 import ynab
-
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data
 
 from .base import MCPResponse, uuid_type, date_type
 
@@ -195,9 +193,7 @@ class MCPCategoryGoal(MCPResponse[ynab.Category]):
 
     Every other goal attribute the YNAB SDK exposes
     (``goal_under_funded``, ``goal_overall_left``, ``goal_cadence``,
-    ``goal_cadence_frequency``, ``goal_target``, etc.) is dropped from
-    the Lean layer and reachable only via the Full layer
-    (``data://categories/{id}/full`` → ``full_details``).
+    ``goal_cadence_frequency``, ``goal_target``, etc.) is dropped.
     """
 
     goal_type: Optional[str] = Field(
@@ -364,50 +360,3 @@ class MCPCategories(MCPResponse[ynab.CategoriesResponse]):
                 continue
             groups.append(MCPCategoryGroup.from_ynab(ynab_group))
         return cls(category_groups=groups)
-
-
-# ---------------------------------------------------------------------------
-# Full layer — inherits every lean field and adds one ``full_details`` dict
-# carrying the cleaned raw ``ynab.Category`` for the same entity. The Full
-# layer is the drill-in escape hatch for fields the Lean layer dropped
-# (``note``, integer milliunit budget/activity/balance, the full goal raw
-# field set, etc.).
-# ---------------------------------------------------------------------------
-
-
-class MCPCategoryFull(MCPCategory):
-    """Full sibling of ``MCPCategory`` — same lean fields plus ``full_details``.
-
-    Built from a raw ``ynab.Category`` (or wrapped ``ynab.CategoryResponse``)
-    via ``MCPCategoryFull.from_ynab``; the lean fields are populated by the
-    parent ``from_ynab`` and ``full_details`` is the cleaned raw dict.
-    """
-
-    full_details: Dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Cleaned raw ``ynab.Category`` as a dict. Contains every field the "
-            "YNAB SDK exposes for a category, including fields the Lean layer "
-            "dropped (``note``, integer milliunit budget/activity/balance, the "
-            "full goal raw field set, etc.). UUIDs are strings, datetimes are "
-            "ISO dates, and YNAB-specific import fields are removed."
-        ),
-    )
-
-    @classmethod
-    def from_ynab(cls, raw: ynab.Category | ynab.CategoryResponse) -> Self:
-        """Build an ``MCPCategoryFull`` from a raw ``ynab.Category``.
-
-        Reuses the lean ``MCPCategory.from_ynab`` to populate the lean fields,
-        then attaches the cleaned raw ``to_dict()`` under ``full_details``.
-        """
-        if isinstance(raw, ynab.CategoryResponse):
-            raw_cat: ynab.Category = raw.data.category
-        else:
-            raw_cat = raw
-
-        lean = MCPCategory.from_ynab(raw_cat)
-        return cls(
-            **lean.model_dump(),
-            full_details=clean_ynab_data(raw_cat.to_dict()),
-        )

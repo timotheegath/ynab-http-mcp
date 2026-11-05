@@ -18,10 +18,9 @@ movement collection over a configurable time window:
 - ``planning_health`` — a derived label (``"excellent"`` / ``"healthy"``
   / ``"mixed"`` / ``"reactive"``) summarising planning quality
 
-Per the Lean / Full / Aggregate convention, this is the Aggregate
-layer. It is exposed at ``data://money-movements/insights`` and
-``data://months/{month_date}/money-movements/insights`` and never
-embedded in lean resources.
+Per the Lean / Aggregate convention, this is the Aggregate layer. It is
+exposed via the ``get_money_movement_insights`` tool and never embedded
+in lean resources.
 """
 
 from __future__ import annotations

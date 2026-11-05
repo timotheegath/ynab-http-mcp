@@ -12,9 +12,7 @@ from ..schemas.budget_tools import (
     AssignBudgetCategoryRequest,
     CreateTransactionRequest,
     UpdateCategoryDetailsRequest,
-    UpdateCategoryGoalRecurringRequest,
-    UpdateCategoryTargetDateRequest,
-    ClearCategoryGoalRequest,
+    SetCategoryGoalRequest,
     BudgetHealthResponse,
     SpendingInsightsResponse,
 )
@@ -38,21 +36,16 @@ def register(mcp, ynab_service: YnabService):
         }
 
     @mcp.tool(annotations=ToolAnnotations(destructive_hint=True))
-    def update_category_goal_to_recurring(
-        request: UpdateCategoryGoalRecurringRequest,
+    def set_category_goal(
+        request: SetCategoryGoalRequest,
     ) -> Dict[str, Any]:
-        """Update a category's goal to a recurring goal."""
-        result = ynab_service.update_category(request.to_update_category_request())
-        return {
-            "success": True,
-            "category": clean_ynab_data(result.data.category.to_dict()),
-        }
+        """Set or clear a category's goal in one call.
 
-    @mcp.tool(annotations=ToolAnnotations(destructive_hint=True))
-    def update_category_goal_to_target_date(
-        request: UpdateCategoryTargetDateRequest,
-    ) -> Dict[str, Any]:
-        """Update a category's goal to set aside until a target date."""
+        goal_type picks the goal: "monthly" saves goal_target each month,
+        "recurring" sets a NEED goal repeated on goal_frequency with
+        goal_needs_whole_amount, "target_by_date" sets a NEED goal saved by
+        goal_target_date, and "clear" removes the goal entirely.
+        """
         result = ynab_service.update_category(request.to_update_category_request())
         return {
             "success": True,
@@ -64,15 +57,6 @@ def register(mcp, ynab_service: YnabService):
         request: UpdateCategoryDetailsRequest,
     ) -> Dict[str, Any]:
         """Update a category's name, note, or category group assignment."""
-        result = ynab_service.update_category(request.to_update_category_request())
-        return {
-            "success": True,
-            "category": clean_ynab_data(result.data.category.to_dict()),
-        }
-
-    @mcp.tool(annotations=ToolAnnotations(destructive_hint=True))
-    def clear_category_goals(request: ClearCategoryGoalRequest) -> Dict[str, Any]:
-        """Clear a category's goal."""
         result = ynab_service.update_category(request.to_update_category_request())
         return {
             "success": True,
