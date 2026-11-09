@@ -224,6 +224,10 @@ __marimo__/
 
 openspec/changes/
 
+# MCP eval spike output. Contains real budget figures (account names and
+# balances) from the dev plan, and must never be committed.
+eval-reports/
+
 # BEGIN oh-my-opencode-slim worktrees
 .slim/worktrees/
 .slim/worktrees.json

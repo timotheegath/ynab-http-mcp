@@ -9,7 +9,7 @@
 #
 # Override DEBUG_MODE in .env.dev to false for plain iteration without a debugger.
 services:
-  ynabhttpmcp:
+  ynab-mcp:
     env_file: .env.dev
     ports:
       - "3001:3001"   # MCP HTTP endpoint

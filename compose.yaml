@@ -1,6 +1,7 @@
 services:
-  ynabhttpmcp:
-    image: ynabhttpmcp
+  ynab-mcp:
+    container_name: ynab-mcp
+    image: ynab-mcp-server
     build:
       context: .
       dockerfile: ./Dockerfile

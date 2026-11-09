@@ -1,5 +1,6 @@
 from ynab_http_mcp.ynab_service import YnabService
 from ynab_http_mcp.schemas.categories import MCPCategories, MCPCategory, MCPCategoryFull
+from ynab_http_mcp.tools._full import full_resource
 from uuid import UUID
 
 
@@ -7,7 +8,9 @@ def register(mcp, ynab_service: YnabService):
 
     @mcp.resource(uri="data://categories", mime_type="application/json")
     async def get_categories() -> str:
-        """Get a flat list of all YNAB categories."""
+        """Get YNAB categories grouped by category group. Internal categories
+        (e.g. Inflow: Ready to Assign) are excluded, so the category balances
+        can be summed into a real total."""
         raw_response = ynab_service.get_categories()
         cleaned_response = MCPCategories.from_ynab(raw_response)
         return cleaned_response.model_dump_json(exclude_none=True)
@@ -19,8 +22,10 @@ def register(mcp, ynab_service: YnabService):
         cleaned_response = MCPCategory.from_ynab(raw_response)
         return cleaned_response.model_dump_json(exclude_none=True)
 
-    @mcp.resource(
-        uri="data://categories/{category_id}/full", mime_type="application/json"
+    @full_resource(
+        mcp,
+        uri="data://categories/{category_id}/full",
+        mime_type="application/json",
     )
     async def get_category_full(category_id: str) -> str:
         """Get a category with full_details for raw SDK fields (note, integer

@@ -1,7 +1,9 @@
 # All transaction actions.
 from ynab_http_mcp.ynab_service import YnabService
-from typing import Annotated, Literal
+from typing import Annotated, Any, Dict, Literal
+from mcp.types import ToolAnnotations
 from ynab_http_mcp.schemas.transactions import (
+    CreateTransactionRequest,
     MCPTransactions,
     MCPTransaction,
     MCPTransactionFull,
@@ -13,10 +15,32 @@ from ynab_http_mcp.schemas.transaction_aggregate import (
     TransactionInsightsResponse,
 )
 from ynab_http_mcp.utils.dates import parse_date
+from ynab_http_mcp.utils.schema_utils import clean_ynab_data
+from ynab_http_mcp.tools._full import full_resource
 import json
 
 
 def register(mcp, ynab_service: YnabService):
+
+    @mcp.tool(annotations=ToolAnnotations(read_only_hint=False))
+    def create_transaction(request: CreateTransactionRequest) -> Dict[str, Any]:
+        """Create a new transaction."""
+        result = ynab_service.create_transaction(
+            request.account_id,
+            request.date,
+            request.amount,
+            request.payee_id,
+            request.payee_name,
+            request.category_id,
+            request.memo,
+            request.cleared,
+            request.approved,
+            request.flag_color,
+        )
+        return {
+            "success": True,
+            "transaction": clean_ynab_data(result.data.transaction.to_dict()),
+        }
 
     @mcp.resource(
         uri="data://transactions{?since_date,until_date,type,limit}",
@@ -193,7 +217,9 @@ def register(mcp, ynab_service: YnabService):
         validated_response = MCPTransaction.from_ynab(raw_response)
         return validated_response.model_dump_json(exclude_none=True)
 
-    @mcp.resource(uri="data://transactions/{id}/full", mime_type="application/json")
+    @full_resource(
+        mcp, uri="data://transactions/{id}/full", mime_type="application/json"
+    )
     async def get_single_transaction_full(
         id: Annotated[
             str,

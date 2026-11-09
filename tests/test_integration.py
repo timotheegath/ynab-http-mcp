@@ -7,9 +7,6 @@ import sys
 from datetime import date
 from uuid import uuid4
 
-# Add project root to path
-sys.path.insert(0, "/home/timo/projects/ynab-http-mcp/src")
-
 from ynab_http_mcp.schemas.transactions import MCPTransaction, MCPTransactions
 from ynab_http_mcp.schemas.categories import MCPCategory
 from ynab_http_mcp.schemas.planning import (

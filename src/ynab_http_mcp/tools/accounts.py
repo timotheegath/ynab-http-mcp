@@ -1,5 +1,6 @@
 from ynab_http_mcp.ynab_service import YnabService
 from ynab_http_mcp.schemas.accounts import MCPAccounts, MCPAccount, MCPAccountFull
+from ynab_http_mcp.tools._full import full_resource
 from uuid import UUID
 
 
@@ -19,7 +20,9 @@ def register(mcp, ynab_service: YnabService):
         cleaned_response = MCPAccount.from_ynab(raw_response)
         return cleaned_response.model_dump_json(exclude_none=True)
 
-    @mcp.resource(uri="data://accounts/{account_id}/full", mime_type="application/json")
+    @full_resource(
+        mcp, uri="data://accounts/{account_id}/full", mime_type="application/json"
+    )
     async def get_account_full(account_id: str) -> str:
         """Get an account with full_details for raw SDK fields (note, integer
         milliunit balance, interest_rate). Use when arithmetic or SDK-fidelity

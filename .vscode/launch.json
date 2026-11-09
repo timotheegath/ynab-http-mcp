@@ -18,7 +18,7 @@
                 }
             ],
             "justMyCode": true,
-            "preLaunchTask": "run: compose up + mcp-inspector",
+            "preLaunchTask": "run: compose up dev + mcp-inspector",
             "postDebugTask": "compose: down dev"
         }
     ]

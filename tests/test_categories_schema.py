@@ -60,12 +60,13 @@ def _make_group_with_categories(
     group_id: UUID = GRP_UUID,
     group_name: str = "Bills",
     deleted: bool = False,
+    internal: bool = False,
 ) -> ynab.CategoryGroupWithCategories:
     return ynab.CategoryGroupWithCategories(
         id=group_id,
         name=group_name,
         hidden=False,
-        internal=False,
+        internal=internal,
         deleted=deleted,
         categories=list(categories),
     )
@@ -561,6 +562,41 @@ class TestMCPCategoryGroupFromYnab:
 
         assert [c.name for c in result.categories] == ["Active", "Deleted"]
 
+    def test_default_hides_internal_categories(self) -> None:
+        # YNAB's "Inflow: Ready to Assign" is an internal bookkeeping
+        # category: its balance is a cumulative artifact, so it must not
+        # appear in a listing whose balances can be summed.
+        spendable = _make_category(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
+            name="Groceries",
+        )
+        internal = _make_category(
+            id=UUID("00000000-0000-0000-0000-0000000000ff"),
+            name="Inflow: Ready to Assign",
+            internal=True,
+            balance=126466520,
+        )
+        group = _make_group_with_categories(spendable, internal)
+
+        result = MCPCategoryGroup.from_ynab(group)
+
+        assert [c.name for c in result.categories] == ["Groceries"]
+
+    def test_hide_internal_disabled_subclass_keeps_internal_categories(self) -> None:
+        class ShowAll(MCPCategoryGroup):
+            HIDE_INTERNAL = False
+
+        spendable = _make_category(name="Groceries")
+        internal = _make_category(name="Inflow: Ready to Assign", internal=True)
+        group = _make_group_with_categories(spendable, internal)
+
+        result = ShowAll.from_ynab(group)
+
+        assert [c.name for c in result.categories] == [
+            "Groceries",
+            "Inflow: Ready to Assign",
+        ]
+
 
 # ---------------------------------------------------------------------------
 # MCPCategories.from_ynab
@@ -651,6 +687,91 @@ class TestMCPCategoriesFromYnab:
         # still applies to its inner categories.
         assert [g.name for g in result.category_groups] == ["Active", "Deleted"]
         assert [c.name for c in result.category_groups[1].categories] == ["InDeleted"]
+
+    def test_default_hides_internal_group(self) -> None:
+        # YNAB returns an internal category group holding the "Inflow: Ready
+        # to Assign" pseudo-category. Its balance is a cumulative artifact,
+        # so the whole group is dropped from the listing.
+        internal_cat = _make_category(
+            id=UUID("00000000-0000-0000-0000-0000000000ff"),
+            name="Inflow: Ready to Assign",
+            internal=True,
+            balance=126466520,
+        )
+        internal_group = _make_group_with_categories(
+            internal_cat,
+            group_name="Internal",
+            group_id=UUID("33333333-3333-3333-3333-333333333333"),
+            internal=True,
+        )
+        active_group = _make_group_with_categories(
+            _make_category(name="Groceries"),
+            group_name="Bills",
+        )
+        response = _make_categories_response(internal_group, active_group)
+
+        result = MCPCategories.from_ynab(response)
+
+        assert [g.name for g in result.category_groups] == ["Bills"]
+        assert [c.name for c in result.category_groups[0].categories] == ["Groceries"]
+
+    def test_hide_internal_disabled_subclass_keeps_internal_group(self) -> None:
+        class ShowAll(MCPCategories):
+            HIDE_INTERNAL = False
+
+        internal_cat = _make_category(
+            name="Inflow: Ready to Assign", internal=True, balance=126466520
+        )
+        internal_group = _make_group_with_categories(
+            internal_cat,
+            group_name="Internal",
+            group_id=UUID("33333333-3333-3333-3333-333333333333"),
+            internal=True,
+        )
+        response = _make_categories_response(internal_group)
+
+        result = ShowAll.from_ynab(response)
+
+        # The group survives, but the group-level filter still drops its
+        # internal category.
+        assert [g.name for g in result.category_groups] == ["Internal"]
+        assert result.category_groups[0].categories == []
+
+    def test_internal_category_inside_regular_group_is_hidden(self) -> None:
+        # Defensive: the category's own flag wins even if the group is not
+        # flagged internal.
+        internal_cat = _make_category(
+            name="Inflow: Ready to Assign", internal=True, balance=126466520
+        )
+        group = _make_group_with_categories(internal_cat, group_name="Bills")
+        response = _make_categories_response(group)
+
+        result = MCPCategories.from_ynab(response)
+
+        assert result.category_groups[0].categories == []
+
+    def test_internal_group_with_user_categories_is_kept(self) -> None:
+        # YNAB marks the "Credit Card Payments" group as internal, yet it
+        # holds user categories carrying real balances. Those must survive —
+        # only the group's own bookkeeping is dropped.
+        card_cat = _make_category(
+            id=UUID("00000000-0000-0000-0000-0000000000aa"),
+            name="Barclaycard",
+            balance=20400,
+        )
+        group = _make_group_with_categories(
+            card_cat,
+            group_name="Credit Card Payments",
+            group_id=UUID("44444444-4444-4444-4444-444444444444"),
+            internal=True,
+        )
+        response = _make_categories_response(group)
+
+        result = MCPCategories.from_ynab(response)
+
+        assert [g.name for g in result.category_groups] == ["Credit Card Payments"]
+        assert [c.name for c in result.category_groups[0].categories] == ["Barclaycard"]
+        assert result.category_groups[0].categories[0].balance_formatted is None
 
 
 # ---------------------------------------------------------------------------

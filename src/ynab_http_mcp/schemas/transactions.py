@@ -6,7 +6,7 @@ YNAB transaction data using basic data types suitable for agents.
 """
 
 from typing import Any, ClassVar, Dict, Optional, List, Self
-from pydantic import Field
+from pydantic import BaseModel, Field
 import ynab
 from ynab_http_mcp.utils.schema_utils import (
     clean_enum_for_MCP_output,
@@ -233,3 +233,18 @@ class MCPTransactions(
             transactions.append(MCPTransaction.from_ynab(transaction))
         # Convert to dict and clean data using unified function
         return cls(transactions=transactions)
+
+
+class CreateTransactionRequest(BaseModel):
+    """Request schema for creating a new transaction."""
+
+    account_id: str = Field(..., description="Account UUID")
+    date: str = Field(..., description="Date YYYY-MM-DD")
+    amount: int = Field(..., description="Amount in milliunits")
+    payee_id: Optional[str] = Field(None, description="Payee UUID")
+    payee_name: Optional[str] = Field(None, description="Payee name")
+    category_id: Optional[str] = Field(None, description="Category UUID")
+    memo: Optional[str] = Field(None, description="Memo")
+    cleared: str = Field("cleared", description="Cleared")
+    approved: bool = Field(True, description="Approved")
+    flag_color: Optional[str] = Field(None, description="Flag")

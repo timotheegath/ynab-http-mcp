@@ -10,7 +10,6 @@ from ..ynab_service import YnabService, PlanMonthNotFoundError
 from ..utils.schema_utils import clean_ynab_data
 from ..schemas.budget_tools import (
     AssignBudgetCategoryRequest,
-    CreateTransactionRequest,
     UpdateCategoryDetailsRequest,
     UpdateCategoryGoalRecurringRequest,
     UpdateCategoryTargetDateRequest,
@@ -19,6 +18,7 @@ from ..schemas.budget_tools import (
     SpendingInsightsResponse,
 )
 from ..schemas.transaction_aggregate import _ynab_format
+from ..schemas.categories import is_internal_category
 
 
 def register(mcp, ynab_service: YnabService):
@@ -79,26 +79,6 @@ def register(mcp, ynab_service: YnabService):
             "category": clean_ynab_data(result.data.category.to_dict()),
         }
 
-    @mcp.tool(annotations=ToolAnnotations(read_only_hint=False))
-    def create_transaction(request: CreateTransactionRequest) -> Dict[str, Any]:
-        """Create a new transaction."""
-        result = ynab_service.create_transaction(
-            request.account_id,
-            request.date,
-            request.amount,
-            request.payee_id,
-            request.payee_name,
-            request.category_id,
-            request.memo,
-            request.cleared,
-            request.approved,
-            request.flag_color,
-        )
-        return {
-            "success": True,
-            "transaction": clean_ynab_data(result.data.transaction.to_dict()),
-        }
-
     @mcp.tool(annotations=ToolAnnotations(read_only_hint=True))
     def check_budget_health(
         month: Annotated[str, "Month YYYY-MM"],
@@ -138,6 +118,13 @@ def register(mcp, ynab_service: YnabService):
         total_categories = 0
 
         for category in month_detail.categories:
+            # Internal categories (e.g. "Inflow: Ready to Assign") carry a
+            # cumulative Ready-to-Assign balance, not spendable category money.
+            # Excluding them keeps the health metrics and any total computed
+            # from them meaningful.
+            if is_internal_category(category):
+                continue
+
             cat_budgeted = category.budgeted
             cat_activity = category.activity
             cat_balance = category.balance

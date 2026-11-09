@@ -132,7 +132,7 @@ def register(mcp, ynab_service: YnabService):
             "ISO date YYYY-MM-DD (exclusive). Defaults to first day of month after current.",
         ] = None,
     ) -> MoneyMovementInsightsResponse:
-        """Get pre-computed money-movement insights over a window:
+        """Get pre-computed insights about money movement between categories over a window:
         monthly buckets, to-be-assigned vs other-category split, top-5 source /
         destination categories, recurring pairs, monthly trend,
         proactive_pct, and a planning_health summary. Default window is

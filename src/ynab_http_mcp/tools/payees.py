@@ -5,6 +5,7 @@ from ynab_http_mcp.schemas.payees import (
     MCPPayee,
     MCPPayeeFull,
 )
+from ynab_http_mcp.tools._full import full_resource
 from ynab_http_mcp.debug import debug_exception
 
 
@@ -35,7 +36,7 @@ def register(mcp, ynab_service: YnabService):
             cleaned = MCPPayee(id="", name="", deleted=False, transfer_account_id=None)
         return cleaned.model_dump_json(exclude_none=True)
 
-    @mcp.resource(uri="data://payees/{id}/full", mime_type="application/json")
+    @full_resource(mcp, uri="data://payees/{id}/full", mime_type="application/json")
     async def get_single_payee_full(
         id: Annotated[
             str,

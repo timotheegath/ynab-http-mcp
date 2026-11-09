@@ -58,6 +58,7 @@ def _mock_category(
     budgeted_f: str | None = None,
     activity_f: str | None = None,
     balance_f: str | None = None,
+    internal: bool = False,
 ) -> MagicMock:
     cat = MagicMock()
     cat.id = UUID(cat_id) if len(cat_id) == 36 else cat_id
@@ -68,6 +69,9 @@ def _mock_category(
     cat.budgeted_formatted = budgeted_f
     cat.activity_formatted = activity_f
     cat.balance_formatted = balance_f
+    # The real SDK model always carries this flag; without it the MagicMock
+    # attribute would be truthy and the category would look internal.
+    cat.internal = internal
     return cat
 
 
@@ -278,6 +282,57 @@ class TestCheckBudgetHealthTool:
         assert result["total_budgeted_formatted"] == "$80.00"
         entry = result["category_health"]["00000000-0000-0000-0000-000000000001"]
         assert entry["budgeted_formatted"] == "$40.00"
+
+    def test_internal_categories_are_excluded(self, mock_service):
+        """YNAB's internal categories never reach the health metrics.
+
+        The internal "Inflow: Ready to Assign" category carries a cumulative
+        Ready-to-Assign balance, so it must not be counted as a spendable
+        category nor skew the health percentage.
+        """
+        real_cat = _mock_category(
+            "00000000-0000-0000-0000-000000000001",
+            "Groceries",
+            40000,
+            30000,
+            10000,
+            budgeted_f="$400.00",
+            activity_f="$300.00",
+            balance_f="$100.00",
+        )
+        internal_cat = _mock_category(
+            "00000000-0000-0000-0000-0000000000ff",
+            "Inflow: Ready to Assign",
+            126466520,
+            0,
+            126466520,
+            budgeted_f="$126,466.52",
+            activity_f="$0.00",
+            balance_f="$126,466.52",
+            internal=True,
+        )
+        md = _mock_month_detail(
+            166466520,
+            30000,
+            20000,
+            [real_cat, internal_cat],
+            budgeted_f="$166,466.52",
+            activity_f="$300.00",
+            tbb_f="$200.00",
+        )
+        mock_service.get_plan_month.return_value.data.month = md
+
+        client = _build_client(mock_service)
+        result = _call_tool(client, "check_budget_health", {"month": "2024-01"})
+
+        # The internal category is gone from the per-category metrics...
+        assert "00000000-0000-0000-0000-0000000000ff" not in result["category_health"]
+        assert list(result["category_health"]) == [
+            "00000000-0000-0000-0000-000000000001"
+        ]
+        # ...and it did not drag the health percentage down (1 healthy of 1).
+        assert result["health_percentage"] == 1.0
+        assert result["is_healthy"] is True
 
 
 # ---------------------------------------------------------------------------
