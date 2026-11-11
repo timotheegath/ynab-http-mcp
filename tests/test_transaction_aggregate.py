@@ -309,12 +309,11 @@ class TestPublicSchemaSurface:
 
 
 # ---------------------------------------------------------------------------
-# Lean / Full shape — verify the milliunit twin is dropped from the Lean
-# layer and lives only in the Full layer's ``full_details`` dict.
+# Lean shape — the milliunit twin is dropped from the Lean layer.
 # ---------------------------------------------------------------------------
 
 
-class TestLeanFullShape:
+class TestLeanShape:
     def test_lean_transaction_has_no_milli_amount(self) -> None:
         from ynab_http_mcp.schemas.transactions import MCPTransaction
 
@@ -329,49 +328,8 @@ class TestLeanFullShape:
         assert "milli_amount" not in MCPTransaction.MCPSubTransaction.model_fields
         assert "amount" in MCPTransaction.MCPSubTransaction.model_fields
 
-    def test_transaction_full_details_contains_integer_amount(self) -> None:
-        from uuid import UUID as _UUID
-        from ynab_http_mcp.schemas.transactions import MCPTransactionFull
-
-        # The Full layer exposes the cleaned raw ``ynab.TransactionDetail``
-        # including the integer ``amount`` (milliunits).
-        full_dump = MCPTransactionFull(
-            id=_UUID("00000000-0000-0000-0000-000000000001"),
-            date=date(2024, 1, 15),
-            amount="-$45.00",
-            memo=None,
-            cleared="cleared",
-            approved=True,
-            account_id=_UUID("00000000-0000-0000-0000-000000000002"),
-            account_name="Checking",
-            payee_id=None,
-            payee_name=None,
-            category_id=None,
-            category_name=None,
-            transfer_account_id=None,
-            transfer_transaction_id=None,
-            import_payee_name_original=None,
-            flag_color=None,
-            debt_transaction_type=None,
-            subtransactions=[],
-            full_details={"amount": -45000, "id": "abc"},
-        ).model_dump()
-        assert full_dump["amount"] == "-$45.00"
-        assert full_dump["full_details"]["amount"] == -45000
-
-    def test_transaction_full_inherits_lean_fields(self) -> None:
-        from ynab_http_mcp.schemas.transactions import (
-            MCPTransaction,
-            MCPTransactionFull,
-        )
-
-        # The *Full model adds exactly one new field on top of its lean parent.
-        full_fields = set(MCPTransactionFull.model_fields.keys())
-        lean_fields = set(MCPTransaction.model_fields.keys())
-        assert full_fields - lean_fields == {"full_details"}
-
     def test_lean_resource_never_embeds_full_details(self) -> None:
-        # The Lean layer does not include ``full_details`` on the read model.
+        # Read models do not include ``full_details``.
         from ynab_http_mcp.schemas.transactions import (
             MCPTransaction,
             MCPTransactions,

@@ -5,12 +5,11 @@ This module defines simplified Pydantic models for validating
 YNAB transaction data using basic data types suitable for agents.
 """
 
-from typing import Any, ClassVar, Dict, Optional, List, Self
-from pydantic import BaseModel, Field
+from typing import ClassVar, Optional, List, Self
+from pydantic import Field
 import ynab
 from ynab_http_mcp.utils.schema_utils import (
     clean_enum_for_MCP_output,
-    clean_ynab_data,
 )
 from .base import MCPResponse, date_type, uuid_type
 
@@ -19,15 +18,10 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
     """
     A transaction indicates a movement of money between accounts, or between an account and a payee.
 
-    Lean layer (per the Lean / Full / Aggregate convention):
-
     - ``amount`` is a formatted currency string (e.g. ``"-$45.00"``).
-    - ``milli_amount`` (integer milliunit twin) is **dropped** from the lean
-      layer; the integer value lives in
-      ``data://transactions/{id}/full`` under ``full_details.amount``.
+    - ``milli_amount`` (integer milliunit twin) is **dropped**.
     - Sub-transactions follow the same rule — ``MCPSubTransaction.amount`` is
-      a formatted string, and the integer value is reachable only via the
-      Full layer (``full_details.subtransactions[i].amount``).
+      a formatted string.
     """
 
     class MCPSubTransaction(MCPResponse[ynab.SubTransaction]):
@@ -164,46 +158,6 @@ class MCPTransaction(MCPResponse[ynab.TransactionDetail]):
             flag_color=clean_enum_for_MCP_output(raw.flag_color),
             debt_transaction_type=raw.debt_transaction_type,
             subtransactions=[cls.MCPSubTransaction.from_ynab(sub) for sub in subs],
-        )
-
-
-class MCPTransactionFull(MCPTransaction):
-    """Full sibling of ``MCPTransaction`` — same lean fields plus ``full_details``.
-
-    ``full_details`` is the cleaned raw ``ynab.TransactionDetail`` as a dict
-    and contains the integer ``amount`` (milliunits), integer ``subtransactions[i].amount``,
-    and every other field the Lean layer dropped (e.g. ``import_payee_name``,
-    ``matched_transaction_id``). Use this when arithmetic or SDK-fidelity
-    access is required.
-    """
-
-    full_details: Dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Cleaned raw ``ynab.TransactionDetail`` as a dict. Contains every "
-            "field the YNAB SDK exposes for a transaction, including the "
-            "integer ``amount`` in milliunits and every other field the Lean "
-            "layer dropped. UUIDs are strings, datetimes are ISO dates, and "
-            "YNAB-specific import fields are removed."
-        ),
-    )
-
-    @classmethod
-    def from_ynab(
-        cls,
-        raw: ynab.TransactionDetail | ynab.HybridTransaction | ynab.TransactionResponse,
-    ) -> Self:
-        if isinstance(raw, ynab.TransactionResponse):
-            raw_txn: ynab.TransactionDetail | ynab.HybridTransaction = (
-                raw.data.transaction
-            )
-        else:
-            raw_txn = raw
-
-        lean = MCPTransaction.from_ynab(raw_txn)
-        return cls(
-            **lean.model_dump(),
-            full_details=clean_ynab_data(raw_txn.to_dict()),
         )
 
 

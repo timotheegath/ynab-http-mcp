@@ -70,26 +70,26 @@ src/
     ├── server.py                   # FastMCP server implementation
     ├── debug.py                    # Debugging utilities
     ├── ynab_service.py             # YNAB SDK wrapper
-    ├── schemas/                    # Pydantic models (Lean / Full / Aggregate)
-    │   ├── base.py                 # Lean / Full / Aggregate convention docs
-    │   ├── accounts.py             # MCPAccount, MCPAccountFull
-    │   ├── categories.py           # MCPCategory, MCPCategoryGoal, MCPCategoryFull
-    │   ├── payees.py               # MCPPayee, MCPPayeeFull
-    │   ├── transactions.py         # MCPTransaction, MCPTransactionFull
-    │   ├── planning.py             # PlanMonth, PlanMonthFull, MonthCategory
+    ├── schemas/                    # Pydantic models (Lean / Aggregate)
+    │   ├── base.py                 # Lean / Aggregate convention docs
+    │   ├── accounts.py             # MCPAccount, MCPAccounts
+    │   ├── categories.py           # MCPCategory, MCPCategoryGoal, MCPCategoryGroup
+    │   ├── payees.py               # MCPPayee, MCPPayees
+    │   ├── transactions.py         # MCPTransaction, MCPTransactions
+    │   ├── planning.py             # PlanMonth, MonthCategory, PlanMonthResponse
     │   ├── transaction_aggregate.py # TransactionInsightsResponse (Aggregate)
     │   ├── money_movement_aggregate.py # MoneyMovementInsightsResponse (Aggregate)
     │   └── planning_aggregate.py   # PlanInsightsResponse (Aggregate)
-    ├── tools/                      # FastMCP resource registrations
-    │   ├── accounts.py             # data://accounts, data://accounts/{id}/full
-    │   ├── categories.py           # data://categories, data://categories/{id}/full
-    │   ├── payees.py               # data://payees, data://payees/{id}/full
-    │   ├── planning.py             # data://months, data://months/{ym}/full, ...
-    │   ├── planning_insights.py    # get_plan_insights tool + data://plan-insights resource
-    │   ├── transactions.py         # data://transactions, data://transactions/{id}/full,
-    │   │                           # data://transactions/insights
-    │   └── money_movements.py      # get_money_movement_insights,
-    │                               # get_money_movement_insights_for_month (tools)
+    ├── tools/                      # FastMCP resource/tool registrations
+    │   ├── accounts.py             # data://accounts, data://accounts/{id}
+    │   ├── categories.py           # data://categories, data://categories/{id}
+    │   ├── payees.py               # data://payees, data://payees/{id}
+    │   ├── planning.py             # data://months, data://months/{ym}, ...
+    │   ├── planning_insights.py    # get_plan_insights (tool)
+    │   ├── transactions.py         # data://transactions, data://transactions/{id}, ...
+    │   ├── budget_management.py    # assign_budget_to_category, set_category_goal,
+    │   │                           # update_category_details, create_transaction, ...
+    │   └── money_movements.py      # get_money_movement_insights (tool)
     ├── prompts.py                  # plan_expense MCP prompt
     └── utils/                      # helpers (dates, schema_utils)
 ```
@@ -172,9 +172,9 @@ uv run pytest tests/test_integration.py   # End-to-end lean shape
 - The project uses `uv` for package management and building
 - Lean resources are serialized with `exclude_none=True`; no
   `"key": null` noise in the wire format
-- `full_details` is a `dict`, not a Pydantic model — the YNAB SDK
-  already has the typed model; we ship a cleaned dict for LLM
-  navigation
+- The `/full` drill-in resources and the `*Full` schema siblings were
+  removed; insights are exposed as tools (`get_plan_insights`,
+  `get_money_movement_insights`), not resources
 
 ## Missing Components
 

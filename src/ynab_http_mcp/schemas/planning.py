@@ -8,13 +8,13 @@ YNAB planning/month data using basic data types suitable for agents.
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
 import ynab
-from ynab_http_mcp.utils.schema_utils import clean_ynab_data, simple_validate
-from ynab_http_mcp.schemas.categories import MCPCategoryGoal, is_internal_category
+from ynab_http_mcp.utils.schema_utils import simple_validate
+from ynab_http_mcp.schemas.categories import MCPCategoryGoal
 
 
 def _convert_date_to_string(date_value: Any) -> Optional[str]:
@@ -52,15 +52,10 @@ class MonthCategory(BaseModel):
     """
     Lean month category model.
 
-    Per the Lean / Full / Aggregate convention:
-
-    - Currency fields are exposed as formatted strings only
-      (``budgeted_formatted``, ``activity_formatted``, ``balance_formatted``).
-      The integer milliunit twins are dropped from the lean layer and live
-      only on the Full layer (``data://months/{ym}/full``).
-    - The goal is a nested lean ``MCPCategoryGoal`` (3 raw fields + 2
-      derived strings). The 11 dropped goal fields and the
-      ``goal_technical_details`` string live only on the Full layer.
+    Currency fields are exposed as formatted strings only
+    (``budgeted_formatted``, ``activity_formatted``, ``balance_formatted``).
+    The goal is a nested lean ``MCPCategoryGoal`` (3 raw fields + 2
+    derived strings).
     """
 
     category_id: str = Field(..., description="Category ID")
@@ -163,69 +158,6 @@ class PlanMonthResponse(BaseModel):
         final_response = {"month": transformed_month.model_dump()}
         validated_response = simple_validate(final_response, PlanMonthResponse)
         return validated_response
-
-
-class PlanMonthFull(PlanMonth):
-    """Full sibling of ``PlanMonth`` — same lean fields plus ``full_details``.
-
-    ``full_details`` is the cleaned raw ``ynab.MonthDetail`` as a dict and
-    contains the integer milliunit ``budgeted``/``activity``/``balance``,
-    the full raw goal field set, and every other field the Lean layer
-    dropped. Use this when arithmetic or SDK-fidelity access is required.
-    """
-
-    full_details: Dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Cleaned raw ``ynab.MonthDetail`` as a dict. Contains every field "
-            "the YNAB SDK exposes for a month detail, including the integer "
-            "milliunit budget/activity/balance and the full raw goal field "
-            "set. UUIDs are strings, datetimes are ISO dates, and YNAB-specific "
-            "import fields are removed. Internal categories (e.g. 'Inflow: "
-            "Ready to Assign') are excluded from the category list so the "
-            "balances can be summed into a real total."
-        ),
-    )
-
-    @staticmethod
-    def from_ynab_response(ynab_response: ynab.MonthDetailResponse) -> "PlanMonthFull":
-        transformed_month = PlanMonth.from_ynab_response(ynab_response)
-        # The raw MonthDetail is the inner month; rebuild a ynab object for
-        # clean_ynab_data via the same dict the service returned.
-        data = ynab_response.to_dict()
-        if "data" in data and "month" in data["data"]:
-            month_dict = data["data"]["month"]
-        else:
-            month_dict = data.get("month", {})
-        # Same exclusion as the lean layer, so the drill-in path cannot be
-        # used to reintroduce the internal Ready-to-Assign balance.
-        _strip_internal_categories(month_dict)
-        return PlanMonthFull(
-            **transformed_month.model_dump(),
-            full_details=clean_ynab_data(month_dict),
-        )
-
-
-class PlanMonthFullResponse(BaseModel):
-    """Drill-in response shape for a single plan month, including the
-    cleaned raw ``ynab.MonthDetail`` under ``full_details``."""
-
-    month: PlanMonthFull = Field(..., description="Plan month details (Full layer)")
-
-
-class MonthCategoryFull(MonthCategory):
-    """Full sibling of ``MonthCategory`` — same lean fields plus ``full_details``."""
-
-    full_details: Dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Cleaned raw ``ynab.Category`` (per-month) as a dict. Contains "
-            "every field the YNAB SDK exposes for the category in this "
-            "month, including the integer milliunit budget/activity/balance "
-            "and the full raw goal field set. UUIDs are strings, datetimes "
-            "are ISO dates, and YNAB-specific import fields are removed."
-        ),
-    )
 
 
 class PlanMonthSummary(BaseModel):
