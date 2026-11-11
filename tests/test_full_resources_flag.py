@@ -1,8 +1,9 @@
-"""Tests for the ``SHOW_FULL_RESOURCES`` env flag gating ``/full`` resources.
+"""Tests for the removed ``/full`` drill-in resources.
 
-The verbose ``/full`` drill-in resources are hidden by default so the
-agent-facing MCP catalog stays lean, and are only registered when the flag is
-explicitly enabled.
+The ``*Full`` schema siblings and the ``data://{entity}/{id}/full``
+resources were removed; insights are exposed as tools instead. The
+``SHOW_FULL_RESOURCES`` env flag no longer changes the advertised
+catalog, so no ``/full`` template may ever be registered.
 """
 
 from __future__ import annotations
@@ -15,15 +16,6 @@ import pytest
 # Ensure YNAB_API_KEY is set so YnabService can be constructed
 os.environ.setdefault("YNAB_API_KEY", "00000000-0000-0000-0000-000000000000")
 
-
-FULL_TEMPLATE_URIS = {
-    "data://accounts/{account_id}/full",
-    "data://categories/{category_id}/full",
-    "data://months/{month_date}/full",
-    "data://months/{month_date}/categories/{category_id}/full",
-    "data://payees/{id}/full",
-    "data://transactions/{id}/full",
-}
 
 LEAN_TEMPLATE_URIS = {
     "data://transactions/{id}",
@@ -77,44 +69,16 @@ def _fresh_catalog() -> dict:
     return asyncio.run(_build_catalog())
 
 
-def test_flag_unset_hides_full_resources(monkeypatch):
-    """With the flag unset, no ``/full`` resources are advertised."""
-    monkeypatch.delenv("SHOW_FULL_RESOURCES", raising=False)
+@pytest.mark.parametrize("value", [None, "false", "true", "1", "yes", "on"])
+def test_full_resources_are_never_advertised(monkeypatch, value):
+    """No ``/full`` template is registered for any flag spelling — the
+    Full layer was removed; the lean templates are unaffected."""
+    if value is None:
+        monkeypatch.delenv("SHOW_FULL_RESOURCES", raising=False)
+    else:
+        monkeypatch.setenv("SHOW_FULL_RESOURCES", value)
     catalog = _fresh_catalog()
 
-    assert catalog["template_uris"] & FULL_TEMPLATE_URIS == set()
-    assert LEAN_TEMPLATE_URIS <= catalog["template_uris"]
+    assert not any("/full" in uri for uri in catalog["template_uris"])
     assert not any("full" in name for name in catalog["tool_names"])
-
-
-def test_flag_false_hides_full_resources(monkeypatch):
-    """``SHOW_FULL_RESOURCES=false`` behaves like the flag being unset."""
-    monkeypatch.setenv("SHOW_FULL_RESOURCES", "false")
-    catalog = _fresh_catalog()
-
-    assert catalog["template_uris"] & FULL_TEMPLATE_URIS == set()
-
-
-def test_flag_true_shows_full_resources(monkeypatch):
-    """``SHOW_FULL_RESOURCES=true`` registers exactly the six ``/full`` URIs."""
-    monkeypatch.setenv("SHOW_FULL_RESOURCES", "true")
-    catalog = _fresh_catalog()
-
-    assert catalog["template_uris"] & FULL_TEMPLATE_URIS == FULL_TEMPLATE_URIS
-
-
-def test_flag_true_keeps_lean_resources(monkeypatch):
-    """Enabling full resources must not remove any lean templates."""
-    monkeypatch.setenv("SHOW_FULL_RESOURCES", "true")
-    catalog = _fresh_catalog()
-
     assert LEAN_TEMPLATE_URIS <= catalog["template_uris"]
-
-
-@pytest.mark.parametrize("value", ["1", "yes", "on"])
-def test_truthy_values_enable_full_resources(monkeypatch, value):
-    """Common truthy spellings are treated as enabled."""
-    monkeypatch.setenv("SHOW_FULL_RESOURCES", value)
-    catalog = _fresh_catalog()
-
-    assert catalog["template_uris"] & FULL_TEMPLATE_URIS == FULL_TEMPLATE_URIS

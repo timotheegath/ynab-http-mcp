@@ -12,7 +12,9 @@ import ynab_http_mcp.tools.categories as category_tools
 import ynab_http_mcp.tools.money_movements as money_movement_tools
 import ynab_http_mcp.tools.payees as payee_tools
 import ynab_http_mcp.tools.planning as planning_tools
+import ynab_http_mcp.tools.planning_insights as planning_insights_tools
 import ynab_http_mcp.tools.transactions as transaction_tools
+import ynab_http_mcp.prompts as prompts
 from ynab_http_mcp.config import full_resources_enabled
 from ynab_http_mcp.health import register_health
 from ynab_http_mcp.ynab_service import YnabService
@@ -50,6 +52,9 @@ mcp = FastMCP("ynab")
 # GET /mcp/health and answers nothing else; it does not touch the YNAB API.
 register_health(mcp)
 # Create service:
+# Safe at import time: YnabService resolves its target budget lazily (see
+# YnabService.plan_id), so building the catalog performs no I/O and needs no
+# credentials. The /plans lookup only happens on the first actual tool call.
 ynab_service = YnabService()
 # Register MCP tools:
 category_tools.register(mcp, ynab_service)
@@ -59,6 +64,9 @@ account_tools.register(mcp, ynab_service)
 payee_tools.register(mcp, ynab_service)
 budget_tools.register(mcp, ynab_service)
 money_movement_tools.register(mcp, ynab_service)
+planning_insights_tools.register(mcp, ynab_service)
+# Register MCP prompts:
+prompts.register(mcp)
 # For compatibility as resources are under-adopted.
 mcp.add_transform(ResourcesAsTools(mcp))
 

@@ -3,7 +3,7 @@
   "mcp": {
     "ynab-http-mcp": {
       "type": "remote",
-      "url": "http://localhost:3000/mcp",
+      "url": "http://localhost:3001/mcp",
       "timeout": 30000,
       "headers": {
         "Content-Type": "application/json"

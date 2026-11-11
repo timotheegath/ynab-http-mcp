@@ -1,15 +1,12 @@
 """
 Money movement insight tools for YNAB HTTP MCP.
 
-Exposes two read-only tools that compute planning-quality insights over
-a window of money movements:
+Exposes the read-only ``get_money_movement_insights(since_date, until_date)``
+tool, which computes planning-quality insights over a window of money
+movements (default: last 3 calendar months). Pass ``since_date`` /
+``until_date`` to drill into a single month.
 
-- ``get_money_movement_insights(since_date, until_date)`` — window view
-  (default: last 3 calendar months).
-- ``get_money_movement_insights_for_month(month_date)`` — single month
-  drill-in.
-
-Both tools return a ``MoneyMovementInsightsResponse`` Pydantic model.
+The tool returns a ``MoneyMovementInsightsResponse`` Pydantic model.
 Any ``ValueError`` or SDK failure produces a fully zeroed response with
 ``error`` populated so the caller can pattern-match on
 ``response.error`` without dealing with partial data.
@@ -28,7 +25,7 @@ from ynab_http_mcp.schemas.money_movement_aggregate import (
     build_money_movement_insights,
 )
 from ynab_http_mcp.schemas.transaction_aggregate import _default_window
-from ynab_http_mcp.utils.dates import parse_date, parse_month_date
+from ynab_http_mcp.utils.dates import parse_date
 
 
 def _empty_response(
@@ -132,7 +129,7 @@ def register(mcp, ynab_service: YnabService):
             "ISO date YYYY-MM-DD (exclusive). Defaults to first day of month after current.",
         ] = None,
     ) -> MoneyMovementInsightsResponse:
-        """Get pre-computed money-movement insights over a window:
+        """Get pre-computed insights about money movement between categories over a window:
         monthly buckets, to-be-assigned vs other-category split, top-5 source /
         destination categories, recurring pairs, monthly trend,
         proactive_pct, and a planning_health summary. Default window is
@@ -158,63 +155,6 @@ def register(mcp, ynab_service: YnabService):
                 period_end=until.isoformat(),
                 error="period_end must be strictly after period_start",
             )
-
-        category_name_lookup = _build_category_lookup(ynab_service)
-
-        try:
-            movements = ynab_service.get_money_movements(
-                since_date=since.isoformat(),
-                until_date=until.isoformat(),
-            )
-        except ValueError as exc:
-            return _empty_response(
-                period_start=since.isoformat(),
-                period_end=until.isoformat(),
-                buckets=_zero_buckets(since, until),
-                error=f"Invalid parameter: {exc}",
-            )
-        except Exception as exc:
-            return _empty_response(
-                period_start=since.isoformat(),
-                period_end=until.isoformat(),
-                buckets=_zero_buckets(since, until),
-                error=f"YNAB API failure: {exc}",
-            )
-
-        try:
-            return build_money_movement_insights(
-                movements, since, until, category_name_lookup
-            )
-        except Exception as exc:
-            return _empty_response(
-                period_start=since.isoformat(),
-                period_end=until.isoformat(),
-                buckets=_zero_buckets(since, until),
-                error=f"Aggregate computation failed: {exc}",
-            )
-
-    @mcp.tool(annotations=ToolAnnotations(read_only_hint=True), output_schema=None)
-    def get_money_movement_insights_for_month(
-        month_date: Annotated[
-            str,
-            "Month YYYY-MM or full ISO date YYYY-MM-DD. Day is ignored.",
-        ],
-    ) -> MoneyMovementInsightsResponse:
-        """Get pre-computed money-movement insights for a single month. Use to drill in from a window
-        response."""
-        try:
-            parsed = parse_month_date(month_date)
-        except ValueError as exc:
-            return _empty_response(error=f"Invalid month_date: {exc}")
-
-        since = parsed.date().replace(day=1)
-        # First day of next month
-        nm_year = since.year
-        nm_month = since.month + 1
-        if nm_month > 12:
-            nm_month = 1
-            nm_year += 1
-        until = date(nm_year, nm_month, 1)
 
         category_name_lookup = _build_category_lookup(ynab_service)
 

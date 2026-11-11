@@ -2,17 +2,16 @@
 Budget management tools for YNAB HTTP MCP.
 """
 
+import logging
 from typing import Optional, Dict, Any, Annotated
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-from ..ynab_service import YnabService
+from ..ynab_service import YnabService, PlanMonthNotFoundError
 from ..utils.schema_utils import clean_ynab_data
 from ..schemas.budget_tools import (
     AssignBudgetCategoryRequest,
-    CreateTransactionRequest,
     UpdateCategoryDetailsRequest,
-    UpdateCategoryGoalRecurringRequest,
-    UpdateCategoryTargetDateRequest,
-    ClearCategoryGoalRequest,
+    SetCategoryGoalRequest,
     BudgetHealthResponse,
     SpendingInsightsResponse,
 )
@@ -37,21 +36,16 @@ def register(mcp, ynab_service: YnabService):
         }
 
     @mcp.tool(annotations=ToolAnnotations(destructive_hint=True))
-    def update_category_goal_to_recurring(
-        request: UpdateCategoryGoalRecurringRequest,
+    def set_category_goal(
+        request: SetCategoryGoalRequest,
     ) -> Dict[str, Any]:
-        """Update a category's goal to a recurring goal."""
-        result = ynab_service.update_category(request.to_update_category_request())
-        return {
-            "success": True,
-            "category": clean_ynab_data(result.data.category.to_dict()),
-        }
+        """Set or clear a category's goal in one call.
 
-    @mcp.tool(annotations=ToolAnnotations(destructive_hint=True))
-    def update_category_goal_to_target_date(
-        request: UpdateCategoryTargetDateRequest,
-    ) -> Dict[str, Any]:
-        """Update a category's goal to set aside until a target date."""
+        goal_type picks the goal: "monthly" saves goal_target each month,
+        "recurring" sets a NEED goal repeated on goal_frequency with
+        goal_needs_whole_amount, "target_by_date" sets a NEED goal saved by
+        goal_target_date, and "clear" removes the goal entirely.
+        """
         result = ynab_service.update_category(request.to_update_category_request())
         return {
             "success": True,
@@ -69,42 +63,19 @@ def register(mcp, ynab_service: YnabService):
             "category": clean_ynab_data(result.data.category.to_dict()),
         }
 
-    @mcp.tool(annotations=ToolAnnotations(destructive_hint=True))
-    def clear_category_goals(request: ClearCategoryGoalRequest) -> Dict[str, Any]:
-        """Clear a category's goal."""
-        result = ynab_service.update_category(request.to_update_category_request())
-        return {
-            "success": True,
-            "category": clean_ynab_data(result.data.category.to_dict()),
-        }
-
-    @mcp.tool(annotations=ToolAnnotations(read_only_hint=False))
-    def create_transaction(request: CreateTransactionRequest) -> Dict[str, Any]:
-        """Create a new transaction."""
-        result = ynab_service.create_transaction(
-            request.account_id,
-            request.date,
-            request.amount,
-            request.payee_id,
-            request.payee_name,
-            request.category_id,
-            request.memo,
-            request.cleared,
-            request.approved,
-            request.flag_color,
-        )
-        return {
-            "success": True,
-            "transaction": clean_ynab_data(result.data.transaction.to_dict()),
-        }
-
     @mcp.tool(annotations=ToolAnnotations(read_only_hint=True))
     def check_budget_health(
         month: Annotated[str, "Month YYYY-MM"],
     ) -> BudgetHealthResponse:
         """Check budget health for a month."""
         # Get month data
-        month_detail = ynab_service.get_plan_month(month).data.month
+        try:
+            month_detail = ynab_service.get_plan_month(month).data.month
+        except PlanMonthNotFoundError as e:
+            raise ToolError(
+                f"No plan exists for month {e.month} — it is beyond the plan's horizon.",
+                log_level=logging.INFO,
+            ) from e
 
         # Calculate health metrics from month detail
         total_budgeted = month_detail.budgeted

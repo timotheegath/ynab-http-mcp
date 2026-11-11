@@ -417,7 +417,7 @@ class TestMCPCategoryGoalFromYnab:
 
     def test_lean_goal_exposes_exactly_five_fields(self) -> None:
         # Lean layer MUST keep only the 5 fields the spec requires.
-        # All other goal attributes are reachable only via full_details.
+        # All other goal attributes are dropped.
         field_names = set(MCPCategoryGoal.model_fields.keys())
         assert field_names == {
             "goal_type",

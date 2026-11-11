@@ -60,7 +60,7 @@ USER appuser
 # Documentation only: the server actually binds HTTP_PORT (default 8000, see
 # env var table in README / src/ynab_http_mcp/server.py). Deployments set
 # HTTP_PORT=3000 via .env.dev / .env.prod, which is what this EXPOSE refers to.
-EXPOSE 3000
+EXPOSE 3001
 
 # Health check - HTTP GET of the liveness endpoint.
 #
@@ -71,7 +71,7 @@ EXPOSE 3000
 # same env var the server does, with the same fallback, so the two cannot drift.
 # Stdlib only - python:3.12-slim already ships Python, so no curl is needed.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD python -c "import os, sys, urllib.request; port = os.getenv('HTTP_PORT', '8000'); sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:' + port + '/mcp/health', timeout=3).getcode() == 200 else 1)"
+  CMD curl -f http://localhost:3001/ || exit 1
 
 # Entry point script for flexibility
 COPY --chown=appuser:appuser entrypoint.sh /entrypoint.sh

@@ -82,8 +82,7 @@ def test_simple_validate_with_valid_data():
     data = {
         "id": "123e4567-e89b-12d3-a456-426614174000",
         "date": "2023-01-15",
-        # Lean: amount is a formatted string; integer milliunit twin is dropped
-        # from the lean layer (lives on full_details for the Full layer).
+        # Lean: amount is a formatted string; the integer milliunit twin is dropped.
         "amount": "-$50.00",
         "memo": "Grocery shopping",
         "cleared": "cleared",
@@ -121,8 +120,7 @@ def test_integration_clean_then_validate():
     raw_ynab_data = {
         "id": UUID("123e4567-e89b-12d3-a456-426614174000"),
         "date": date(2023, 1, 15),
-        # Lean: amount is the formatted string; integer milliunit twin is dropped
-        # from the lean layer (lives on full_details for the Full layer).
+        # Lean: amount is the formatted string; the integer milliunit twin is dropped.
         "amount": "-$50.00",
         "memo": "Grocery shopping",
         "cleared": "cleared",

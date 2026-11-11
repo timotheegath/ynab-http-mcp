@@ -13,9 +13,8 @@ transactions collection over a configurable time window:
   ``"decreasing"``, ``"stable"``) computed by linear regression over
   the monthly outflow series.
 
-Per the Lean / Full / Aggregate convention, this is the Aggregate
-layer. It is exposed at ``data://transactions/insights`` and never
-embedded in lean resources.
+Per the Lean / Aggregate convention, this is the Aggregate layer.
+Aggregates are never embedded in lean resources.
 """
 
 from __future__ import annotations
@@ -245,6 +244,16 @@ class TransactionInsightsResponse(BaseModel):
         ..., description="Total number of transactions in the window"
     )
     error: Optional[str] = Field(None, description="Populated when computation fails")
+
+    @classmethod
+    def from_transactions(
+        cls,
+        transactions: List[ynab.TransactionDetail],
+        period_start: date,
+        period_end: date,
+    ) -> TransactionInsightsResponse:
+        """Compute insights from raw transactions over ``[period_start, period_end)``."""
+        return build_transaction_insights(transactions, period_start, period_end)
 
 
 # ---------------------------------------------------------------------------
@@ -563,10 +572,3 @@ def build_transaction_insights(
         error=None,
     )
 
-
-# Classmethod-style factory for symmetry with the spec
-TransactionInsightsResponse.from_transactions = classmethod(  # type: ignore[attr-defined]
-    lambda cls, transactions, period_start, period_end: build_transaction_insights(
-        transactions, period_start, period_end
-    )
-)

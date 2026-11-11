@@ -7,9 +7,6 @@ import sys
 from datetime import date
 from uuid import uuid4
 
-# Add project root to path
-sys.path.insert(0, "/home/timo/projects/ynab-http-mcp/src")
-
 from ynab_http_mcp.schemas.transactions import MCPTransaction, MCPTransactions
 from ynab_http_mcp.schemas.categories import MCPCategory
 from ynab_http_mcp.schemas.planning import (
@@ -57,8 +54,7 @@ def create_sample_month_category():
         "category_id": str(uuid4()),
         "category_name": "Groceries",
         # Lean: integer milliunit budget/activity/balance are dropped; only
-        # formatted strings remain on the lean MonthCategory. The integer
-        # twins live on the Full layer's full_details dict.
+        # formatted strings remain on the lean MonthCategory.
         "budgeted_formatted": "$500.00",
         "activity_formatted": "-$300.00",
         "balance_formatted": "$200.00",
@@ -285,6 +281,123 @@ def test_import_field_filtering():
     assert "payee_name" in cleaned
 
     print("✓ Import field filtering test passed")
+
+
+def test_planning_insights_reads_aggregate():
+    """Call ``get_plan_insights`` via the FastMCP client against a
+    dev-budget-shaped ``YnabService`` and assert the top-level contract:
+
+    - month-level Ready-to-Assign present, income absent
+    - goal-backed category exposes goal integers + the goal monthly rate
+    - forward months already in the plan are included
+    """
+    import asyncio
+    import json
+    from types import SimpleNamespace
+
+    import ynab
+    from fastmcp import FastMCP
+    from fastmcp.client import Client
+
+    from ynab_http_mcp.tools.planning_insights import register
+
+    cat_id = uuid4()
+    grp_id = uuid4()
+
+    def make_category(**kwargs):
+        base = dict(
+            id=cat_id,
+            category_group_id=grp_id,
+            name="Trip",
+            hidden=False,
+            internal=False,
+            deleted=False,
+            budgeted=0,
+            activity=0,
+            balance=0,
+            goal_type="TBD",
+            goal_target=3000000,
+            goal_target_formatted="$3,000.00",
+            goal_target_date=date(2026, 11, 1),
+            goal_overall_left=900000,
+            goal_overall_left_formatted="$900.00",
+            goal_months_to_budget=3,
+            goal_percentage_complete=70,
+        )
+        base.update(kwargs)
+        return ynab.Category(**base)
+
+    def make_month(month, categories, to_be_budgeted=0, to_be_budgeted_formatted=None):
+        return ynab.MonthDetail(
+            month=month,
+            income=0,
+            budgeted=0,
+            activity=0,
+            to_be_budgeted=to_be_budgeted,
+            age_of_money=None,
+            deleted=False,
+            categories=categories,
+            to_be_budgeted_formatted=to_be_budgeted_formatted,
+        )
+
+    goal_cat = make_category(budgeted=500000, activity=-180000, balance=320000)
+
+    months = {
+        "2026-03": make_month(date(2026, 3, 1), [goal_cat], 100000, "$100.00"),
+        "2026-04": make_month(date(2026, 4, 1), [goal_cat]),
+        "2026-05": make_month(date(2026, 5, 1), [goal_cat]),
+    }
+
+    class MockService:
+        def get_all_plan_months(self):
+            return SimpleNamespace(
+                data=SimpleNamespace(
+                    months=[
+                        SimpleNamespace(month=date(2026, 3, 1), deleted=False),
+                        SimpleNamespace(month=date(2026, 4, 1), deleted=False),
+                        SimpleNamespace(month=date(2026, 5, 1), deleted=False),
+                    ]
+                )
+            )
+
+        def get_plan_month(self, month_str):
+            return SimpleNamespace(data=SimpleNamespace(month=months[month_str]))
+
+    async def run():
+        mcp = FastMCP("test")
+        register(mcp, MockService())
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "get_plan_insights",
+                {"since_date": "2026-03", "until_date": "2026-03"},
+            )
+        return json.loads(result.content[0].text)
+
+    data = asyncio.run(run())
+
+    # Top-level shape.
+    assert set(data) >= {"months", "categories", "plan_horizon_reached"}
+    assert data["plan_horizon_reached"] is False
+
+    # Month-level Ready-to-Assign present; income absent.
+    assert data["months"][0]["ready_to_assign"] == 100000
+    assert "income" not in data["months"][0]
+    assert "income" not in json.dumps(data)
+
+    # Goal-backed category exposes goal integers + the goal monthly rate.
+    category = data["categories"][0]
+    assert category["category_name"] == "Trip"
+    assert category["goal"]["goal_target"] == 3000000
+    assert category["goal"]["overall_left"] == 900000
+    assert category["goal"]["months_to_budget"] == 3
+    assert category["goal"]["goal_monthly_rate"] == 300000
+
+    # Forward months already in the plan are included.
+    assert [m["month"] for m in data["months"]] == [
+        "2026-03",
+        "2026-04",
+        "2026-05",
+    ]
 
 
 def main():
