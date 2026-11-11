@@ -26,7 +26,7 @@ from fastmcp import FastMCP
 from fastmcp.client import Client
 
 from ynab_http_mcp.schemas.categories import MCPCategories
-from ynab_http_mcp.schemas.planning import PlanMonth, PlanMonthFull
+from ynab_http_mcp.schemas.planning import PlanMonth
 from ynab_http_mcp.ynab_service import YnabService
 
 
@@ -78,7 +78,7 @@ def _categories_response() -> ynab.CategoriesResponse:
                     hidden=False,
                     internal=True,
                     deleted=False,
-                    categories=[internal_cat],
+                    categories=[ynab.Category.model_validate(internal_cat)],
                 ),
                 ynab.CategoryGroupWithCategories(
                     id=UUID(SPENDABLE_GROUP_ID),
@@ -86,7 +86,7 @@ def _categories_response() -> ynab.CategoriesResponse:
                     hidden=False,
                     internal=False,
                     deleted=False,
-                    categories=[spendable_cat],
+                    categories=[ynab.Category.model_validate(spendable_cat)],
                 ),
             ],
             server_knowledge=0,
@@ -178,15 +178,6 @@ class TestPlanMonthExcludesInternal:
 
         assert [c.category_name for c in result.categories] == ["Groceries"]
         assert [c.category_id for c in result.categories] == [SPENDABLE_CATEGORY_ID]
-
-    def test_full_month_drops_internal_category_from_full_details(self) -> None:
-        result = PlanMonthFull.from_ynab_response(_month_detail_response())
-
-        assert [c.category_name for c in result.categories] == ["Groceries"]
-
-        raw_categories = result.full_details["categories"]
-        assert [c["name"] for c in raw_categories] == ["Groceries"]
-        assert "Inflow: Ready to Assign" not in json.dumps(result.full_details)
 
     def test_ready_to_assign_still_available_on_the_month(self) -> None:
         # The information the internal category carried is not lost: the

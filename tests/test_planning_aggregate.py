@@ -800,7 +800,7 @@ class TestZeroedErrorResponses:
 
 
 # ---------------------------------------------------------------------------
-# 2.1 Resource registration catalog
+# 2.1 Tool registration catalog
 # ---------------------------------------------------------------------------
 
 
@@ -816,23 +816,8 @@ class TestCatalogRegistration:
         names = asyncio.run(run())
         assert "get_plan_insights" in names
 
-    def test_resource_template_listed(self) -> None:
-        async def run() -> set:
-            mcp = FastMCP("test")
-            register(mcp, MockYnabService())
-            async with Client(mcp) as client:
-                templates = await client.list_resource_templates()
-                return {t.uriTemplate for t in templates}
-
-        uris = asyncio.run(run())
-        assert "data://plan-insights{?since_date,until_date}" in uris
-
-    def test_insights_uri_does_not_collide_with_months_template(self) -> None:
-        """``data://months/insights`` was shadowed by ``data://months/{month_date}``.
-
-        The plan-insights resource must use a URI no other template matches,
-        otherwise reads fail with "Invalid month_date format".
-        """
+    def test_no_resource_templates_registered(self) -> None:
+        """Plan insights are exposed as a tool only, not as a resource."""
 
         async def run() -> List[str]:
             mcp = FastMCP("test")
@@ -842,12 +827,11 @@ class TestCatalogRegistration:
                 return [t.uriTemplate for t in templates]
 
         uris = asyncio.run(run())
-        assert "data://months/insights{?since_date,until_date}" not in uris
-        assert "data://plan-insights{?since_date,until_date}" in uris
+        assert uris == []
 
 
 # ---------------------------------------------------------------------------
-# 2.3 ResourcesAsTools exposes the tool form
+# 2.3 Tool call returns the aggregate payload
 # ---------------------------------------------------------------------------
 
 
@@ -861,11 +845,9 @@ def _texts_of(items: Any) -> List[str]:
     return out
 
 
-class TestResourcesAsTools:
-    def test_plan_insights_tool_matches_resource_form(self) -> None:
-        """The tool form and the resource form must return identical payloads."""
-        from fastmcp.server.transforms import ResourcesAsTools
-
+class TestToolCall:
+    def test_plan_insights_tool_returns_aggregate(self) -> None:
+        """The tool form returns the full aggregate payload over the window."""
         cat = _make_category(budgeted=1000, activity=-500, balance=500)
         months = {
             "2026-01": _make_month_detail(date(2026, 1, 1), [cat]),
@@ -873,30 +855,18 @@ class TestResourcesAsTools:
             "2026-03": _make_month_detail(date(2026, 3, 1), [cat]),
         }
         mock = MockYnabService(summaries=[], months=months)
-        uri = "data://plan-insights?since_date=2026-01&until_date=2026-03"
 
-        async def run() -> tuple:
+        async def run() -> Any:
             mcp = FastMCP("test")
             register(mcp, mock)
-            mcp.add_transform(ResourcesAsTools(mcp))
             async with Client(mcp) as client:
-                tools = {t.name for t in await client.list_tools()}
-                resource = await client.read_resource(uri)
-                tool_result = await client.call_tool(
+                return await client.call_tool(
                     "get_plan_insights",
                     {"since_date": "2026-01", "until_date": "2026-03"},
                 )
-                return tools, resource, tool_result
 
-        tools, resource, tool_result = asyncio.run(run())
-
-        assert "get_plan_insights" in tools
-        assert "read_resource" in tools
-        assert "list_resources" in tools
-
-        resource_data = json.loads(_texts_of(resource)[0])
+        tool_result = asyncio.run(run())
         tool_data = json.loads(_texts_of(tool_result.content)[0])
-        assert tool_data == resource_data
         assert [m["month"] for m in tool_data["months"]] == [
             "2026-01",
             "2026-02",

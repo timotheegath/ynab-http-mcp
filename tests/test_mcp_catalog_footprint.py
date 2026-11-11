@@ -146,15 +146,12 @@ class TestCatalogFootprint:
 EXPECTED_TOOL_NAMES: Set[str] = {
     # Budget management tools
     "assign_budget_to_category",
-    "update_category_goal_to_recurring",
-    "update_category_goal_to_target_date",
+    "set_category_goal",
     "update_category_details",
-    "clear_category_goals",
     "create_transaction",
     "check_budget_health",
     "get_spending_insights",
     "get_money_movement_insights",
-    "get_money_movement_insights_for_month",
     # ResourcesAsTools gateway
     "list_resources",
     "read_resource",
@@ -174,80 +171,38 @@ TOOL_FIELD_CONTRACTS: List[tuple] = [
         False,
         None,
     ),
-    # update_category_goal_to_recurring -> UpdateCategoryGoalRecurringRequest
+    # set_category_goal -> SetCategoryGoalRequest
+    ("set_category_goal", "category_id", True, "string", False, True, None),
     (
-        "update_category_goal_to_recurring",
-        "category_id",
+        "set_category_goal",
+        "goal_type",
         True,
         "string",
         False,
-        True,
-        None,
-    ),
-    (
-        "update_category_goal_to_recurring",
-        "goal_target",
-        True,
-        "integer",
-        True,
         False,
-        None,
+        ["monthly", "recurring", "target_by_date", "clear"],
     ),
+    ("set_category_goal", "goal_target", False, "integer", False, False, None),
+    ("set_category_goal", "goal_target_date", False, "string", False, True, None),
     (
-        "update_category_goal_to_recurring",
+        "set_category_goal",
         "goal_needs_whole_amount",
-        True,
+        False,
         "boolean",
         False,
         False,
         None,
     ),
     (
-        "update_category_goal_to_recurring",
+        "set_category_goal",
         "goal_frequency",
-        True,
+        False,
         "string",
         False,
         False,
         ["monthly", "weekly", "daily", "yearly"],
     ),
-    (
-        "update_category_goal_to_recurring",
-        "note",
-        False,
-        "string",
-        False,
-        False,
-        None,
-    ),
-    # update_category_goal_to_target_date -> UpdateCategoryTargetDateRequest
-    (
-        "update_category_goal_to_target_date",
-        "category_id",
-        True,
-        "string",
-        False,
-        True,
-        None,
-    ),
-    (
-        "update_category_goal_to_target_date",
-        "goal_target",
-        True,
-        "integer",
-        True,
-        False,
-        None,
-    ),
-    (
-        "update_category_goal_to_target_date",
-        "goal_target_date",
-        True,
-        "string",
-        False,
-        True,
-        None,
-    ),
+    ("set_category_goal", "note", False, "string", False, False, None),
     # update_category_details -> UpdateCategoryDetailsRequest
     (
         "update_category_details",
@@ -269,9 +224,6 @@ TOOL_FIELD_CONTRACTS: List[tuple] = [
         True,
         None,
     ),
-    # clear_category_goals -> ClearCategoryGoalRequest
-    ("clear_category_goals", "category_id", True, "string", False, True, None),
-    ("clear_category_goals", "note", False, "string", False, False, None),
     # create_transaction -> CreateTransactionRequest
     ("create_transaction", "account_id", True, "string", False, False, None),
     ("create_transaction", "date", True, "string", False, False, None),
@@ -302,16 +254,6 @@ TOOL_FIELD_CONTRACTS: List[tuple] = [
         "get_money_movement_insights",
         "until_date",
         False,
-        "string",
-        False,
-        False,
-        None,
-    ),
-    # get_money_movement_insights_for_month
-    (
-        "get_money_movement_insights_for_month",
-        "month_date",
-        True,
         "string",
         False,
         False,
@@ -401,14 +343,18 @@ class TestToolContract:
                         f"Field '{field_name}' in tool '{tool_name}' should have pattern"
                     )
 
-            # Enum values
+            # Enum values - may be inside anyOf for nullable fields
             if enum_values is not None:
-                assert "enum" in field, (
+                enum = field.get("enum")
+                if enum is None:
+                    any_of = field.get("anyOf", [])
+                    enum = next((s["enum"] for s in any_of if "enum" in s), None)
+                assert enum is not None, (
                     f"Field '{field_name}' in tool '{tool_name}' should have enum"
                 )
-                assert set(field["enum"]) == set(enum_values), (
+                assert set(enum) == set(enum_values), (
                     f"Field '{field_name}' in tool '{tool_name}' enum mismatch. "
-                    f"Expected {set(enum_values)}, got {set(field['enum'])}"
+                    f"Expected {set(enum_values)}, got {set(enum)}"
                 )
 
     def test_destructive_annotations_preserved(self, catalog_data):
@@ -416,10 +362,8 @@ class TestToolContract:
         tools_by_name = {t["name"]: t for t in catalog_data["tools"]}
         destructive_tools = {
             "assign_budget_to_category",
-            "update_category_goal_to_recurring",
-            "update_category_goal_to_target_date",
+            "set_category_goal",
             "update_category_details",
-            "clear_category_goals",
         }
         for name in destructive_tools:
             t = tools_by_name[name]
@@ -435,7 +379,6 @@ class TestToolContract:
             "check_budget_health",
             "get_spending_insights",
             "get_money_movement_insights",
-            "get_money_movement_insights_for_month",
         }
         for name in readonly_tools:
             t = tools_by_name[name]
@@ -459,19 +402,12 @@ EXPECTED_RESOURCE_URIS: Set[str] = {
 
 EXPECTED_RESOURCE_TEMPLATE_URIS: Set[str] = {
     "data://accounts/{account_id}",
-    "data://accounts/{account_id}/full",
     "data://categories/{category_id}",
-    "data://categories/{category_id}/full",
     "data://months/{month_date}",
-    "data://months/{month_date}/full",
     "data://months/{month_date}/categories/{category_id}",
-    "data://months/{month_date}/categories/{category_id}/full",
     "data://payees/{id}",
-    "data://payees/{id}/full",
     "data://transactions/{id}",
-    "data://transactions/{id}/full",
     "data://transactions{?since_date,until_date,type,limit}",
-    "data://transactions/insights{?since_date,until_date,account_id}",
     "data://accounts/{account_id}/transactions{?since_date,until_date,type}",
     "data://months/{month_date}/transactions{?type}",
     "data://payees/{payee_id}/transactions{?since_date,until_date,type}",
@@ -529,8 +465,7 @@ class TestSemanticDescriptions:
         milliunit_fields = {
             ("assign_budget_to_category", "budgeted_amount"),
             ("create_transaction", "amount"),
-            ("update_category_goal_to_recurring", "goal_target"),
-            ("update_category_goal_to_target_date", "goal_target"),
+            ("set_category_goal", "goal_target"),
         }
         for tool_name, field_name in milliunit_fields:
             tool = tools_by_name[tool_name]
@@ -546,7 +481,7 @@ class TestSemanticDescriptions:
         date_fields = {
             ("assign_budget_to_category", "month"),
             ("create_transaction", "date"),
-            ("update_category_goal_to_target_date", "goal_target_date"),
+            ("set_category_goal", "goal_target_date"),
             ("check_budget_health", "month"),
             ("get_spending_insights", "month"),
         }
@@ -558,87 +493,40 @@ class TestSemanticDescriptions:
                 f"Field '{field_name}' in tool '{tool_name}' should mention date format"
             )
 
-    def test_full_details_mentioned_in_full_resources(self, catalog_data):
-        """Every Full resource description must mention full_details."""
-        templates_by_uri = {t["uriTemplate"]: t for t in catalog_data["templates"]}
-        full_uris = [
-            uri for uri in EXPECTED_RESOURCE_TEMPLATE_URIS if uri.endswith("/full")
-        ]
-        for uri in full_uris:
-            t = templates_by_uri[uri]
-            desc = t.get("description", "")
-            assert "full_details" in desc.lower(), (
-                f"Full resource '{uri}' description should mention full_details"
-            )
-
-    def test_full_resources_identify_drill_in_purpose(self, catalog_data):
-        """Full resources should mention arithmetic or SDK-fidelity."""
-        templates_by_uri = {t["uriTemplate"]: t for t in catalog_data["templates"]}
-        full_uris = [
-            uri for uri in EXPECTED_RESOURCE_TEMPLATE_URIS if uri.endswith("/full")
-        ]
-        for uri in full_uris:
-            t = templates_by_uri[uri]
-            desc = t.get("description", "")
-            has_purpose = (
-                "arithmetic" in desc.lower()
-                or "sdk-fidelity" in desc.lower()
-                or "raw sdk" in desc.lower()
-                or "integer" in desc.lower()
-            )
-            assert has_purpose, (
-                f"Full resource '{uri}' description should mention arithmetic, "
-                f"SDK-fidelity, raw SDK, or integer access purpose"
-            )
+    def test_no_full_or_insights_resources_registered(self, catalog_data):
+        """The /full drill-in and insights resources were removed."""
+        uris = {t["uriTemplate"] for t in catalog_data["templates"]}
+        assert not any(uri.endswith("/full") for uri in uris), (
+            "No /full resource templates should be registered"
+        )
+        assert not any("insights" in uri for uri in uris), (
+            "No insights resource templates should be registered"
+        )
 
     def test_lean_resources_have_concise_descriptions(self, catalog_data):
-        """Lean resource descriptions should be concise (no multi-line essays)."""
+        """Resource descriptions should be concise (no multi-line essays)."""
         templates_by_uri = {t["uriTemplate"]: t for t in catalog_data["templates"]}
-        lean_uris = [
-            uri for uri in EXPECTED_RESOURCE_TEMPLATE_URIS if not uri.endswith("/full")
-        ]
-        for uri in lean_uris:
+        for uri in EXPECTED_RESOURCE_TEMPLATE_URIS:
             t = templates_by_uri[uri]
             desc = t.get("description", "")
             assert "Lean endpoint" not in desc, (
-                f"Lean resource '{uri}' should not reference 'Lean endpoint'"
+                f"Resource '{uri}' should not reference 'Lean endpoint'"
             )
 
-    def test_goal_operations_distinguishable(self, catalog_data):
-        """Similar goal tools must have distinct descriptions."""
+    def test_set_category_goal_documents_all_goal_types(self, catalog_data):
+        """The combined goal tool must document every goal_type it accepts."""
         tools_by_name = {t["name"]: t for t in catalog_data["tools"]}
-        recurring_desc = tools_by_name["update_category_goal_to_recurring"].get(
-            "description", ""
-        )
-        target_date_desc = tools_by_name["update_category_goal_to_target_date"].get(
-            "description", ""
-        )
+        goal_desc = tools_by_name["set_category_goal"].get("description", "")
+        for keyword in ("monthly", "recurring", "target_by_date", "clear"):
+            assert keyword in goal_desc.lower(), (
+                f"set_category_goal description should mention '{keyword}'"
+            )
         details_desc = tools_by_name["update_category_details"].get("description", "")
-        clear_desc = tools_by_name["clear_category_goals"].get("description", "")
-
-        assert "recurring" in recurring_desc.lower()
-        assert (
-            "target date" in target_date_desc.lower()
-            or "target" in target_date_desc.lower()
-        )
         assert (
             "name" in details_desc.lower()
             or "note" in details_desc.lower()
             or "group" in details_desc.lower()
         )
-        assert "clear" in clear_desc.lower()
-
-    def test_date_boundary_semantics_preserved(self, catalog_data):
-        """Date filter descriptions should retain boundary semantics."""
-        templates_by_uri = {t["uriTemplate"]: t for t in catalog_data["templates"]}
-        insights = templates_by_uri.get(
-            "data://transactions/insights{?since_date,until_date,account_id}"
-        )
-        if insights:
-            desc = insights.get("description", "")
-            assert "exclusive" in desc.lower() or "default" in desc.lower(), (
-                "Insights resource should mention exclusive boundary or default window"
-            )
 
 
 # ---------------------------------------------------------------------------

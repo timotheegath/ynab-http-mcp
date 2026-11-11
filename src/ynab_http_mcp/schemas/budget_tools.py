@@ -3,7 +3,7 @@ Budget tool schemas for YNAB HTTP MCP.
 """
 
 from typing import Optional, Dict, Any, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AssignBudgetCategoryRequest(BaseModel):
@@ -57,8 +57,8 @@ class UpdateCategoryRequest(BaseModel):
     )
 
 
-class UpdateCategoryGoalRecurringRequest(BaseModel):
-    """Request schema for updating a category goal to a recurring goal."""
+class SetCategoryGoalRequest(BaseModel):
+    """Request schema for setting or clearing a category's goal in one call."""
 
     category_id: str = Field(
         ...,
@@ -70,25 +70,103 @@ class UpdateCategoryGoalRecurringRequest(BaseModel):
         description="Note (max 500). null = unchanged.",
         max_length=500,
     )
-    goal_target: int = Field(
+    goal_type: Literal["monthly", "recurring", "target_by_date", "clear"] = Field(
         ...,
-        description="Target in milliunits.",
+        description=(
+            "Goal to set: 'monthly' = save goal_target each month; "
+            "'recurring' = NEED goal repeated on goal_frequency; "
+            "'target_by_date' = NEED goal saved by goal_target_date; "
+            "'clear' = remove the goal entirely."
+        ),
+    )
+    goal_target: Optional[int] = Field(
+        None,
+        description="Target in milliunits (>=0). Required unless goal_type='clear'.",
         ge=0,
     )
-    goal_needs_whole_amount: bool = Field(
-        ...,
-        description="NEED: true=accumulating, false=maintaining.",
+    goal_target_date: Optional[str] = Field(
+        None,
+        description="Date YYYY-MM-DD. Required when goal_type='target_by_date'; not allowed otherwise.",
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
     )
-    goal_frequency: Literal["monthly", "weekly", "daily", "yearly"] = Field(
-        ...,
-        description="Recurring frequency.",
+    goal_needs_whole_amount: Optional[bool] = Field(
+        None,
+        description="NEED goal: true = 'Set aside another' (accumulating), false = 'Refill up to' (maintaining). Required when goal_type='recurring'.",
+    )
+    goal_frequency: Optional[Literal["monthly", "weekly", "daily", "yearly"]] = Field(
+        None,
+        description="Recurring NEED frequency. Required when goal_type='recurring'.",
     )
 
+    @model_validator(mode="after")
+    def _check_goal_fields(self) -> "SetCategoryGoalRequest":
+        if self.goal_type == "clear":
+            if any(
+                v is not None
+                for v in (
+                    self.goal_target,
+                    self.goal_target_date,
+                    self.goal_needs_whole_amount,
+                    self.goal_frequency,
+                )
+            ):
+                raise ValueError(
+                    "goal_type='clear' removes the goal and takes no goal fields"
+                )
+            return self
+        if self.goal_target is None:
+            raise ValueError(
+                f"goal_target is required when goal_type='{self.goal_type}'"
+            )
+        if self.goal_type == "monthly" and any(
+            v is not None
+            for v in (
+                self.goal_target_date,
+                self.goal_needs_whole_amount,
+                self.goal_frequency,
+            )
+        ):
+            raise ValueError("goal_type='monthly' takes only goal_target")
+        if self.goal_type == "target_by_date":
+            if self.goal_target_date is None:
+                raise ValueError(
+                    "goal_target_date is required when goal_type='target_by_date'"
+                )
+            if (
+                self.goal_needs_whole_amount is not None
+                or self.goal_frequency is not None
+            ):
+                raise ValueError(
+                    "goal_type='target_by_date' does not take "
+                    "goal_needs_whole_amount or goal_frequency"
+                )
+        if self.goal_type == "recurring":
+            if self.goal_target_date is not None:
+                raise ValueError(
+                    "goal_target_date cannot combine with goal_type='recurring'"
+                )
+            if self.goal_needs_whole_amount is None:
+                raise ValueError(
+                    "goal_needs_whole_amount is required when goal_type='recurring'"
+                )
+            if self.goal_frequency is None:
+                raise ValueError(
+                    "goal_frequency is required when goal_type='recurring'"
+                )
+        return self
+
     def to_update_category_request(self) -> UpdateCategoryRequest:
+        if self.goal_type == "clear":
+            # goal_target=0 with no other goal fields signals a full goal
+            # removal in YnabService.update_category.
+            return UpdateCategoryRequest(
+                category_id=self.category_id, note=self.note, goal_target=0
+            )  # type: ignore
         return UpdateCategoryRequest(
             category_id=self.category_id,
             note=self.note,
             goal_target=self.goal_target,
+            goal_target_date=self.goal_target_date,
             goal_needs_whole_amount=self.goal_needs_whole_amount,
             goal_frequency=self.goal_frequency,
         )  # type: ignore
@@ -127,57 +205,19 @@ class UpdateCategoryDetailsRequest(BaseModel):
         )  # type: ignore
 
 
-class UpdateCategoryTargetDateRequest(BaseModel):
-    """Request schema for updating a category goal to a target date."""
+class CreateTransactionRequest(BaseModel):
+    """Request schema for creating a new transaction."""
 
-    category_id: str = Field(
-        ...,
-        description="Category UUID.",
-        pattern=r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
-    )
-    note: Optional[str] = Field(
-        None,
-        description="Note (max 500). null = unchanged.",
-        max_length=500,
-    )
-    goal_target: int = Field(
-        ...,
-        description="Target in milliunits.",
-        ge=0,
-    )
-    goal_target_date: str = Field(
-        ...,
-        description="Date YYYY-MM-DD.",
-        pattern=r"^\d{4}-\d{2}-\d{2}$",
-    )
-
-    def to_update_category_request(self) -> UpdateCategoryRequest:
-        return UpdateCategoryRequest(
-            category_id=self.category_id,
-            note=self.note,
-            goal_target=self.goal_target,
-            goal_target_date=self.goal_target_date,
-        )  # type: ignore
-
-
-class ClearCategoryGoalRequest(BaseModel):
-    """Request schema for clearing a category goal."""
-
-    category_id: str = Field(
-        ...,
-        description="Category UUID.",
-        pattern=r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
-    )
-    note: Optional[str] = Field(
-        None,
-        description="Note (max 500). null = unchanged.",
-        max_length=500,
-    )
-
-    def to_update_category_request(self) -> UpdateCategoryRequest:
-        return UpdateCategoryRequest(
-            category_id=self.category_id, note=self.note, goal_target=0
-        )  # type: ignore
+    account_id: str = Field(..., description="Account UUID")
+    date: str = Field(..., description="Date YYYY-MM-DD")
+    amount: int = Field(..., description="Amount in milliunits")
+    payee_id: Optional[str] = Field(None, description="Payee UUID")
+    payee_name: Optional[str] = Field(None, description="Payee name")
+    category_id: Optional[str] = Field(None, description="Category UUID")
+    memo: Optional[str] = Field(None, description="Memo")
+    cleared: str = Field("cleared", description="Cleared")
+    approved: bool = Field(True, description="Approved")
+    flag_color: Optional[str] = Field(None, description="Flag")
 
 
 class BudgetHealthResponse(BaseModel):
