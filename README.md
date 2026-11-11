@@ -71,6 +71,7 @@ docker stop ynab-server
 | `HTTP_PORT` | optional | Port for the MCP server (default: `8000`) |
 | `LOG_LEVEL` | optional | Log verbosity (default: `debug`) |
 | `DEBUG_MODE` | optional | Enable verbose debug logging (`True`/`False`) |
+| `SHOW_FULL_RESOURCES` | optional | Register the verbose `/full` drill-in resources (`true`/`false`, default: `false` = hidden) |
 
 Templates:
 
@@ -107,6 +108,10 @@ Pre-computed aggregates exposed as tools (not resources):
 - **`get_money_movement_insights(since_date?, until_date?)`** — money-movement planning quality over a window (default: last 3 months; pass both dates to drill into a single month).
 - **`check_budget_health(month)`** / **`get_spending_insights(month, category_id?)`** — per-month health and spending metrics.
 
+YNAB's internal bookkeeping categories (`Inflow: Ready to Assign`, `Uncategorized`) are excluded from category listings and plan months: their balances are cumulative Ready-to-Assign artifacts, not spendable money, so adding them to the real category balances would produce a meaningless total. Ready to Assign itself stays available on a plan month as `to_be_budgeted`.
+
+Full resources are **hidden by default** so the catalog stays lean. Set `SHOW_FULL_RESOURCES=true` in the env file to register them (the startup banner prints whether they are shown or hidden).
+
 ### Write tools
 
 - **`assign_budget_to_category`** — modify a category's budgeted amount for a given month.
@@ -134,7 +139,7 @@ I am reaching the end of my Eating Out money. Which money could I reassign confi
 |---|---|
 | `data://accounts` | All accounts |
 | `data://accounts/{id}` | Single account |
-| `data://categories` | All categories |
+| `data://categories` | All categories (internal categories excluded) |
 | `data://categories/{id}` | Single category |
 | `data://months` | All plan months summary |
 | `data://months/{YYYY-MM}` | Single plan month |
@@ -149,6 +154,18 @@ I am reaching the end of my Eating Out money. Which money could I reassign confi
 | `data://payees/{id}/transactions` | Per-payee transactions |
 | `data://budget/check-health/{month}` | Budget health metrics |
 | `data://budget/spending-insights/{month}` | Spending analysis |
+
+### Full (drill-in) resources
+
+Append `/full` to any single-entity URI, e.g. `data://transactions/{id}/full`.
+
+Only registered when `SHOW_FULL_RESOURCES=true`; with the flag off these URIs are absent from the catalog entirely.
+
+### Aggregate
+
+| URI | Description |
+|---|---|
+| `data://transactions/insights` | Pre-computed insights (last 3 months by default) |
 
 ---
 

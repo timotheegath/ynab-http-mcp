@@ -4,6 +4,7 @@ from ynab_http_mcp.schemas.payees import (
     MCPPayees,
     MCPPayee,
 )
+from ynab_http_mcp.tools._full import full_resource
 from ynab_http_mcp.debug import debug_exception
 
 

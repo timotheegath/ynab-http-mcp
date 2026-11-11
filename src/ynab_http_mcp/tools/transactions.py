@@ -1,7 +1,9 @@
 # All transaction actions.
 from ynab_http_mcp.ynab_service import YnabService
-from typing import Annotated, Literal
+from typing import Annotated, Any, Dict, Literal
+from mcp.types import ToolAnnotations
 from ynab_http_mcp.schemas.transactions import (
+    CreateTransactionRequest,
     MCPTransactions,
     MCPTransaction,
 )
@@ -9,6 +11,26 @@ import json
 
 
 def register(mcp, ynab_service: YnabService):
+
+    @mcp.tool(annotations=ToolAnnotations(read_only_hint=False))
+    def create_transaction(request: CreateTransactionRequest) -> Dict[str, Any]:
+        """Create a new transaction."""
+        result = ynab_service.create_transaction(
+            request.account_id,
+            request.date,
+            request.amount,
+            request.payee_id,
+            request.payee_name,
+            request.category_id,
+            request.memo,
+            request.cleared,
+            request.approved,
+            request.flag_color,
+        )
+        return {
+            "success": True,
+            "transaction": clean_ynab_data(result.data.transaction.to_dict()),
+        }
 
     @mcp.resource(
         uri="data://transactions{?since_date,until_date,type,limit}",

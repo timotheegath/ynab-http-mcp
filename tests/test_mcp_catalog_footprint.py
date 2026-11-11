@@ -31,6 +31,23 @@ def _compact_json(obj: Any) -> str:
 
 async def _fetch_catalog():
     """Build server and fetch tools/resources/templates."""
+    # This suite validates the full-resource contract, so enable the verbose
+    # /full drill-in resources explicitly before registering the tool modules.
+    # The previous value is restored afterwards: leaking "true" into the rest
+    # of the session made the suite order-dependent.
+    previous_full_resources = os.environ.get("SHOW_FULL_RESOURCES")
+    os.environ["SHOW_FULL_RESOURCES"] = "true"
+    try:
+        return await _fetch_catalog_inner()
+    finally:
+        if previous_full_resources is None:
+            os.environ.pop("SHOW_FULL_RESOURCES", None)
+        else:
+            os.environ["SHOW_FULL_RESOURCES"] = previous_full_resources
+
+
+async def _fetch_catalog_inner():
+    """Build server and fetch tools/resources/templates."""
     from fastmcp import FastMCP
     from fastmcp.client import Client
     from fastmcp.server.transforms import ResourcesAsTools

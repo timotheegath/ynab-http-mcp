@@ -2,10 +2,11 @@
 # Usage: docker compose -f compose.yaml -f compose.prod.yaml up
 # WARNING: uses real YNAB credentials. Never run from a coding-agent session.
 services:
-  ynabhttpmcp:
+  ynab-mcp:
     env_file: .env.prod
     restart: unless-stopped
-    # INSTALL_DEV defaults to false in Dockerfile — no override needed
+
+# INSTALL_DEV defaults to false in Dockerfile — no override needed
     ports:
       - "3001:3001"
 # INSTALL_DEV defaults to false in Dockerfile — no override needed

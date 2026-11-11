@@ -7,7 +7,9 @@ def register(mcp, ynab_service: YnabService):
 
     @mcp.resource(uri="data://categories", mime_type="application/json")
     async def get_categories() -> str:
-        """Get a flat list of all YNAB categories."""
+        """Get YNAB categories grouped by category group. Internal categories
+        (e.g. Inflow: Ready to Assign) are excluded, so the category balances
+        can be summed into a real total."""
         raw_response = ynab_service.get_categories()
         cleaned_response = MCPCategories.from_ynab(raw_response)
         return cleaned_response.model_dump_json(exclude_none=True)

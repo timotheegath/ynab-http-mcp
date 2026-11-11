@@ -10,13 +10,13 @@ from ..ynab_service import YnabService, PlanMonthNotFoundError
 from ..utils.schema_utils import clean_ynab_data
 from ..schemas.budget_tools import (
     AssignBudgetCategoryRequest,
-    CreateTransactionRequest,
     UpdateCategoryDetailsRequest,
     SetCategoryGoalRequest,
     BudgetHealthResponse,
     SpendingInsightsResponse,
 )
 from ..schemas.transaction_aggregate import _ynab_format
+from ..schemas.categories import is_internal_category
 
 
 def register(mcp, ynab_service: YnabService):
@@ -122,6 +122,13 @@ def register(mcp, ynab_service: YnabService):
         total_categories = 0
 
         for category in month_detail.categories:
+            # Internal categories (e.g. "Inflow: Ready to Assign") carry a
+            # cumulative Ready-to-Assign balance, not spendable category money.
+            # Excluding them keeps the health metrics and any total computed
+            # from them meaningful.
+            if is_internal_category(category):
+                continue
+
             cat_budgeted = category.budgeted
             cat_activity = category.activity
             cat_balance = category.balance
